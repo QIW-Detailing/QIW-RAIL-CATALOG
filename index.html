@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.target && (e.target.src || e.target.href)) {
+                if ((e.target.src || '').indexOf('.js') !== -1) {
+                    console.warn('Script load failed, attempting fallback: ' + e.target.src);
+                    showVisualError('Failed to load script: ' + e.target.src);
+                }
+            } else {
+                showVisualError('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+            }
+        }, true);
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            showVisualError('Promise Rejection: ' + e.reason);
+        });
+
+        function showVisualError(msg) {
+            console.error(msg);
+            let errDiv = document.getElementById('visual-error-banner');
+            if (!errDiv) {
+                errDiv = document.createElement('div');
+                errDiv.id = 'visual-error-banner';
+                errDiv.setAttribute('style', 'position: fixed; top: 0; left: 0; width: 100%; background: #ff4444; color: white; padding: 15px; font-family: monospace; font-size: 14px; z-index: 100000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); white-space: pre-wrap; word-break: break-all;');
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = 'X';
+                closeBtn.setAttribute('style', 'float: right; background: none; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 16px;');
+                closeBtn.onclick = function() { errDiv.remove(); };
+                errDiv.appendChild(closeBtn);
+                const textSpan = document.createElement('span');
+                textSpan.id = 'visual-error-text';
+                errDiv.appendChild(textSpan);
+                document.body.appendChild(errDiv);
+            }
+            document.getElementById('visual-error-text').textContent += msg + '\n\n';
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QIW RAIL CATALOG</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Offline-First CAD & Utility Libraries (with High-Reliability CDN Fallbacks) -->
+    <script src="bez.js" onerror="this.onerror=null; this.src='js/lib/bez.js'; this.onerror=function(){this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js';}"></script>
+    
+    <!-- Shield Maker.js from global module/AMD/RequireJS/CommonJS loader hijackers -->
+    <script>
+        window._temp_module = window.module;
+        window._temp_exports = window.exports;
+        window._temp_define = window.define;
+        window._temp_require = window.require;
+        window.module = undefined;
+        window.exports = undefined;
+        window.define = undefined;
+        window.require = undefined;
+        
+        window.restoreShield = function() {
+            // Extract MakerJs from Browserify require function before restoring original loader
+            if (typeof window.require === 'function' && typeof window.MakerJs === 'undefined') {
+                try {
+                    window.MakerJs = window.require('makerjs');
+                } catch(e) {
+                    console.warn("Failed to extract MakerJs via require:", e);
+                }
+            }
+
+            if (window._temp_module !== undefined && window.module === undefined) window.module = window._temp_module;
+            if (window._temp_exports !== undefined && window.exports === undefined) window.exports = window._temp_exports;
+            if (window._temp_define !== undefined && window.define === undefined) window.define = window._temp_define;
+            if (window._temp_require !== undefined && window.require === undefined) window.require = window._temp_require;
+            
+            // Bridge MakerJs to lowercase makerjs if loaded
+            if (typeof makerjs === 'undefined' && typeof MakerJs !== 'undefined') {
+                window.makerjs = MakerJs;
+            }
+            
+            // Update UI status indicator if it exists
+            const statusIndicator = document.querySelector('.status-indicator');
+            if (statusIndicator && (typeof makerjs !== 'undefined' || typeof MakerJs !== 'undefined')) {
+                statusIndicator.innerHTML = '<span class="dot pulse"></span> Engineering Engine Ready';
+                statusIndicator.title = "";
+            }
+        };
+        
+        // Also ensure it is restored on window load in case onload doesn't fire for some script failures
+        window.addEventListener('load', () => {
+            if (window.restoreShield) {
+                window.restoreShield();
+            }
+        });
+    </script>
+    
+    <script src="browser.maker.js" 
+            onload="window.restoreShield && window.restoreShield()" 
+            onerror="this.onerror=null; this.src='js/lib/browser.maker.js'; this.onload=function(){ window.restoreShield && window.restoreShield(); }; this.onerror=function(){this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/makerjs@0.18.1/dist/browser.maker.js'; this.onload=function(){ window.restoreShield && window.restoreShield(); }; this.onerror=function(){this.onerror=null; this.src='https://unpkg.com/makerjs@0.18.1/dist/browser.maker.js'; this.onload=function(){ window.restoreShield && window.restoreShield(); }; this.onerror=function(){ window.restoreShield && window.restoreShield(); };};}">
+    </script>
+    
+    <script src="lucide.min.js" onerror="this.onerror=null; this.src='js/lib/lucide.min.js'; this.onerror=function(){this.onerror=null; this.src='https://unpkg.com/lucide@latest';}"></script>
+    <script src="jspdf.umd.min.js" onerror="this.onerror=null; this.src='js/lib/jspdf.umd.min.js'; this.onerror=function(){this.onerror=null; this.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';}"></script>
+</head>
+<body class="dark-mode">
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <header class="logo">
+                <i data-lucide="ferris-wheel"></i>
+                <h1>QIW RAIL CATALOG<span>v1.0</span></h1>
+            </header>
+
+            <div class="sidebar-content">
+                <!-- Shapes Mode Controls -->
+                <section id="shapes-controls" class="control-panel">
+                    <div class="input-group" style="display: none;">
+                        <label>Category</label>
+                        <select id="shape-category">
+                            <option value="rail_catalog" selected>Rail Catalog</option>
+                        </select>
+                    </div>
+
+                    <div id="dynamic-inputs">
+                        <!-- Dynamic inputs will be injected here -->
+                    </div>
+
+                    <div class="ai-assistant-panel">
+                        <h3><i data-lucide="sparkles"></i> AI Drawing Assistant</h3>
+                        <div class="input-group">
+                            <textarea id="ai-instructions" placeholder="Type changes, e.g. 'Make post height 90 and picket spacing 5'"></textarea>
+                        </div>
+                        <button id="apply-ai-changes" class="btn primary" style="width: 100%; margin-top: -10px;">
+                            <i data-lucide="wand-2"></i> Modify Drawing
+                        </button>
+                    </div>
+
+                    <div class="action-group">
+                        <button id="generate-dxf" class="btn primary">
+                            <i data-lucide="download"></i> Download DXF
+                        </button>
+                        <button id="generate-pdf" class="btn secondary">
+                            <i data-lucide="file-text"></i> Export Drawing
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Sketch Mode Controls -->
+                <section id="sketch-controls" class="control-panel hidden">
+                    <p class="hint">Draw rough or upload a picture. We'll convert it to a precision CAD drawing.</p>
+                    <div class="canvas-tools">
+                        <button class="tool-btn" id="clear-canvas" title="Clear">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                        <button class="tool-btn active" id="tool-pencil" title="Pencil">
+                            <i data-lucide="pen"></i>
+                        </button>
+                        <div class="upload-wrapper">
+                            <button class="tool-btn" id="upload-trigger" title="Upload Image">
+                                <i data-lucide="image"></i>
+                            </button>
+                            <input type="file" id="sketch-upload" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+                    <div class="action-group">
+                        <button id="process-sketch" class="btn primary">
+                            <i data-lucide="cpu"></i> Generate CAD from Sketch
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Draft Mode Controls -->
+                <section id="draft-controls" class="control-panel hidden">
+                    <!-- Active shapes selector -->
+                    <div class="input-group">
+                        <label>Add Shape to Draft</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <button class="btn secondary add-draft-shape" data-shape="hss_rect">HSS Rect</button>
+                            <button class="btn secondary add-draft-shape" data-shape="hss_circ">HSS Circ</button>
+                            <button class="btn secondary add-draft-shape" data-shape="w_beam">W-Beam</button>
+                            <button class="btn secondary add-draft-shape" data-shape="angles">L-Angle</button>
+                            <button class="btn secondary add-draft-shape" data-shape="plate" style="grid-column: span 2;">Plate</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Member Parameter Editor (shows when a member is selected) -->
+                    <div id="draft-editor-panel" class="editor-subpanel hidden">
+                        <h3 id="selected-member-title" style="margin-top: 15px; margin-bottom: 10px; color: var(--accent-secondary); font-size: 0.95rem;">Selected Member: None</h3>
+                        
+                        <div class="inputs-grid" id="draft-member-dims">
+                            <!-- Dynamic parameters depending on active member type -->
+                        </div>
+
+                        <!-- Standard Member Selector -->
+                        <div class="input-group" id="draft-size-group" style="margin-top: 12px; margin-bottom: 12px;">
+                            <label>AISC Standard Size</label>
+                            <select id="draft-member-size">
+                                <!-- Populated dynamically based on category -->
+                            </select>
+                        </div>
+
+                        <!-- Length & View Projection -->
+                        <div class="inputs-grid" id="draft-length-view-grid" style="margin-bottom: 12px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>Length (in)</label>
+                                <input type="number" id="draft-member-length" value="60" step="0.1">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>Projection View</label>
+                                <select id="draft-member-view">
+                                    <option value="profile">Profile (Side View)</option>
+                                    <option value="section">Section (End View)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-group" style="margin-top: 12px;">
+                            <label>Rotation</label>
+                            <select id="draft-member-rotation">
+                                <option value="0">0° (Standard)</option>
+                                <option value="90">90° (Quarter Turn)</option>
+                                <option value="180">180° (Half Turn)</option>
+                                <option value="270">270° (Three-Quarter)</option>
+                            </select>
+                        </div>
+
+                        <!-- Fabrication / Holes Option -->
+                        <div class="perforation-group" id="draft-member-perf" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                            <h3>Fabrication & Callouts</h3>
+                            <div class="checkbox-group" style="margin-bottom: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                                    <input type="checkbox" id="draft-member-has-holes"> Include Holes
+                                </label>
+                            </div>
+                            
+                            <div id="draft-holes-details" class="hidden">
+                                <div class="inputs-grid">
+                                    <div class="input-group">
+                                        <label>Hole Dia (in)</label>
+                                        <input type="number" id="draft-hole-dia" value="0.5" step="0.01">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Hole Count</label>
+                                        <input type="number" id="draft-hole-count" value="2" step="1">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Hole Spacing (in)</label>
+                                        <input type="number" id="draft-hole-spacing" value="3.0" step="0.01">
+                                    </div>
+                                </div>
+
+                                <div class="checkbox-group" style="margin-top: 10px; margin-bottom: 10px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" id="draft-member-has-bolts"> Include Bolts
+                                    </label>
+                                </div>
+                                
+                                <div id="draft-bolts-details" class="hidden">
+                                    <div class="inputs-grid">
+                                        <div class="input-group">
+                                            <label>Bolt Dia (in)</label>
+                                            <input type="number" id="draft-bolt-dia" value="0.5" step="0.01">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Bolt Length (in)</label>
+                                            <input type="number" id="draft-bolt-len" value="2.5" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Custom Label slot -->
+                            <div class="input-group" style="margin-top: 10px;">
+                                <label>Custom Label / Callout</label>
+                                <input type="text" id="draft-member-label" placeholder="e.g. Fence Gate Post (P-1)">
+                            </div>
+                        </div>
+
+                        <!-- Position modification (Manual Offset) -->
+                        <div class="perforation-group" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                            <h3>Position Offsets (in)</h3>
+                            <div class="inputs-grid">
+                                <div class="input-group">
+                                    <label>Offset X</label>
+                                    <input type="number" id="draft-pos-x" value="0" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Offset Y</label>
+                                    <input type="number" id="draft-pos-y" value="0" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Duplicate, Array, Delete Controls -->
+                        <div class="perforation-group" style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
+                            <h3>Modify Member</h3>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <button class="btn secondary" id="draft-btn-copy" style="flex: 1;"><i data-lucide="copy"></i> Copy</button>
+                                <button class="btn secondary" id="draft-btn-paste" style="flex: 1;"><i data-lucide="clipboard"></i> Paste</button>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label>Linear Duplicate Array</label>
+                                <div class="inputs-grid" style="grid-template-columns: 2fr 2fr 1fr; gap: 5px; align-items: end;">
+                                    <div class="input-group" style="margin-bottom:0;">
+                                        <label style="font-size:0.75rem;">Spacing (in)</label>
+                                        <input type="number" id="draft-array-spacing" value="12.0" step="0.1">
+                                    </div>
+                                    <div class="input-group" style="margin-bottom:0;">
+                                        <label style="font-size:0.75rem;">Axis</label>
+                                        <select id="draft-array-axis">
+                                            <option value="X">X Axis</option>
+                                            <option value="Y">Y Axis</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group" style="margin-bottom:0;">
+                                        <label style="font-size:0.75rem;">Count</label>
+                                        <input type="number" id="draft-array-count" value="3" min="1" step="1">
+                                    </div>
+                                </div>
+                                <button class="btn secondary" id="draft-btn-array" style="width: 100%; margin-top: 8px;">
+                                    <i data-lucide="layout-grid"></i> Create Linear Array
+                                </button>
+                            </div>
+
+                            <button class="btn primary" id="draft-btn-delete" style="width: 100%; background: #e03131; border-color: #c92a2a; margin-top: 10px; color: white;">
+                                <i data-lucide="trash-2"></i> Delete Member
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="draft-empty-prompt" class="hint" style="text-align: center; padding: 20px;">
+                        <i data-lucide="info" style="width: 24px; height: 24px; margin: 0 auto 10px; display: block; color: var(--accent-secondary);"></i>
+                        Select a shape from above to add it to your 2D AutoCAD-style Drafting Space, or select an existing member in the viewport to tweak it.
+                    </div>
+
+                    <!-- Interactive User Guide -->
+                    <div class="draft-guide-box" style="margin-top: 20px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); border-radius: 8px; overflow: hidden; font-family: 'Inter', sans-serif;">
+                        <button type="button" id="btn-toggle-guide" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; background: rgba(255,255,255,0.02); border: none; outline: none; cursor: pointer; color: var(--accent-primary); font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid var(--border-color);">
+                            <span style="display: flex; align-items: center; gap: 8px;"><i data-lucide="help-circle" style="width: 16px; height: 16px;"></i> Drafting Space User Guide</span>
+                            <i data-lucide="chevron-down" id="guide-chevron" style="width: 16px; height: 16px; transition: transform 0.2s ease;"></i>
+                        </button>
+                        <div id="draft-guide-content" class="hidden" style="padding: 15px; font-size: 0.8rem; line-height: 1.5; color: var(--text-dim); display: flex; flex-direction: column; gap: 12px;">
+                            <div>
+                                <h4 style="color: var(--text-main); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><i data-lucide="mouse-pointer" style="width: 14px; height: 14px; color: var(--accent-primary);"></i> Selecting & Editing</h4>
+                                <p>Click any member on the canvas to select it. The sidebar parameters will load automatically.</p>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--text-main); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><i data-lucide="move" style="width: 14px; height: 14px; color: var(--accent-secondary);"></i> Panning & Navigation</h4>
+                                <p><strong>Middle Mouse Button:</strong> Hold scroll wheel and drag to pan (standard AutoCAD).</p>
+                                <p><strong>Scroll Wheel:</strong> Rotate scroll wheel to zoom in/out.</p>
+                                <p><strong>Pan Mode:</strong> Toggle <i data-lucide="hand" style="width: 12px; height: 12px; display: inline-vertical; vertical-align: middle;"></i> <strong>Pan View</strong> in the viewport header and drag with your Left mouse button.</p>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--text-main); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><i data-lucide="grip-horizontal" style="width: 14px; height: 14px; color: #ff8800;"></i> Drag & Move Members</h4>
+                                <p>Left-click and drag a member on the canvas to relocate it. A displacement vector is shown in orange reflecting exact delta offsets (&Delta;X, &Delta;Y) relative to its original coordinate.</p>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--text-main); font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><i data-lucide="copy" style="width: 14px; height: 14px; color: #a2f22b;"></i> Duplication & Arrays</h4>
+                                <p>Click <strong>Copy / Paste</strong> to clone a selected member. Enter a spacing and click <strong>Create Linear Array</strong> to duplicate a series of pickets, rails, or columns instantaneously.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-group" style="margin-top: 20px;">
+                        <button id="generate-draft-dxf" class="btn primary">
+                            <i data-lucide="download"></i> Download DXF
+                        </button>
+                        <button id="generate-draft-pdf" class="btn secondary">
+                            <i data-lucide="file-text"></i> Export Drawing
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot pulse"></span> Engineering Engine Ready
+                </div>
+            </footer>
+        </aside>
+
+        <!-- Main Viewport -->
+        <main class="viewport">
+            <!-- CAD Preview (SVG Container) -->
+             <div id="cad-view" class="viewport-layer">
+                <div class="view-header">
+                    <span class="view-title">Dynamic Preview</span>
+                    <div class="view-actions" style="display: flex; align-items: center; gap: 15px;">
+                        <!-- Zoom Controls -->
+                        <div class="zoom-controls" style="display: flex; gap: 6px; align-items: center; margin-right: 10px;">
+                            <button id="zoom-out" class="btn secondary" style="padding: 6px 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center;" title="Zoom Out">
+                                <i data-lucide="zoom-out" style="width: 14px; height: 14px;"></i>
+                            </button>
+                            <span id="zoom-value" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; min-width: 45px; text-align: center; color: var(--accent-primary);">100%</span>
+                            <button id="zoom-in" class="btn secondary" style="padding: 6px 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center;" title="Zoom In">
+                                <i data-lucide="zoom-in" style="width: 14px; height: 14px;"></i>
+                            </button>
+                            <button id="zoom-reset" class="btn secondary" style="padding: 6px 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center;" title="Reset Zoom">
+                                <i data-lucide="maximize-2" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        </div>
+                        <button id="toggle-pdf-preview" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: #ff9f43; color: #ff9f43; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Toggle real-time PDF blueprint preview">
+                            <i data-lucide="file-text"></i> <span>PDF Preview Off</span>
+                        </button>
+                        <button id="toggle-pan-mode" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-secondary); color: var(--accent-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Pan Viewport (AutoCAD style)">
+                            <i data-lucide="hand"></i> <span>Pan View Off</span>
+                        </button>
+                        <button id="toggle-interactive" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-primary); color: var(--accent-primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <i data-lucide="mouse-pointer"></i> <span>Tweak Mode Off</span>
+                        </button>
+                        <button id="toggle-autocad-dimensions" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: #00d4ff; color: #00d4ff; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="AutoCAD Interactive Dimensioning Mode">
+                            <i data-lucide="ruler"></i> <span>AutoCAD Dim Off</span>
+                        </button>
+                        <div class="view-stats">
+                            <span id="dim-text">W: 0mm | H: 0mm</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="svg-container" style="flex: 1; display: flex;"></div>
+                <iframe id="pdf-preview-iframe" class="hidden" style="flex: 1; border: none; background: #fff; width: 100%; height: 100%;"></iframe>
+                <!-- Floating BOM & Piece Marks Preview Panel -->
+                <div id="bom-preview-panel" style="background: rgba(26, 30, 38, 0.85); backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); padding: 12px 20px; z-index: 10; display: flex; flex-direction: column; gap: 8px; max-height: 200px; transition: max-height 0.3s ease;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;">
+                        <span style="font-weight: 600; color: var(--accent-secondary); font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="list-ordered" style="width: 15px; height: 15px; color: var(--accent-secondary);"></i> Piece Marks & Final Cut Dimensions (BOM)
+                        </span>
+                        <button id="btn-toggle-bom" style="background: none; border: none; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; font-size: 0.75rem; gap: 4px; padding: 2px 6px; outline: none;">
+                            <span id="bom-toggle-text">Collapse</span> <i data-lucide="chevron-down" id="bom-chevron" style="width: 14px; height: 14px; transition: transform 0.2s;"></i>
+                        </button>
+                    </div>
+                    <div id="bom-table-container" style="overflow-y: auto; flex: 1;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.75rem; font-family: 'Inter', sans-serif;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-dim); font-weight: 600;">
+                                    <th style="padding: 6px 8px; font-family: 'JetBrains Mono', monospace; color: var(--accent-primary); width: 120px;">PIECE MARK</th>
+                                    <th style="padding: 6px 8px; width: 150px;">COMPONENT</th>
+                                    <th style="padding: 6px 8px;">DESCRIPTION / AISC SIZE</th>
+                                    <th style="padding: 6px 8px; text-align: center; width: 80px;">QTY</th>
+                                    <th style="padding: 6px 8px; text-align: right; color: var(--accent-secondary); width: 150px;">FINAL CUT LENGTH</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bom-preview-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Floating AutoCAD Dimensioning Control Panel -->
+                <div id="autocad-dim-toolbar" class="hidden" style="position: absolute; top: 60px; right: 20px; z-index: 100; background: rgba(30, 30, 40, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 8px; padding: 12px; width: 250px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;">
+                        <span style="font-weight: 600; color: #00d4ff; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="ruler" style="width: 14px; height: 14px;"></i> <span id="autocad-dim-panel-title">AutoCAD Dimensioning</span>
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.7); display: block; margin-bottom: 2px;">Text Override</label>
+                        <input type="text" id="dim-text-override" placeholder="Leave blank for auto" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 4px; padding: 5px; color: #fff; font-size: 0.75rem; box-sizing: border-box; outline: none;">
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.7);">Font Size: <span id="dim-font-size-val" style="font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-weight: bold;">12px</span></span>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="dim-font-dec" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Decrease Text Size">A-</button>
+                            <button id="dim-font-inc" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Increase Text Size">A+</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.7);">Text Gap: <span id="dim-text-gap-val" style="font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-weight: bold;">8px</span></span>
+                        <div style="display: flex; gap: 4px;">
+                            <button id="dim-gap-dec" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Decrease Text Gap">G-</button>
+                            <button id="dim-gap-inc" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Increase Text Gap">G+</button>
+                        </div>
+                    </div>
+                    <button id="delete-selected-dim" class="btn secondary hidden" style="width: 100%; padding: 6px; font-size: 0.75rem; border-color: #ffaa00; color: #ffaa00; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; background: rgba(255, 170, 0, 0.05); margin-bottom: 6px;">
+                        <i data-lucide="trash" style="width: 12px; height: 12px;"></i> Delete Selected
+                    </button>
+                    <button id="clear-custom-dims" class="btn secondary" style="width: 100%; padding: 5px; font-size: 0.75rem; border-color: rgba(255, 68, 68, 0.4); color: #ff6b6b; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; background: rgba(255, 68, 68, 0.05);">
+                        <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Clear Dimensions
+                    </button>
+                    <div style="margin-top: 8px; font-size: 0.65rem; color: rgba(255,255,255,0.4); line-height: 1.3; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
+                        <strong>Instructions:</strong> Hover to find precision snap points (endpoint: square, midpoint: triangle). Click twice to draw dimension. Offset is auto-calculated outwards.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sketch Canvas (Overlay) -->
+            <div id="sketch-view" class="viewport-layer hidden">
+                <div class="view-header">
+                    <span class="view-title">Rough Sketchpad</span>
+                </div>
+                <canvas id="sketch-canvas"></canvas>
+            </div>
+            
+            <!-- Loading Overlay -->
+            <div id="processing-overlay" class="hidden">
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <p>Processing Engineering Geometry...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Engineering Export Modal -->
+    <div id="export-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 550px;">
+            <h2><i data-lucide="file-text" style="vertical-align: middle; margin-right: 8px; color: var(--accent-primary);"></i> Export Drawing Specification</h2>
+            
+            <form id="export-form" onsubmit="return false;">
+                <div class="modal-grid">
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Drawing Number *</label>
+                        <input type="text" id="exp-drawingNo" value="D-101" required>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Fabrication Number (Fab No) *</label>
+                        <input type="text" id="exp-fabNo" value="F-202" required>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Job Number *</label>
+                        <input type="text" id="exp-jobNo" value="J-303" required>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Main Mark Number (Tekla) *</label>
+                        <input type="text" id="exp-mainMark" value="100" required>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Revision *</label>
+                        <input type="text" id="exp-revision" value="0" placeholder="e.g. 0, 1 or A, B" required>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Finish *</label>
+                        <select id="exp-finish">
+                            <option value="primer">Primer</option>
+                            <option value="raw">Raw</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Job Name</label>
+                        <input type="text" id="exp-jobName" value="QUALITY IRONWORKS PROJECT">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>General Contractor (GC)</label>
+                        <input type="text" id="exp-gc" value="APEX BUILDERS">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Address</label>
+                        <input type="text" id="exp-address" value="123 STEEL WAY">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>City / State</label>
+                        <input type="text" id="exp-cityState" value="HOUSTON, TX">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Drawn By</label>
+                        <input type="text" id="exp-drawnBy" value="ENG">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Checked By</label>
+                        <input type="text" id="exp-checkedBy" value="QIW">
+                    </div>
+                </div>
+                
+                <div id="exp-custom-finish-group" class="input-group hidden" style="margin-bottom: 12px;">
+                    <label>Specify Custom Finish *</label>
+                    <input type="text" id="exp-customFinish" placeholder="e.g. Powder Coat - Gloss Black">
+                </div>
+                
+                <div id="wiz-sheet-manager-container" class="hidden" style="margin-top: 15px; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 8px; color: var(--accent-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Manage Drawing Sheets to Export</label>
+                    <p style="margin: 0 0 8px 0; font-size: 11px; color: #8c9ba5;">The drawing package will contain only the sheets listed below. You can delete any sheet you do not want to export.</p>
+                    <div id="wiz-sheet-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Dynamically populated sheets with delete buttons -->
+                    </div>
+                </div>
+
+                <div class="checkbox-group style-group" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; color: var(--text-main);">
+                        <input type="checkbox" id="exp-needFBOM" checked style="width: 16px; height: 16px; accent-color: var(--accent-primary);"> 
+                        <span><i data-lucide="table" style="width: 16px; height: 16px; vertical-align: middle; color: var(--accent-secondary); margin-right: 4px;"></i> Generate Tekla PowerFab FBOM Excel (CSV)</span>
+                    </label>
+                </div>
+                
+                <div class="modal-actions" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" id="exp-cancel" class="btn secondary" style="padding: 8px 16px;">Cancel</button>
+                    <button type="button" id="exp-submit" class="btn primary" style="padding: 8px 16px;"><i data-lucide="save"></i> Save & Generate Package</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="js/shapes-db.js"></script>
+    <script src="js/cad-engine.js?v=1.1.9"></script>
+    <script src="js/sketch-processor.js"></script>
+    <script src="js/app.js?v=1.1.9"></script>
+    <script>
+        window.addEventListener("load", () => {
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>

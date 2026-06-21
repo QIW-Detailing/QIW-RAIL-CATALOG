@@ -1,0 +1,189 @@
+﻿    function generateBlueprintPDF(drawingNo, fabNo, jobNo, mainMark, revision, finishText, needFBOM, jobName = 'QUALITY IRONWORKS PROJECT', gc = 'APEX BUILDERS', address = '123 STEEL WAY', cityState = 'HOUSTON, TX', drawnBy = 'ENG', checkedBy = 'QIW', isZipBatch = false) {
+        return new Promise((resolve, reject) => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4'); // A4 landscape: 297mm x 210mm
+            const cat = shapeCategory.value;
+
+            if (!currentModel) {
+                alert("No active CAD model found. Please draw or select a design first.");
+                reject("No active CAD model");
+                return;
+            }
+
+        const svgElement = svgContainer.querySelector('svg');
+        if (!svgElement) {
+            reject("No SVG element found");
+            return;
+        }
+
+        // Generate a clean 2D SVG directly from the model (removes all nested centerlines and thickness lines)
+        const cleanSvgString = CadEngine.renderClean2DSVG(currentModel);
+        
+        // Parse the clean SVG string into a DOM element so we can modify it for print layout (high-contrast black lines)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleanSvgString;
+        const svgClone = tempDiv.querySelector('svg');
+        if (!svgClone) {
+            reject("Failed to parse clean SVG");
+            return;
+        }
+        
+        // Remove draft guidance overlay if it exists
+        const gGuide = svgClone.querySelector('.draft-guidance-overlay');
+        if (gGuide) gGuide.remove();
+
+        // Strip double lines (inner HSS wall thickness lines and centerlines) for outer-only 2D representation
+        const innerSelector = [
+            '.hss-inner-line', '.inner', '[class*="inner"]', '[id*="inner"]',
+            '.center', '[class*="center"]', '[id*="center"]',
+            '.topWall', '[class*="topWall"]', '[id*="topWall"]',
+            '.botWall', '[class*="botWall"]', '[id*="botWall"]',
+            '.legLine', '[class*="legLine"]', '[id*="legLine"]',
+            '.topFlange', '[class*="topFlange"]', '[id*="topFlange"]',
+            '.botFlange', '[class*="botFlange"]', '[id*="botFlange"]',
+            '[class*="wall"]', '[id*="wall"]'
+        ].join(', ');
+        svgClone.querySelectorAll(innerSelector).forEach(el => el.remove());
+
+        // Ensure absolutely high-contrast black lines and white backgrounds (remove all blue and cyan colors)
+        svgClone.querySelectorAll('*').forEach(el => {
+            // Remove color properties and force pure black strokes
+            if (el.getAttribute('stroke') && el.getAttribute('stroke') !== 'none' && el.getAttribute('stroke') !== 'inherit') {
+                el.setAttribute('stroke', '#000000');
+            }
+            if (el.style.stroke && el.style.stroke !== 'none') {
+                el.style.stroke = '#000000';
+            }
+            
+            // Handle fill colors (force black or white/none)
+            if (el.getAttribute('fill') && el.getAttribute('fill') !== 'none' && el.getAttribute('fill') !== 'white' && el.getAttribute('fill') !== '#ffffff' && el.getAttribute('fill') !== 'inherit') {
+                el.setAttribute('fill', '#000000');
+            }
+            if (el.style.fill && el.style.fill !== 'none' && el.style.fill !== 'white' && el.style.fill !== 'rgb(255, 255, 255)' && el.style.fill !== '#ffffff') {
+                el.style.fill = '#000000';
+            }
+        });
+
+        svgClone.querySelectorAll('path, rect, circle, line').forEach(el => {
+            const currWidth = parseFloat(el.getAttribute('stroke-width')) || 2.0;
+            el.setAttribute('stroke-width', Math.max(5.0, currWidth * 3.5).toString());
+        });
+        
+        svgClone.querySelectorAll('text').forEach(t => {
+            t.setAttribute('fill', '#000000');
+            t.setAttribute('font-weight', '700');
+            t.style.fill = '#000000';
+        });
+
+        const svgData = new XMLSerializer().serializeToString(svgClone);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        const viewBoxAttr = svgElement.getAttribute('viewBox');
+        const vb = viewBoxAttr ? viewBoxAttr.split(/[\s,]+/).map(Number) : (currentMode === 'draft' ? [-600, -400, 1200, 800] : [0, 0, 2000, 1500]);
+        const vbWidth = vb[2] || (currentMode === 'draft' ? 1200 : 2000);
+        const vbHeight = vb[3] || (currentMode === 'draft' ? 800 : 1500);
+        const svgRatio = vbWidth / vbHeight;
+
+        // Set canvas dimensions at a high resolution with matching aspect ratio
+        canvas.width = 2000;
+        canvas.height = 2000 / svgRatio;
+
+        const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = function() {
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const pngData = canvas.toDataURL('image/png');
+            
+            // Available space in A4 Landscape is X = 7 to 180 (width 173), Y = 7 to 175 (height 168)
+            // Target box centered inside X=7 to 180, Y=7 to 175
+            const targetW = 110;
+            const targetH = 80;
+            const targetRatio = targetW / targetH;
+
+            let drawW, drawH;
+            if (svgRatio > targetRatio) {
+                drawW = targetW;
+                drawH = targetW / svgRatio;
+            } else {
+                drawH = targetH;
+                drawW = targetH * svgRatio;
+            }
+
+            const pdfX = 93.5 - drawW / 2;
+            const pdfY = 110 - drawH / 2;
+
+            doc.addImage(pngData, 'PNG', pdfX, pdfY, drawW, drawH);
+            
+            // --- DRAW BORDERS ---
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+            doc.rect(5, 5, 287, 200, 'S'); // Outer border
+            doc.setLineWidth(0.2);
+            doc.rect(7, 7, 283, 196, 'S'); // Inner border
+
+            // Fetch inputs and define unified marks at the start of drawing/BOM
+            const vals = {};
+            dynamicInputs.querySelectorAll('input').forEach(inp => {
+                vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
+            });
+            dynamicInputs.querySelectorAll('select').forEach(sel => {
+                vals[sel.id.replace('inp-', '')] = sel.value;
+            });
+
+            const scale = CadEngine.isLibReady() ? 25.4 : 10;
+            const isGates = vals.railsGatesType === 'gates';
+            const mainMarkUpper = mainMark.toUpperCase();
+
+            // Helpers for profiles
+            const getProfileDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.h || selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.d || 0;
+                    if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
+
+            const getPicketDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.bf || 0;
+                    if (type === 'angles') return selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
+
+            const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const mainMarkCode = (cat === 'rail_catalog') ? mainMark.toUpperCase() : cleanDrawingNo + 'M1';
+            
+            let charCode = 97; // 'a'
+            let mainMarkAssigned = false;
+            const getMark = (isPresent) => {
+                if (!isPresent) return null;
+                if (!mainMarkAssigned) {
+                    mainMarkAssigned = true;
+                    return mainMarkCode;
+                }
+                const m = String.fromCharCode(charCode) + cleanDrawingNo;
+                charCode++;
+                return m;
+            };
+

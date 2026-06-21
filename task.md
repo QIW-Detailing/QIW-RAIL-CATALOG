@@ -1,0 +1,17 @@
+- [x] Fix loose post sheet crash in generateBlueprintPDF by resolving styles inside the isLoosePost scope
+- [x] Remove pickets from BOM for mesh styles (villa_balcony, urban_balcony, etc.)
+- [x] Hide picket spacing (Tier 3) dimensions when pickets are none
+- [x] Revert Section A Wire Mesh Detail Flat Bar visual thickness to 0.125 * scale (1/8")
+- [x] Hide "Extra Flat Bar" input option from the sidebar wizard (default to 'no')
+- [x] Add Section A cut line symbol to the elevation drawing pointing left (on both screen viewport and PDF blueprint)
+- [x] Refine Typical Section A detail view layout (flat bar on left of mesh) and labels exactly matching the snap
+- [x] Fix `postCenters is not defined` ReferenceError inside `injectCADAnnotations` and `generateBlueprintPDF`
+- [x] Dynamically move Section A cut line to first bay with left post/mid post
+- [x] Omit post and post annotations in Typical Section A detail if no post is present at the left of the cut bay
+- [x] Draw vertically stacked fraction 1/2" centered inside the extension lines (between post left face and wire mesh)
+- [x] Label typical detail title exactly SCETION A with a bold underline
+- [x] Align typical detail left extension line with the left face of the post (postLeft)
+- [x] Align the post exactly under the top runner box (both 1.5" wide)
+- [x] Make flat bar a small vertical line of 1" height attached to the bottom of the top runner box inside the post profile (to the right of the postLeft by 1/2"), with wire mesh attached to the flat bar right face
+- [x] Group WWM panels and horizontal flat bars by their actual span lengths in the BOM, generating distinct piece marks and correct quantities
+- [x] Hide the typical detail section boxes on the loose post drawing sheet

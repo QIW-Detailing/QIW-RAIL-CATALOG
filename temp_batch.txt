@@ -1,0 +1,196 @@
+﻿    async function generateBalconyZipBatch(fabNo, jobNo, revision, finishText, needFBOM, jobName, gc, address, cityState, drawnBy, checkedBy) {
+        const overlay = document.getElementById('processing-overlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            const statusText = overlay.querySelector('p') || overlay;
+            if (statusText) statusText.textContent = "Compiling Balcony Set Drawings & BOM...";
+        }
+
+        const origSetIdx = balconyWizardState.activeSetIdx;
+        const origPanelType = balconyWizardState.activePanelType;
+
+        saveCurrentInputsToActivePanel();
+
+        const zip = new JSZip();
+        const masterBomRows = [];
+
+        // Build list of all panels to compile
+        const panelsToRender = [];
+        balconyWizardState.sets.forEach((set, setIdx) => {
+            ['main', 'leftReturn', 'rightReturn'].forEach(panelType => {
+                if (set[panelType]) {
+                    panelsToRender.push({ setIdx, panelType, set });
+                }
+            });
+        });
+
+        // Loop through all panels sequentially
+        for (const p of panelsToRender) {
+            balconyWizardState.activeSetIdx = p.setIdx;
+            balconyWizardState.activePanelType = p.panelType;
+            loadActivePanelToInputs();
+            renderCurrentCAD();
+
+            // Wait a small delay to make sure the view re-renders (specifically SVG elements)
+            await new Promise(resolve => setTimeout(resolve, 150));
+
+            const info = getActiveBalconyDwgAndMark();
+            
+            try {
+                const result = await generateBlueprintPDF(
+                    info.drawingNo, fabNo, jobNo, info.mainMark, revision, finishText, 
+                    false, jobName, gc, address, cityState, drawnBy, checkedBy, true
+                );
+
+                if (result && result.pdfData) {
+                    zip.file(`${info.drawingNo}_QUALITY_IRONWORKS_DRAWING.pdf`, result.pdfData);
+                }
+
+                // Add BOM items to master Excel rows
+                if (result && result.bomItems) {
+                    result.bomItems.forEach(item => {
+                        let shapeCol = (item.shape || '').toUpperCase();
+                        if (shapeCol.includes('HSS')) shapeCol = 'HSS';
+
+                        let dimCol = (item.desc || item.size || '').toUpperCase();
+                        dimCol = dimCol.replace(/HSS/gi, '').replace(/\bHSS\b/gi, '').trim();
+
+                        const lengthCol = item.len;
+                        const gradeCol = item.grade || (item.shape.toLowerCase().includes('plate') ? 'A36' : 'A500');
+                        const finishCol = finishText.toUpperCase();
+                        const remarkCol = ""; // Remarks are kept empty per user request
+
+                        let categoryCol = "MISC";
+                        let subCategoryCol = "MISC";
+                        const descLower = (item.desc || '').toLowerCase();
+                        const markLower = (item.mark || '').toLowerCase();
+                        const shapeLower = (item.shape || '').toLowerCase();
+
+                        if (item.isBent) {
+                            if (shapeLower.includes('plate') || shapeLower.includes('angle') || descLower.includes('plate') || descLower.includes('angle')) {
+                                categoryCol = "PLATE";
+                                subCategoryCol = "BENT PLATE";
+                            } else {
+                                categoryCol = "HSS";
+                                subCategoryCol = "BENT HSS";
+                            }
+                        } else if (item.isWeldedPiece) {
+                            categoryCol = "WELDED";
+                            subCategoryCol = "WELDED PIECE";
+                        } else if (shapeLower === 'plate' || descLower.includes('plate')) {
+                            categoryCol = "PLATE";
+                            subCategoryCol = "BASE PLATE";
+                        } else if (descLower.includes('picket') || markLower.includes('picket')) {
+                            categoryCol = "PICKET";
+                            subCategoryCol = "PICKET";
+                        } else if (descLower.includes('post') || markLower.includes('post')) {
+                            categoryCol = "POST";
+                            subCategoryCol = "POST";
+                        } else if (descLower.includes('top rail') || descLower.includes('top runner') || (descLower.includes('rail') && (markLower.includes('top') || descLower.includes('top')))) {
+                            categoryCol = "RAIL";
+                            subCategoryCol = "TOP RAIL";
+                        } else if (descLower.includes('bot rail') || descLower.includes('bottom rail') || descLower.includes('bot runner') || descLower.includes('bottom runner') || (descLower.includes('rail') && (markLower.includes('bot') || descLower.includes('bottom')))) {
+                            categoryCol = "RAIL";
+                            subCategoryCol = "BOTTOM RAIL";
+                        } else if (descLower.includes('mid rail') || descLower.includes('mid runner') || (descLower.includes('rail') && (markLower.includes('mid')))) {
+                            categoryCol = "RAIL";
+                            subCategoryCol = "MID RAIL";
+                        } else if (shapeLower.includes('hss')) {
+                            categoryCol = "RAIL";
+                            subCategoryCol = "RAIL";
+                        }
+
+                        masterBomRows.push([
+                            "", // Approval Status
+                            info.drawingNo, // Drawing #
+                            info.mainMark.toUpperCase(), // Main Mark
+                            item.mark, // Piece Mark
+                            item.qty, // Quantity
+                            shapeCol, // Shape
+                            dimCol, // Dimensions
+                            lengthCol, // Length
+                            gradeCol, // Grade
+                            finishCol, // Finish
+                            remarkCol, // Remark
+                            categoryCol, // Category
+                            subCategoryCol, // Sub-Category
+                            "", // Sequence
+                            "", // Lot #
+                            ""  // Sequence Qty
+                        ]);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to generate PDF for panel: ", info.drawingNo, err);
+            }
+        }
+
+        // Generate Consolidated BOM File inside ZIP
+        if (needFBOM && masterBomRows.length > 0) {
+            const excelHeaders = [
+                "Approval Status", "Drawing #", "Main Mark", "Piece Mark", "Quantity", 
+                "Shape", "Dimensions", "Length", "Grade", "Finish", "Remark", 
+                "Category", "Sub-Category", "Sequence", "Lot #", "Sequence Qty"
+            ];
+
+            if (window.XLSX) {
+                const wb = XLSX.utils.book_new();
+                const wsData = [excelHeaders, ...masterBomRows];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, "FBOM");
+                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const baseDwg = balconyWizardState.sets[0]?.drawingBase || '1';
+                zip.file(`SteelDraft_Consolidated_FBOM_${baseDwg}.xlsx`, excelBuffer);
+            } else {
+                let csvContent = excelHeaders.map(h => `"${h}"`).join(",") + "\n";
+                masterBomRows.forEach(row => {
+                    csvContent += row.map(val => {
+                        if (typeof val === 'number') return val;
+                        return `"${(val || '').toString().replace(/"/g, '""')}"`;
+                    }).join(",") + "\n";
+                });
+                const baseDwg = balconyWizardState.sets[0]?.drawingBase || '1';
+                zip.file(`SteelDraft_Consolidated_FBOM_${baseDwg}.csv`, csvContent);
+            }
+        }
+
+        // Restore original panel view
+        balconyWizardState.activeSetIdx = origSetIdx;
+        balconyWizardState.activePanelType = origPanelType;
+        loadActivePanelToInputs();
+        renderCurrentCAD();
+
+        // Download ZIP file
+        try {
+            const zipContent = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipContent);
+            const a = document.createElement('a');
+            a.href = url;
+            const baseDwg = balconyWizardState.sets[0]?.drawingBase || '1';
+            a.download = `SteelDraft_BalconySets_Package_${baseDwg}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            // Show Success Notification Toast
+            const toast = document.createElement('div');
+            toast.className = 'ai-success-toast';
+            toast.innerHTML = `<i data-lucide="check-circle" style="color:#000; vertical-align:middle; margin-right:4px;"></i> ZIP Package Export Completed!`;
+            document.body.appendChild(toast);
+            if (window.lucide) lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        } catch (e) {
+            console.error("ZIP package generation failed: ", e);
+            alert("Failed to build ZIP package.");
+        } finally {
+            if (overlay) {
+                overlay.classList.add('hidden');
+                const statusText = overlay.querySelector('p');
+                if (statusText) statusText.textContent = "Processing Engineering Geometry...";
+            }
+        }
+    }
+
