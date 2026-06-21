@@ -6673,17 +6673,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // 6. Mid Post leader
-                if (midPostMark && midPostCount > 0) {
-                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
-                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                    const centerDist = endXBound - startXBound;
-                    const spanSpacing = centerDist / (midPostCount + 1);
-                    const midCx = startXBound + spanSpacing;
-                    const mpH = style === 'executive' ? 44.25 : (pHeight - topH);
-                    const cyMidPost = mpH * 0.55;
-                    const targetX = (leaderAlign === "right") ? (midCx - postW / 2) : (midCx + postW / 2);
-                    const pMidPost = cadToPdf(targetX, cyMidPost);
-                    drawCadLeader(targetX, cyMidPost, leaderLabelX, pMidPost[1], midPostMark, leaderAlign, "leader-mid-post");
+                if (midPostMark) {
+                    const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style);
+                    if (resolvedCenters.length > 0) {
+                        const midCx = resolvedCenters[0];
+                        const mpH = style === 'executive' ? 44.25 : (pHeight - topH);
+                        const cyMidPost = mpH * 0.55;
+                        const targetX = (leaderAlign === "right") ? (midCx - postW / 2) : (midCx + postW / 2);
+                        const pMidPost = cadToPdf(targetX, cyMidPost);
+                        drawCadLeader(targetX, cyMidPost, leaderLabelX, pMidPost[1], midPostMark, leaderAlign, "leader-mid-post");
+                    }
                 }
 
                 // 7. Picket leader
@@ -7795,20 +7794,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 let shoulderLength = 3.0;
                 if (actualAlign === "left") {
                     ex = finalLabelX + shoulderLength;
-                    doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
                 } else if (actualAlign === "right") {
                     ex = finalLabelX - shoulderLength;
-                    doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
                 }
                 
                 if (leaderId === "leader-mid-post") {
-                    let bendX = (actualAlign === "left") ? (pdfX + 5.0) : (pdfX + drawW - 5.0);
-                    let bendY = finalLabelY - 6.5;
-                    doc.line(ex, finalLabelY, bendX, bendY);
-                    doc.line(bendX, bendY, target[0], target[1]);
-                    const finalAngle = Math.atan2(target[1] - bendY, target[0] - bendX);
+                    const leftRailingEdge_pdf = cadToPdf(0, 0)[0];
+                    const rightRailingEdge_pdf = cadToPdf(vals.length, 0)[0];
+                    let shoulderEndX_pdf;
+                    if (actualAlign === "left") {
+                        shoulderEndX_pdf = Math.min(target[0] - 10.0, leftRailingEdge_pdf + 15.0);
+                    } else {
+                        shoulderEndX_pdf = Math.max(target[0] + 10.0, rightRailingEdge_pdf - 15.0);
+                    }
+                    doc.line(finalLabelX, finalLabelY, shoulderEndX_pdf, finalLabelY);
+                    doc.line(shoulderEndX_pdf, finalLabelY, target[0], target[1]);
+                    const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - shoulderEndX_pdf);
                     drawArrowhead(target[0], target[1], finalAngle, 2.28);
                 } else {
+                    if (actualAlign === "left") {
+                        doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
+                    } else if (actualAlign === "right") {
+                        doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
+                    }
                     doc.line(ex, finalLabelY, target[0], target[1]);
                     const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - ex);
                     drawArrowhead(target[0], target[1], finalAngle, 2.28);
@@ -13433,11 +13441,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (leaderId === "leader-mid-post") {
                 const leftRailingEdge_svg = cadToSvg(0, 0, scale, extents)[0];
                 const rightRailingEdge_svg = cadToSvg(vals.length, 0, scale, extents)[0];
-                const bendX_svg = (side === "left") ? (leftRailingEdge_svg + 5.0 * scaleFactor) : (rightRailingEdge_svg - 5.0 * scaleFactor);
-                const bendY_svg = finalLabelY - 6.5 * scaleFactor;
+                let shoulderEndX_svg;
+                if (side === "left") {
+                    shoulderEndX_svg = Math.min(svgCx - 10 * scaleFactor, leftRailingEdge_svg + 15.0 * scaleFactor);
+                } else {
+                    shoulderEndX_svg = Math.max(svgCx + 10 * scaleFactor, rightRailingEdge_svg - 15.0 * scaleFactor);
+                }
                 
                 leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
-                leader.setAttribute("d", `M ${finalLabelX} ${finalLabelY} L ${bendX_svg} ${bendY_svg} L ${svgCx} ${svgCy}`);
+                leader.setAttribute("d", `M ${finalLabelX} ${finalLabelY} L ${shoulderEndX_svg} ${finalLabelY} L ${svgCx} ${svgCy}`);
             } else {
                 leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
                 leader.setAttribute("x1", finalLabelX);
