@@ -5803,10 +5803,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Margins for dimensions & leaders
-            const marginLeft = 20;
-            const marginRight = 30;
-            const marginTop = 35;
-            const marginBottom = 33;
+            let marginLeft = 20;
+            let marginRight = 30;
+            let marginTop = 35;
+            let marginBottom = 33;
+            if (cat === 'rail_catalog' && !isLoosePost && vals.length !== undefined) {
+                if (vals.length > 200) {
+                    marginLeft = 12;
+                    marginRight = 20;
+                } else if (vals.length > 120) {
+                    marginLeft = 16;
+                    marginRight = 25;
+                }
+            }
 
             // Page boundaries
             const pageXMin = 7;
@@ -5814,8 +5823,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageYMin = 7;
             const pageYMax = 175;
 
-            let availW = (pageXMax - pageXMin) - (marginLeft + marginRight); // 123
-            let availH = (pageYMax - pageYMin) - (marginTop + marginBottom); // 113
+            let availW = (pageXMax - pageXMin) - (marginLeft + marginRight);
+            let availH = (pageYMax - pageYMin) - (marginTop + marginBottom);
 
             if (hasTopDetails) {
                 availH = 49; // Cap available height to prevent overlap with top detail boxes and bottom dimensions/descriptions
@@ -6507,9 +6516,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const vDimOffset2 = isLeftReturn ? -16 : 16;
                 const vDimOffset3 = isLeftReturn ? -24 : 24;
 
-                drawCadDimension(vDimX, pHeight - topH, vDimX, pHeight, vDimOffset1, formatFraction(topH), "left", "dim-vert-top-cap");
+                // 1 1/2" top cap and bottom rail vertical dimensions removed per user request
+                // drawCadDimension(vDimX, pHeight - topH, vDimX, pHeight, vDimOffset1, formatFraction(topH), "left", "dim-vert-top-cap");
                 drawCadDimension(vDimX, botY + botH, vDimX, pHeight - topH, vDimOffset1, formatFraction(pHeight - topH - (botY + botH)), "middle", "dim-vert-mid-rail");
-                drawCadDimension(vDimX, botY, vDimX, botY + botH, vDimOffset1, formatFraction(botH), "left", "dim-vert-bot-rail");
+                // drawCadDimension(vDimX, botY, vDimX, botY + botH, vDimOffset1, formatFraction(botH), "left", "dim-vert-bot-rail");
                 drawCadDimension(vDimX, 0, vDimX, botY, vDimOffset1, formatFraction(botY), "middle", "dim-vert-ground");
                 
                 drawCadDimension(vDimX, botY, vDimX, pHeight, vDimOffset2, formatFraction(fHeight), "middle", "dim-vert-fence-height");
@@ -6519,7 +6529,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (midPostCount > 0) {
                     const firstMidPostCx = postCenters[1];
                     const mpH_dim = (style === 'executive') ? 44.25 : (pHeight - topH);
-                    drawCadDimension(0, 0, 0, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
+                    // 3'-8 1/4" dimension removed per user request
+                    // drawCadDimension(0, 0, 0, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
                 }
             } else if (isLoosePost) {
                 const style = vals.railStyle || 'classical';
@@ -6646,14 +6657,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 3. Left Corner Post leader
                 if (leftMark) {
-                    const cyLeft = pHeight * 0.8;
+                    const cyLeft = pHeight * 0.85; // Raised to clear left vertical dimensions
                     const pLeft = cadToPdf(postW / 2, cyLeft);
                     drawCadLeader(postW / 2, cyLeft, leaderLabelX, pLeft[1], leftMark, leaderAlign, "leader-left-post");
                 }
 
                 // 4. Right Corner Post leader
                 if (rightMark) {
-                    const cyRight = (leftMark && rightMark) ? (pHeight * 0.6) : (pHeight * 0.8);
+                    const cyRight = (leftMark && rightMark) ? (pHeight * 0.6) : (pHeight * 0.85); // Raised to match left
                     const pRight = cadToPdf(vals.length - postW / 2, cyRight);
                     drawCadLeader(vals.length - postW / 2, cyRight, leaderLabelX, pRight[1], rightMark, leaderAlign, "leader-right-post");
                 }
@@ -6678,7 +6689,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (resolvedCenters.length > 0) {
                         const midCx = resolvedCenters[0];
                         const mpH = style === 'executive' ? 44.25 : (pHeight - topH);
-                        const cyMidPost = mpH * 0.55;
+                        const cyMidPost = mpH * 0.85; // Raised from 0.55 to 0.85 to clear left vertical dimensions
                         const targetX = (leaderAlign === "right") ? (midCx - postW / 2) : (midCx + postW / 2);
                         const pMidPost = cadToPdf(targetX, cyMidPost);
                         drawCadLeader(targetX, cyMidPost, leaderLabelX, pMidPost[1], midPostMark, leaderAlign, "leader-mid-post");
@@ -6789,7 +6800,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const midRailTop = pHeightResolved - topGapResolved - topHResolved - midRailGapResolved;
                         const midRailBottom = midRailTop - midHResolved;
                         
-                        const cutYTop = hasMid ? midRailTop : (pHeightResolved + 4);
+                        const cutYTop = hasMid ? (midRailTop + 1.5) : (pHeightResolved + 4);
                         const cutYBot = hasMid ? (midRailBottom - 12) : (pHeightResolved - 12);
                         
                         const pTop = cadToPdf(cutX, cutYTop);
@@ -7207,8 +7218,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const scale = 5.5; // Scale down slightly to fit the angled leaders and text labels cleanly
                 
                 // Top rail square (1.5" x 1.5" usually, or custom)
-                const trH = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 1.5 : (vals.topRailH || 1.5);
-                const trW = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 1.5 : (vals.topRailW || 1.5);
+                const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && vals.midRailType !== 'none'));
+                let trH = 1.5;
+                let trW = 1.5;
+                if (style === 'classical' || style === 'executive' || style === 'urban_balcony') {
+                    trH = 1.5;
+                    trW = 1.5;
+                } else if (style === 'villa_balcony') {
+                    trH = 0.375; // 3/8" flat bar
+                    trW = 1.5;   // 1-1/2" wide
+                } else {
+                    if (hasMid) {
+                        trH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                        trW = getPicketDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                    } else {
+                        trH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                        trW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                    }
+                }
                 const trDrawW = trW * scale;
                 const trDrawH = trH * scale;
                 
@@ -7300,8 +7327,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(4.2);
                 
-                const rawTrText = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1 1/2x1 1/2x16GA` : (vals.topRailSize === 'CUSTOM' ? `HSS ${vals.topRailW}x${vals.topRailH}` : formatAiscSize(vals.topRailSize));
-                const trSizeText = rawTrText.replace("HSS ", "HSS");
+                let trSizeText = "";
+                if (style === 'classical' || style === 'executive' || style === 'urban_balcony') {
+                    trSizeText = "HSS1 1/2x1 1/2x16GA";
+                } else if (style === 'villa_balcony') {
+                    trSizeText = "FB1 1/2x3/8";
+                } else {
+                    if (hasMid) {
+                        const rawText = vals.midRailSize === 'CUSTOM' ? `FB${vals.midRailW}x${vals.midRailH}` : formatAiscSize(vals.midRailSize);
+                        trSizeText = rawText.replace("HSS ", "HSS").replace("FB ", "FB");
+                    } else {
+                        const rawText = vals.topRailSize === 'CUSTOM' ? `HSS${vals.topRailW}x${vals.topRailH}` : formatAiscSize(vals.topRailSize);
+                        trSizeText = rawText.replace("HSS ", "HSS").replace("FB ", "FB");
+                    }
+                }
                 
                 const rawPText = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1 1/2x1 1/2x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postH}` : formatAiscSize(vals.postSize));
                 const pSizeText = rawPText.replace("HSS ", "HSS");
@@ -7325,7 +7364,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const trAngle = Math.atan2(trLy2 - trLy1, trLx2 - trLx1);
                 drawArrowhead(trLx1, trLy1, trAngle + Math.PI, 0.6);
                 
-                const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && vals.midRailType !== 'none'));
                 const labelText = hasMid ? "MID RUNNER" : "TOP RUNNER";
                 doc.text(trSizeText, trLx3 + 1, trLy2 - 0.5, { align: "left" });
                 doc.text(labelText, trLx3 + 1, trLy2 + 1.2, { align: "left" });
@@ -7663,7 +7701,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Draw arrowheads
                 const arrowAngle = Math.atan2(d2[1] - d1[1], d2[0] - d1[0]);
-                if (len < 5.0) {
+                if (len < 5.0 && dimId !== 'dim-vert-ground') {
                     const extLen = 2.0;
                     doc.line(d1[0], d1[1], d1[0] - Math.cos(arrowAngle) * extLen, d1[1] - Math.sin(arrowAngle) * extLen);
                     doc.line(d2[0], d2[1], d2[0] + Math.cos(arrowAngle) * extLen, d2[1] + Math.sin(arrowAngle) * extLen);
@@ -7698,12 +7736,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const textShiftMm = 1.8 * sideMult * (activeTextGap / 8.0);
                 let tx = midX + px * textShiftMm;
-                let staggerY = 0;
-                let ty = midY + py * textShiftMm + staggerY;
+                let ty = midY + py * textShiftMm;
+                if (dimId === 'dim-vert-ground') {
+                    tx = midX + 1.8;
+                    ty = midY;
+                }
                 let textAlign = "center";
 
                 // Check for small dimensions (< 10.0 mm on paper) to move text outside (vertical dimensions only)
-                if (len < 10.0 && Math.abs(dx) < 0.1) {
+                if (len < 10.0 && Math.abs(dx) < 0.1 && dimId !== 'dim-vert-ground') {
                     textAngle = 0; // horizontal text
                     const dir = Math.sign(finalOffsetMm) || 1;
                     let L = 6.0;
@@ -7798,29 +7839,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     ex = finalLabelX - shoulderLength;
                 }
                 
-                if (leaderId === "leader-mid-post") {
-                    const leftRailingEdge_pdf = cadToPdf(0, 0)[0];
-                    const rightRailingEdge_pdf = cadToPdf(vals.length, 0)[0];
-                    let shoulderEndX_pdf;
-                    if (actualAlign === "left") {
-                        shoulderEndX_pdf = Math.min(target[0] - 10.0, leftRailingEdge_pdf + 15.0);
-                    } else {
-                        shoulderEndX_pdf = Math.max(target[0] + 10.0, rightRailingEdge_pdf - 15.0);
-                    }
-                    doc.line(finalLabelX, finalLabelY, shoulderEndX_pdf, finalLabelY);
-                    doc.line(shoulderEndX_pdf, finalLabelY, target[0], target[1]);
-                    const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - shoulderEndX_pdf);
-                    drawArrowhead(target[0], target[1], finalAngle, 2.28);
-                } else {
-                    if (actualAlign === "left") {
-                        doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
-                    } else if (actualAlign === "right") {
-                        doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
-                    }
-                    doc.line(ex, finalLabelY, target[0], target[1]);
-                    const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - ex);
-                    drawArrowhead(target[0], target[1], finalAngle, 2.28);
+                if (actualAlign === "left") {
+                    doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
+                } else if (actualAlign === "right") {
+                    doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
                 }
+                doc.line(ex, finalLabelY, target[0], target[1]);
+                const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - ex);
+                drawArrowhead(target[0], target[1], finalAngle, 2.28);
                 
                 // Get leader overrides
                 const spec = (leaderId && annotationProperties[leaderId]) || {};
@@ -13124,10 +13150,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 staggerY = 15; // Shift downwards by 15px
             }
             let ty = midY + py * textShiftSvg + staggerY;
+            if (dimId === "dim-vert-ground") {
+                tx = midX + 1.8 * scaleFactor;
+                ty = midY;
+            }
             
             // Collision avoidance for dimension label
             let labelBBox = computeLabelBBox(tx, ty, activeText, activeFontSize * scaleFactor);
-            if (checkCollision(labelBBox)) {
+            if (checkCollision(labelBBox) && dimId !== "dim-vert-ground") {
                 // Simple offset strategy: try shifting in X direction
                 const offset = 8 * scaleFactor;
                 if (tx > midX) {
@@ -13147,7 +13177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const lenMm = len / scaleFactor;
             const paperDx = Math.abs(p2[0] - p1[0]) / scaleFactor;
-            if (lenMm < 10.0 && paperDx < 0.1) {
+            if (lenMm < 10.0 && paperDx < 0.1 && dimId !== 'dim-vert-ground') {
                 textAngle = 0; // horizontal text
                 const dir = Math.sign(finalOffsetInches) || 1;
                 let L = 6.0;
@@ -13172,7 +13202,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 leadLine.setAttribute("stroke-width", 0.8 * scaleFactor);
                 gAnnots.appendChild(leadLine);
             }
-            
             const textNode = drawText(activeText, tx, ty, textAnchor, textAngle, tx, ty, textColor, activeFontSize * scaleFactor);
             if (dimId) {
                 textNode.setAttribute("class", "annot-text-draggable");
@@ -13438,25 +13467,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let leader;
-            if (leaderId === "leader-mid-post") {
-                const leftRailingEdge_svg = cadToSvg(0, 0, scale, extents)[0];
-                const rightRailingEdge_svg = cadToSvg(vals.length, 0, scale, extents)[0];
-                let shoulderEndX_svg;
-                if (side === "left") {
-                    shoulderEndX_svg = Math.min(svgCx - 10 * scaleFactor, leftRailingEdge_svg + 15.0 * scaleFactor);
-                } else {
-                    shoulderEndX_svg = Math.max(svgCx + 10 * scaleFactor, rightRailingEdge_svg - 15.0 * scaleFactor);
-                }
-                
-                leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
-                leader.setAttribute("d", `M ${finalLabelX} ${finalLabelY} L ${shoulderEndX_svg} ${finalLabelY} L ${svgCx} ${svgCy}`);
-            } else {
-                leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-                leader.setAttribute("x1", finalLabelX);
-                leader.setAttribute("y1", finalLabelY);
-                leader.setAttribute("x2", svgCx);
-                leader.setAttribute("y2", svgCy);
-            }
+            leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
+            leader.setAttribute("x1", finalLabelX);
+            leader.setAttribute("y1", finalLabelY);
+            leader.setAttribute("x2", svgCx);
+            leader.setAttribute("y2", svgCy);
             leader.setAttribute("stroke", leaderColor);
             leader.setAttribute("stroke-width", 1.2 * scaleFactor);
             leader.setAttribute("fill", "none");
@@ -13673,9 +13688,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const vDimOffset2 = isLeftReturn ? -16 : 16;
             const vDimOffset3 = isLeftReturn ? -24 : 24;
 
-            drawViewportDimension(vDimX, pHeight - topH, vDimX, pHeight, vDimOffset1, formatFraction(topH), "left", "dim-vert-top-cap");
+            // 1 1/2" top cap and bottom rail vertical dimensions removed per user request
+            // drawViewportDimension(vDimX, pHeight - topH, vDimX, pHeight, vDimOffset1, formatFraction(topH), "left", "dim-vert-top-cap");
             drawViewportDimension(vDimX, botY + botH, vDimX, pHeight - topH, vDimOffset1, formatFraction(pHeight - topH - (botY + botH)), "middle", "dim-vert-mid-rail");
-            drawViewportDimension(vDimX, botY, vDimX, botY + botH, vDimOffset1, formatFraction(botH), "left", "dim-vert-bot-rail");
+            // drawViewportDimension(vDimX, botY, vDimX, botY + botH, vDimOffset1, formatFraction(botH), "left", "dim-vert-bot-rail");
             drawViewportDimension(vDimX, 0, vDimX, botY, vDimOffset1, formatFraction(botY), "middle", "dim-vert-ground");
             
             drawViewportDimension(vDimX, botY, vDimX, pHeight, vDimOffset2, formatFraction(fHeight), "middle", "dim-vert-fence-height");
@@ -13685,7 +13701,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (midPostCount > 0) {
                 const firstMidPostCx = postCenters[1];
                 const mpH_dim = (style === 'executive') ? 44.25 : (pHeight - topH);
-                drawViewportDimension(firstMidPostCx, 0, firstMidPostCx, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
+                // 3'-8 1/4" dimension removed per user request
+                // drawViewportDimension(firstMidPostCx, 0, firstMidPostCx, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
             }
         } else {
             // Standard width and height dimensions
@@ -13920,12 +13937,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // 3. Left Post
             if (leftMark) {
-                const cyLeft = pHeight * 0.5;
+                const cyLeft = pHeight * 0.85; // Raised to clear left vertical dimensions
                 drawViewportLeader(postW / 2, cyLeft, leaderSide, leftMark, "leader-left-post");
             }
             // 4. Right Post
             if (rightMark) {
-                const cyRight = pHeight * 0.5;
+                const cyRight = pHeight * 0.85; // Raised to match left
                 drawViewportLeader(vals.length - postW / 2, cyRight, leaderSide, rightMark, "leader-right-post");
             }
             // 5. Mid Runner
@@ -13945,7 +13962,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style);
                 if (resolvedCenters.length > 0) {
                     const midCx = resolvedCenters[0];
-                    const cyMidPost = pHeight * 0.5;
+                    const cyMidPost = pHeight * 0.85; // Raised from 0.5 to 0.85 to clear left vertical dimensions
                     const targetX = (leaderSide === "left") ? (midCx - postW / 2) : (midCx + postW / 2);
                     drawViewportLeader(targetX, cyMidPost, leaderSide, midPostMark, "leader-mid-post");
                 }
@@ -14017,7 +14034,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const midRailTop = pHeight - topGap - topH - midRailGap;
                     const midRailBottom = midRailTop - midH;
                     
-                    const cutYTop = hasMid ? midRailTop : (pHeight + 4);
+                    const cutYTop = hasMid ? (midRailTop + 1.5) : (pHeight + 4);
                     const cutYBot = hasMid ? (midRailBottom - 12) : (pHeight - 12);
                     
                     // Translate CAD to SVG coordinates
