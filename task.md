@@ -5,8 +5,11 @@
 - [x] Hide "Extra Flat Bar" input option from the sidebar wizard (default to 'no')
 - [x] Add Section A cut line symbol to the elevation drawing pointing left (on both screen viewport and PDF blueprint)
 - [x] Refine Typical Section A detail view layout (flat bar on left of mesh) and labels exactly matching the snap
-- [x] Fix `postCenters is not defined` ReferenceError inside `injectCADAnnotations` and `generateBlueprintPDF`
-- [x] Dynamically move Section A cut line to first bay with left post/mid post
+- [x] Update `rightLeaderX` calculation with right vertical dimensions offset
+- [x] Refactor `drawCadLeader` `rightLimit` to 176.0 mm
+- [x] Split main panel leaders left/right in `generateBlueprintPDF`
+- [x] Dynamically compute expanded vertical spans for left and right leaders
+- [x] Run brace matching check script to verify code syntax
 - [x] Omit post and post annotations in Typical Section A detail if no post is present at the left of the cut bay
 - [x] Draw vertically stacked fraction 1/2" centered inside the extension lines (between post left face and wire mesh)
 - [x] Label typical detail title exactly SCETION A with a bold underline
@@ -15,3 +18,103 @@
 - [x] Make flat bar a small vertical line of 1" height attached to the bottom of the top runner box inside the post profile (to the right of the postLeft by 1/2"), with wire mesh attached to the flat bar right face
 - [x] Group WWM panels and horizontal flat bars by their actual span lengths in the BOM, generating distinct piece marks and correct quantities
 - [x] Hide the typical detail section boxes on the loose post drawing sheet
+- [x] Refactor noPosts calculation to be robust and consistent across PDF generation
+- [x] Fix midPostCount calculation for custom_standard posts in standard/mesh BOM generator
+- [x] Format picket spacing text to 'X EQ SPA @ Y' and perfectly center spacing label to avoid touching dimension line
+- [x] Cap the Y coordinate of the bottom main mark label to prevent overlapping with the title blocks
+- [x] Fix active balcony drawing number and mark mapping for loose posts in `getActiveBalconyDwgAndMark`
+- [x] Resolve `customOptionsWrapper` and sub-groups visibility toggles in `loadActivePanelToInputs` to show custom options for `urban_balcony` and `villa_balcony`
+- [x] Correct loose corner post quantity calculation logic in `compileActiveExportSheets` and `generateBalconyZipBatch`
+- [x] Include `'urban_balcony'` and `'villa_balcony'` styles in preset height/width resolution logic inside `generateBlueprintPDF` to fix PDF preview height mismatch crashes
+- [x] Add `'urban_balcony'` style to `isHardcodedStyle` inside `generateBlueprintPDF` and `injectDragHandles`
+- [x] Elevate top leader labels to `pdfY - 32` (normal) or `pdfY - 24` (compressed) to place them completely outside top horizontal dimension lines
+- [x] Lower bottom leader labels to `pdfY + drawH + 24` (normal) or `pdfY + drawH + 18` (compressed) to place them completely outside bottom dimension lines
+- [x] Constrain top leader label X positions to not cross the Section A cut line `sectionCutPdfX` by checking target X positions
+- [x] Add `'urban_balcony'` and `'villa_balcony'` to preset checks for top/bottom rail name resolution inside `updateBOMPreview`
+- [x] Add HSS 1.5x1.5x11GA size to shapes database (hss_rect)
+- [x] Update midRailGap for executive and villa_balcony styles from 3.5" to 3.0"
+- [x] Update vertical dimensioning calculations to use 3.0" instead of 3.5" for midRailGap
+- [x] Revert right-side vertical dimension text labels back to the right side of the dimension lines per user instruction
+- [x] Move the bottom gap vertical dimension line (4 1/4") from Column 1 to Column 2 (aligned with fence body height)
+- [x] Revert vertical dimension labels vertical shift back to +1.8mm offset per user instruction
+- [x] Adjust layoutMode selection priority to prefer fullWidth (centered) when no vertical overlap with BOM exists
+- [x] Fix the 1FB top rail leader target X coordinates to point neatly to the rail outer end faces (avoiding overlap)
+- [x] Fine-tune vertical dimension text alignments: align 2'-9 1/2" with 3", shift 3" slightly down, and shift Column 3 more to the right
+- [x] Unify bottom and mid rail piece marks when they share the same description and length, and merge them into single rows with combined remarks (e.g. BOTTOM/MID RUNNER) in the BOM
+- [x] Remove the right-side vertical dimensions (all three columns) from both viewport and PDF exports per user request
+- [x] Remove bold style from labeling/dimension text, reduce text size slightly, and shift narrow dimensions (like 3 1/4") to render above the line in both viewport and PDF
+- [x] Fix picket positions calculation for custom mid posts by passing vals.midPosts and customSpacings in generatePDF, generateDXF, and drawViewportAnnots
+- [x] Redirect picket leader to point to the third picket instead of the first picket to prevent overlapping/crossing the left post line
+- [x] Shift the first mid post leader position to the right of the mid post so that its shoulder turns left, placing the callout text under the middle span to avoid crossing horizontal bottom dimensions
+- [x] Decrease drawing line weight from 0.40mm to 0.28mm and proportionally thin out detail callouts and leader line widths to 0.10mm
+- [x] Prevent leader lines from crossing by keeping distributed labels sorted by target X and shifting top mesh panel leader targets to the left side (avoiding Section A cut line)
+- [x] Fix mesh panel leader targets to point perfectly to the wire mesh grids (index 0.35) and update horizontal dimensions to always render text above the dimension lines
+- [x] Add right-side vertical dimension for the top gap (between bottom of top runner and top of mid runner) with an offset of 8mm
+- [x] Fix right-side vertical dimension of top gap to resolve correct midRailGap value (3.0" for executive style) matching the visual model
+- [x] Center short vertical dimension text (like 3") with a 0.9mm compensation offset to place it mathematically and visually in the center between ticks
+- [x] Add right-side vertical dimension for the picket height in the same column (offset 8mm) as the top gap dimension
+- [x] Compensate vertical dimension X coordinates by +1.8mm when text contains a fraction to correct the jsPDF fallback font spacing offset
+- [x] Add right-side vertical dimension for the Fence Height (top of top rail to bottom of bottom rail) in the second column (offset 16mm) showing 3'-5"
+- [x] Extend picket height and mesh panel height vertical dimensioning on the right side to all styles (Classical, Urban Balcony, Villa Balcony, etc.)
+- [x] Shift right-side Fence Height X coordinate from midX - 1.0 to midX - 0.4 to align visually closer to its dimension line (matching picket/mesh distance)
+- [x] Add right-side vertical dimension for the Bottom Gap (bottom of bottom rail to bottom of post) in Column 2 (offset 16mm) stacked under the Fence Height
+- [x] Fix syntax error in drawViewportAnnots (removed duplicated else block)
+- [x] Align 4 3/4" Bottom Gap visually with 3'-5" by letting it inherit the base tx = midX - 1.0 (calibrated fraction offset)
+- [x] Refine right-side vertical dimension offsets with explicit mapping: 3" (midX - 1.0), picket/mesh (midX + 0.8), 3'-5" (midX - 0.2), and 4 3/4" (midX + 0.4)
+- [x] Shift Bottom Gap (4 3/4") dimension Y coordinate down by 1.8mm instead of 0.9mm to center it perfectly between ticks
+- [x] Shift right-side Fence Height X coordinate from midX - 0.2 to midX to align perfectly in a straight line with the 4 3/4" Bottom Gap
+- [x] Add right-side vertical dimension for Overall Post Height (bottom of post to top of top runner) in Column 3 (offset 24mm) showing 3'-9 Â¾"
+- [x] Fix return panel leader offsets (right return has useRightVerticalDims = true and rightLeaderOffset = 33mm) to prevent labels overlapping right vertical dimensions
+- [x] Redistribute return panel leaders to left, top, and bottom sides to completely avoid drawing on the right side where vertical dimensions are located
+- [x] Fix syntax error in uniqueLeaders.forEach block (removed extra closing brace)
+- [x] Fix return top rail leader target X coordinate to vals.length * 0.25 to point close to its left-positioned label
+- [x] Fix return panel post quantity bug in BOM (correctly show 1 post instead of 2 by checking actual presence of right post)
+- [x] Change mesh frame flat bar joints from 45-degree miters to butt-welded joints (horizontal flat bars are continuous, vertical flat bars fit in between)
+- [x] Reduce vertical flat bar length in BOM data and BOM preview by 2.0" to account for the butt-welded layout
+- [x] Automatically synchronize the left and right return panel styles with the main panel style by default when the main panel style is modified
+- [x] Fix return panel picket leader target X coordinate to point to the 3rd picket (closer to left side) instead of the far right picket
+- [x] Add vertical end lines at loose/omitted ends (from top of top runner to bottom of bottom runner) for mesh panels
+- [x] Add symbolic corner mesh patches (with wavy borders and grid patterns) at loose/omitted ends to show the mesh boundary
+- [x] Fix TypeError in drawCornerMeshPatch (initialize model.models to prevent setting property of undefined)
+- [x] Offset the corner mesh patches inside the more opening to prevent overlapping/sitting on the flat bars
+- [x] Fix bottom-left corner mesh patch wavy border bulge direction to curve inwards (into the bay) instead of outwards
+- [x] Fix top-left and top-right corner mesh patch wavy border bulge directions to curve inwards (into the bay) instead of outwards
+- [x] Fix top-left corner cloud bulge direction to bulge inwards (into the bay) in all mesh styles (including Villa style)
+- [x] Fix missing left vertical closing line at loose ends in Villa style by attaching the line path directly to the top-level meshSpanModel
+- [x] Omit left/right vertical flat bars (leftFB, rightFB) of the mesh frame at loose ends (flat bar attaches to loose post), while keeping the single vertical end closing lines
+- [x] Style the vertical end closing lines at loose ends as thin symbolic lines (0.22mm on PDF, 1px on viewport) by appending _wwm suffix and adding CSS rules
+- [x] Relocate the thin end closing lines (leftLooseEndLine_wwm, rightLooseEndLine_wwm) to the global root level (X = 0 and X = length) of createRailCatalog to guarantee rendering
+- [x] Omit vertical flat bars (leftFB, rightFB) of the mesh frame at corners of the main panel in the U-shape preview if there is no post at that corner
+- [x] Align return rails inside corners (removing the X gap) in U-shape topView when corner posts are loose or omitted
+- [x] Align flat bar directly to starting point (left edge of post) with zero horizontal offset in Section A detail drawing
+- [x] Position wire mesh (WWM) immediately behind/to the right of the flat bar in Section A detail drawing
+- [x] Remove the bottom 1/2" dimension line and text from Section A detail drawing
+- [x] Increase the size of the Section A detail box (by 50% horizontally and 40% vertically) and scale up drawing elements inside (by 36%) in PDF generator
+- [x] Make flat bar line in Detail A thicker (0.48 * ratioX) and decrease runner/post outlines to (0.09 * ratioX) for higher visual contrast
+- [x] Position WWM wire and dots to touch the right edge of the flat bar line with almost zero gap (0.10 * ratioX)
+- [x] Keep WWM vertical wire and text leader line weights unchanged as requested
+- [x] Shift the flat bar line rightward by W/2 (0.24 * ratioX) so its left edge aligns exactly with the post boundary and does not protrude to the left
+- [x] Re-adjust the WWM line to meshX = postLeft + 0.93 * ratioX to maintain the tiny touching gap with the shifted flat bar
+- [x] Increase the drawing scale inside the detail box to 9.5 * ratioX (making the elements inside an additional 27% larger)
+- [x] Adjust WWM line to meshX = postLeft + 0.83 * ratioX to make the WWM circles touch the right edge of the flat bar line with exactly zero gap
+- [x] Merge identical left and right return panel sheets for Classical and Executive styles (and their custom styles) and consolidate their quantities into a single drawing sheet, while keeping them separate for Urban and Villa styles
+- [x] Shorten the flat bar model in createLoosePostModel (height = fbHeight - 2.0) and offset its origin by 1.0 inch to fit between the horizontal rails (applies to preset and custom styles)
+- [x] Update the loose post flat bar length and weight BOM calculations to use the corrected shorter length (fbHeight - 2.0)
+- [x] Render a vertical dimension showing the flat bar length in the loose post drawing page
+- [x] Adjust the top gap dimension in the loose post drawing to measure to the actual top of the shortened flat bar (pHeight - topOfFb)
+- [x] Move all vertical dimensions (post height, overall height, base plate, flat bar length, top gap) to the right side of the loose post
+- [x] Move all labeling callouts (post, base plate, flat bar) to the left side of the loose post to avoid overlapping with dimensions
+- [x] Align the top gap dimension and the flat bar length dimension inline vertically at the exact same rightward offset (distToRightMargin + 16)
+- [x] Remove Tweak Mode Off and AutoCAD Dim Off buttons from the top toolbar
+- [x] Add the Advance Features button in their place
+- [x] Create the floating Advance Features box at the right corner of the drawing canvas with the 6" Extra checkbox
+- [x] Update getPanelModel to apply extra length (+12" for main, +6" for returns) and pass extra6/panelType down
+- [x] Update resolveMidPostCenters to use original length and shift mid-posts by +6" on main panel under Option B (end extensions)
+- [x] Sync the 6" Extra checkbox state with the active panel's model inputs in save/load functions
+- [x] Update renderCurrentCAD to apply extra length to viewport calculations and use original length for mid-post count calculations
+- [x] Update generateBlueprintPDF and exportDXF to apply extra length and preserve original length for mid-post count calculations
+- [x] Add **4" at Free End** checkbox to the **Advanced Features** panel and persist its state
+- [x] Implement the **4" Free End** extension calculation in `resolveFreeEndExtensions`
+- [x] Implement the **Post-Aligned Picket Grid** to prevent tiny `2"` spacing gaps near mid-posts
+- [x] Fix viewport and PDF picket leader lines to point to actual picket coordinates
+- [x] Fix horizontal picket dimensions to display correctly without clutter or overlaps

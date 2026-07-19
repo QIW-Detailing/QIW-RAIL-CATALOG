@@ -1,5 +1,5 @@
 # Lightweight Static Web Server in PowerShell
-$port = 8000
+$port = 8083
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
 try {
@@ -19,6 +19,20 @@ while ($listener.IsListening) {
         $response = $context.Response
         
         $path = $request.Url.LocalPath
+
+        if ($path -eq "/log") {
+            $msg = $request.QueryString["msg"]
+            if ($msg) {
+                Write-Host "LOG: $msg"
+                Add-Content -Path "debug.log" -Value $msg
+            }
+            $response.StatusCode = 200
+            $okBytes = [System.Text.Encoding]::UTF8.GetBytes("ok")
+            $response.OutputStream.Write($okBytes, 0, $okBytes.Length)
+            $response.Close()
+            continue
+        }
+
 
 
         if ($path -eq "/" -or $path -eq "") {
@@ -44,6 +58,9 @@ while ($listener.IsListening) {
             }
             $response.ContentType = $contentType
             $response.ContentLength64 = $bytes.Length
+            $response.Headers.Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            $response.Headers.Add("Pragma", "no-cache")
+            $response.Headers.Add("Expires", "0")
             $response.OutputStream.Write($bytes, 0, $bytes.Length)
         } else {
             $response.StatusCode = 404

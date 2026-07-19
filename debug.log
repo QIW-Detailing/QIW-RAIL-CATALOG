@@ -1,0 +1,591 @@
+createRailCatalog makerjs: {"length":144,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":false,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[48,96]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":144,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":false,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[48,96]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":144,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":false,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[48,96]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":36,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":false,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='12'-0"', tx=148.50, ty=55.94, midX=148.50, midY=57.44, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-0"', tx=72.30, ty=60.94, midX=72.30, midY=62.44, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=60.94, midX=148.50, midY=62.44, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-0"', tx=224.70, ty=60.94, midX=224.70, midY=62.44, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-4"', tx=72.30, ty=65.94, midX=72.30, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=37.37, ty=65.94, midX=37.37, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=107.22, ty=65.94, midX=107.22, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=65.94, midX=148.50, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=113.57, ty=65.94, midX=113.57, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=183.42, ty=65.94, midX=183.42, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='3'-4"', tx=224.70, ty=65.94, midX=224.70, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=189.77, ty=65.94, midX=189.77, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=259.63, ty=65.94, midX=259.63, midY=67.44, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-11 ¼"', tx=71.70, ty=161.56, midX=71.70, midY=163.06, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=161.56, midX=148.50, midY=163.06, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='3'-11 ¼"', tx=225.30, ty=161.56, midX=225.30, midY=163.06, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=271.60, ty=108.78, midX=270.80, midY=106.98, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=278.80, ty=108.78, midX=278.80, midY=106.98, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=279.20, ty=145.09, midX=278.80, midY=143.29, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=287.20, ty=112.55, midX=286.80, midY=110.75, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=59.54, midX=148.50, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=94.52, ty=67.54, midX=94.52, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=67.54, midX=148.50, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=93.47, ty=75.54, midX=93.47, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=202.47, ty=67.54, midX=202.47, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=67.01, ty=75.54, midX=67.01, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=120.98, ty=75.54, midX=120.98, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=75.54, midX=148.50, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=125.22, ty=75.54, midX=125.22, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=171.78, ty=75.54, midX=171.78, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=203.53, ty=75.54, midX=203.53, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=176.02, ty=75.54, midX=176.02, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=229.99, ty=75.54, midX=229.99, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=94.13, ty=157.96, midX=94.13, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=157.96, midX=148.50, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=202.87, ty=157.96, midX=202.87, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=239.85, ty=112.54, midX=239.05, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=247.05, ty=112.54, midX=247.05, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=247.45, ty=136.75, midX=247.05, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=255.45, ty=115.05, midX=255.05, midY=113.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=59.54, midX=148.50, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=94.52, ty=67.54, midX=94.52, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=67.54, midX=148.50, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=202.47, ty=67.54, midX=202.47, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=93.47, ty=75.54, midX=93.47, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=67.01, ty=75.54, midX=67.01, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=120.98, ty=75.54, midX=120.98, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=75.54, midX=148.50, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=125.22, ty=75.54, midX=125.22, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=171.78, ty=75.54, midX=171.78, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=203.53, ty=75.54, midX=203.53, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=176.02, ty=75.54, midX=176.02, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=229.99, ty=75.54, midX=229.99, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=94.13, ty=157.96, midX=94.13, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=157.96, midX=148.50, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=202.87, ty=157.96, midX=202.87, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=239.85, ty=112.54, midX=239.05, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=247.05, ty=112.54, midX=247.05, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=247.45, ty=136.75, midX=247.05, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=255.45, ty=115.05, midX=255.05, midY=113.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.62, ty=59.54, midX=150.62, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=95.58, ty=67.54, midX=95.58, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.62, ty=67.54, midX=150.62, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=205.65, ty=67.54, midX=205.65, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=95.58, ty=75.54, midX=95.58, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=68.07, ty=75.54, midX=68.07, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=123.10, ty=75.54, midX=123.10, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.62, ty=75.54, midX=150.62, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=127.33, ty=75.54, midX=127.33, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=173.90, ty=75.54, midX=173.90, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=205.65, ty=75.54, midX=205.65, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=178.13, ty=75.54, midX=178.13, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=233.17, ty=75.54, midX=233.17, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=95.19, ty=157.96, midX=95.19, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.62, ty=157.96, midX=150.62, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=206.05, ty=157.96, midX=206.05, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=244.08, ty=112.54, midX=243.28, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=251.28, ty=112.54, midX=251.28, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=251.68, ty=136.75, midX=251.28, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=259.68, ty=115.05, midX=259.28, midY=113.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.62, ty=59.54, midX=150.62, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=95.58, ty=67.54, midX=95.58, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.62, ty=67.54, midX=150.62, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=205.65, ty=67.54, midX=205.65, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=95.58, ty=75.54, midX=95.58, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=68.07, ty=75.54, midX=68.07, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=123.10, ty=75.54, midX=123.10, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.62, ty=75.54, midX=150.62, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=127.33, ty=75.54, midX=127.33, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=173.90, ty=75.54, midX=173.90, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=205.65, ty=75.54, midX=205.65, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=178.13, ty=75.54, midX=178.13, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=233.17, ty=75.54, midX=233.17, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=95.19, ty=157.96, midX=95.19, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.62, ty=157.96, midX=150.62, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=206.05, ty=157.96, midX=206.05, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=244.08, ty=112.54, midX=243.28, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=251.28, ty=112.54, midX=251.28, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=251.68, ty=136.75, midX=251.28, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=259.68, ty=115.05, midX=259.28, midY=113.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=59.54, midX=148.50, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=94.52, ty=67.54, midX=94.52, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=67.54, midX=148.50, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=202.47, ty=67.54, midX=202.47, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=93.47, ty=75.54, midX=93.47, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=67.01, ty=75.54, midX=67.01, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=120.98, ty=75.54, midX=120.98, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=75.54, midX=148.50, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=125.22, ty=75.54, midX=125.22, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=171.78, ty=75.54, midX=171.78, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=203.53, ty=75.54, midX=203.53, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=176.02, ty=75.54, midX=176.02, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=229.99, ty=75.54, midX=229.99, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=94.13, ty=157.96, midX=94.13, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=157.96, midX=148.50, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=202.87, ty=157.96, midX=202.87, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=239.85, ty=112.54, midX=239.05, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=247.05, ty=112.54, midX=247.05, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=247.45, ty=136.75, midX=247.05, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=255.45, ty=115.05, midX=255.05, midY=113.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=59.54, midX=148.50, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=94.52, ty=67.54, midX=94.52, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=67.54, midX=148.50, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=202.47, ty=67.54, midX=202.47, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=67.01, ty=75.54, midX=67.01, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=93.47, ty=75.54, midX=93.47, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=120.98, ty=75.54, midX=120.98, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=75.54, midX=148.50, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=125.22, ty=75.54, midX=125.22, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=171.78, ty=75.54, midX=171.78, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=203.53, ty=75.54, midX=203.53, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=176.02, ty=75.54, midX=176.02, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=229.99, ty=75.54, midX=229.99, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=94.13, ty=157.96, midX=94.13, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=157.96, midX=148.50, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=202.87, ty=157.96, midX=202.87, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=239.85, ty=112.54, midX=239.05, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=247.05, ty=112.54, midX=247.05, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=247.45, ty=136.75, midX=247.05, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=255.45, ty=115.05, midX=255.05, midY=113.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-8"', tx=104.59, ty=28.69, midX=104.59, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-7 ¼"', tx=105.18, ty=36.69, midX=105.18, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='3 ¼"', tx=136.93, ty=44.69, midX=136.93, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-6 ½"', tx=105.78, ty=145.31, midX=105.78, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=148.31, ty=92.53, midX=147.51, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=155.51, ty=92.53, midX=155.51, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=155.91, ty=128.84, midX=155.51, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=163.91, ty=96.30, midX=163.51, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='3'-6"', tx=103.00, ty=28.69, midX=103.00, midY=30.19, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='3'-5 ¼"', tx=103.60, ty=36.69, midX=103.60, midY=38.19, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='3'-0"', tx=105.78, ty=44.69, midX=105.78, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=74.03, ty=44.69, midX=74.03, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='1 ¼"', tx=135.35, ty=44.69, midX=135.35, midY=46.19, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='3'-4 ½"', tx=104.19, ty=145.31, midX=104.19, midY=146.81, offsetMm=16
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=145.14, ty=92.53, midX=144.34, midY=90.73, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=152.34, ty=92.53, midX=152.34, midY=90.73, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=152.74, ty=128.84, midX=152.34, midY=127.04, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=160.74, ty=96.30, midX=160.34, midY=94.50, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"classical","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"classical","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.62, ty=59.54, midX=150.62, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=95.58, ty=67.54, midX=95.58, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.62, ty=67.54, midX=150.62, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=205.65, ty=67.54, midX=205.65, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=95.58, ty=75.54, midX=95.58, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=68.07, ty=75.54, midX=68.07, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=123.10, ty=75.54, midX=123.10, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.62, ty=75.54, midX=150.62, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=127.33, ty=75.54, midX=127.33, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=173.90, ty=75.54, midX=173.90, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=205.65, ty=75.54, midX=205.65, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=178.13, ty=75.54, midX=178.13, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=233.17, ty=75.54, midX=233.17, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=95.19, ty=157.96, midX=95.19, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.62, ty=157.96, midX=150.62, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=206.05, ty=157.96, midX=206.05, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=244.08, ty=112.54, midX=243.28, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=251.28, ty=112.54, midX=251.28, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=251.68, ty=136.75, midX=251.28, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=259.68, ty=115.05, midX=259.28, midY=113.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.62, ty=59.54, midX=150.62, midY=61.04, offsetMm=-28
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=95.58, ty=67.54, midX=95.58, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.62, ty=67.54, midX=150.62, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=205.65, ty=67.54, midX=205.65, midY=69.04, offsetMm=-20
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=95.58, ty=75.54, midX=95.58, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=68.07, ty=75.54, midX=68.07, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=123.10, ty=75.54, midX=123.10, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.62, ty=75.54, midX=150.62, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=127.33, ty=75.54, midX=127.33, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=173.90, ty=75.54, midX=173.90, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=205.65, ty=75.54, midX=205.65, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=178.13, ty=75.54, midX=178.13, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=233.17, ty=75.54, midX=233.17, midY=77.04, offsetMm=-12
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=95.19, ty=157.96, midX=95.19, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.62, ty=157.96, midX=150.62, midY=159.46, offsetMm=22
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=206.05, ty=157.96, midX=206.05, midY=159.46, offsetMm=22
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='3'-2"', tx=244.08, ty=112.54, midX=243.28, midY=110.74, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=251.28, ty=112.54, midX=251.28, midY=110.74, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=251.68, ty=136.75, midX=251.28, midY=134.95, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=259.68, ty=115.05, midX=259.28, midY=113.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.09, ty=78.59, midX=150.09, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=108.81, ty=83.59, midX=108.81, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.09, ty=83.59, midX=150.09, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=191.36, ty=83.59, midX=191.36, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=108.81, ty=88.59, midX=108.81, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=88.17, ty=88.59, midX=88.17, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=129.45, ty=88.59, midX=129.45, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.09, ty=88.59, midX=150.09, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=132.62, ty=88.59, midX=132.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=167.55, ty=88.59, midX=167.55, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=191.36, ty=88.59, midX=191.36, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=170.72, ty=88.59, midX=170.72, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=212.00, ty=88.59, midX=212.00, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=108.51, ty=147.91, midX=108.51, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.09, ty=147.91, midX=150.09, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=191.66, ty=147.91, midX=191.66, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=220.59, ty=100.37, midX=221.59, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=222.39, ty=116.95, midX=221.59, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=229.59, ty=115.16, midX=229.59, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=229.99, ty=133.32, midX=229.59, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=237.99, ty=117.05, midX=237.59, midY=115.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.09, ty=78.59, midX=150.09, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=108.81, ty=83.59, midX=108.81, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.09, ty=83.59, midX=150.09, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=191.36, ty=83.59, midX=191.36, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=108.81, ty=88.59, midX=108.81, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=88.17, ty=88.59, midX=88.17, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=129.45, ty=88.59, midX=129.45, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.09, ty=88.59, midX=150.09, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=132.62, ty=88.59, midX=132.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=167.55, ty=88.59, midX=167.55, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=191.36, ty=88.59, midX=191.36, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=170.72, ty=88.59, midX=170.72, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=212.00, ty=88.59, midX=212.00, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=108.51, ty=147.91, midX=108.51, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.09, ty=147.91, midX=150.09, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=191.66, ty=147.91, midX=191.66, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=220.59, ty=100.37, midX=221.59, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=222.39, ty=116.95, midX=221.59, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=229.59, ty=115.16, midX=229.59, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=229.99, ty=133.32, midX=229.59, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=237.99, ty=117.05, midX=237.59, midY=115.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.09, ty=78.59, midX=150.09, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=108.81, ty=83.59, midX=108.81, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.09, ty=83.59, midX=150.09, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=191.36, ty=83.59, midX=191.36, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=108.81, ty=88.59, midX=108.81, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=88.17, ty=88.59, midX=88.17, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=129.45, ty=88.59, midX=129.45, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.09, ty=88.59, midX=150.09, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=132.62, ty=88.59, midX=132.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=167.55, ty=88.59, midX=167.55, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=191.36, ty=88.59, midX=191.36, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=170.72, ty=88.59, midX=170.72, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=212.00, ty=88.59, midX=212.00, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=108.51, ty=147.91, midX=108.51, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.09, ty=147.91, midX=150.09, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=191.66, ty=147.91, midX=191.66, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=220.59, ty=100.37, midX=221.59, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=222.39, ty=116.95, midX=221.59, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=229.59, ty=115.16, midX=229.59, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=229.99, ty=133.32, midX=229.59, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=237.99, ty=117.05, midX=237.59, midY=115.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=78.59, midX=148.50, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=108.02, ty=83.59, midX=108.02, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=83.59, midX=148.50, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=188.98, ty=83.59, midX=188.98, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=107.22, ty=88.59, midX=107.22, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=87.38, ty=88.59, midX=87.38, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=127.86, ty=88.59, midX=127.86, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=88.59, midX=148.50, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=131.04, ty=88.59, midX=131.04, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=165.96, ty=88.59, midX=165.96, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=189.77, ty=88.59, midX=189.77, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=169.14, ty=88.59, midX=169.14, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=209.62, ty=88.59, midX=209.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=107.72, ty=147.91, midX=107.72, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=147.91, midX=148.50, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=189.28, ty=147.91, midX=189.28, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=217.41, ty=100.37, midX=218.41, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=219.21, ty=116.95, midX=218.41, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=226.41, ty=115.16, midX=226.41, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=226.81, ty=133.32, midX=226.41, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=234.81, ty=117.05, midX=234.41, midY=115.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-0"', tx=148.50, ty=78.59, midX=148.50, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-6"', tx=108.02, ty=83.59, midX=108.02, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=148.50, ty=83.59, midX=148.50, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-6"', tx=188.98, ty=83.59, midX=188.98, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=107.22, ty=88.59, midX=107.22, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='2"', tx=87.38, ty=88.59, midX=87.38, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=127.86, ty=88.59, midX=127.86, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=148.50, ty=88.59, midX=148.50, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=131.04, ty=88.59, midX=131.04, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=165.96, ty=88.59, midX=165.96, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=189.77, ty=88.59, midX=189.77, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=169.14, ty=88.59, midX=169.14, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='2"', tx=209.62, ty=88.59, midX=209.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-5 ¼"', tx=107.72, ty=147.91, midX=107.72, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=148.50, ty=147.91, midX=148.50, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-5 ¼"', tx=189.28, ty=147.91, midX=189.28, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=217.41, ty=100.37, midX=218.41, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=219.21, ty=116.95, midX=218.41, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=226.41, ty=115.16, midX=226.41, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=226.81, ty=133.32, midX=226.41, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=234.81, ty=117.05, midX=234.41, midY=115.25, offsetMm=24
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"corner_none","rightPostOpt":"corner_none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"corner","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":156,"leftPostOpt":"none","rightPostOpt":"none","midPostsOpt":"default","midPostCount":2,"postW":1.5,"style":"executive","extra6":true,"panelType":"main","deltaLeft":0,"deltaRight":0,"resolvedCenters":[54,102]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"rightReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+createRailCatalog makerjs: {"length":42,"leftPostOpt":"yes","rightPostOpt":"none","midPostsOpt":"none","midPostCount":0,"postW":1.5,"style":"executive","extra6":true,"panelType":"leftReturn","deltaLeft":0,"deltaRight":0,"resolvedCenters":[]}
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.09, ty=78.59, midX=150.09, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=108.81, ty=83.59, midX=108.81, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=191.36, ty=83.59, midX=191.36, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.09, ty=83.59, midX=150.09, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=108.81, ty=88.59, midX=108.81, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=88.17, ty=88.59, midX=88.17, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=129.45, ty=88.59, midX=129.45, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.09, ty=88.59, midX=150.09, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=132.62, ty=88.59, midX=132.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=167.55, ty=88.59, midX=167.55, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=191.36, ty=88.59, midX=191.36, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=170.72, ty=88.59, midX=170.72, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=212.00, ty=88.59, midX=212.00, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=108.51, ty=147.91, midX=108.51, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.09, ty=147.91, midX=150.09, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=191.66, ty=147.91, midX=191.66, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=220.59, ty=100.37, midX=221.59, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=222.39, ty=116.95, midX=221.59, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=229.59, ty=115.16, midX=229.59, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=229.99, ty=133.32, midX=229.59, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=237.99, ty=117.05, midX=237.59, midY=115.25, offsetMm=24
+[drawCadDimension] dim-width: isVertical=false, text='13'-4"', tx=150.09, ty=78.59, midX=150.09, midY=80.09, offsetMm=-17
+[drawCadDimension] dim-span-0: isVertical=false, text='4'-8"', tx=108.81, ty=83.59, midX=108.81, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-1: isVertical=false, text='4'-0"', tx=150.09, ty=83.59, midX=150.09, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-span-2: isVertical=false, text='4'-8"', tx=191.36, ty=83.59, midX=191.36, midY=85.09, offsetMm=-12
+[drawCadDimension] dim-picket-center-0: isVertical=false, text='4'-0"', tx=108.81, ty=88.59, midX=108.81, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-0: isVertical=false, text='4"', tx=88.17, ty=88.59, midX=88.17, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-0: isVertical=false, text='4"', tx=129.45, ty=88.59, midX=129.45, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-1: isVertical=false, text='3'-4"', tx=150.09, ty=88.59, midX=150.09, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-1: isVertical=false, text='4"', tx=132.62, ty=88.59, midX=132.62, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-1: isVertical=false, text='4"', tx=167.55, ty=88.59, midX=167.55, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-center-2: isVertical=false, text='4'-0"', tx=191.36, ty=88.59, midX=191.36, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-start-2: isVertical=false, text='4"', tx=170.72, ty=88.59, midX=170.72, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-picket-end-2: isVertical=false, text='4"', tx=212.00, ty=88.59, midX=212.00, midY=90.09, offsetMm=-7
+[drawCadDimension] dim-clear-0: isVertical=false, text='4'-7 ¼"', tx=108.51, ty=147.91, midX=108.51, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-1: isVertical=false, text='3'-10 ½"', tx=150.09, ty=147.91, midX=150.09, midY=149.41, offsetMm=16
+[drawCadDimension] dim-clear-2: isVertical=false, text='4'-7 ¼"', tx=191.66, ty=147.91, midX=191.66, midY=149.41, offsetMm=16
+[drawCadDimension] dim-vert-right-top-gap: isVertical=true, text='3"', tx=220.59, ty=100.37, midX=221.59, midY=99.47, offsetMm=8
+[drawCadDimension] dim-vert-right-picket-height: isVertical=true, text='2'-9 ½"', tx=222.39, ty=116.95, midX=221.59, midY=115.15, offsetMm=8
+[drawCadDimension] dim-vert-right-fence-height: isVertical=true, text='3'-5"', tx=229.59, ty=115.16, midX=229.59, midY=113.36, offsetMm=16
+[drawCadDimension] dim-vert-right-bot-gap: isVertical=true, text='4 ¾"', tx=229.99, ty=133.32, midX=229.59, midY=131.52, offsetMm=16
+[drawCadDimension] dim-vert-right-overall-height: isVertical=true, text='3'-9 ¾"', tx=237.99, ty=117.05, midX=237.59, midY=115.25, offsetMm=24
