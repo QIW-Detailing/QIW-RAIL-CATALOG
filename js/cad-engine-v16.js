@@ -12,6 +12,7 @@ function resolveMidPostCenters(length, leftPostOpt, rightPostOpt, midPostsOpt, m
         calcLength = baseLength - (panelType === 'main' ? 12.0 : 6.0);
     }
 
+
     const startXBound = (leftPostOpt === 'yes' || leftPostOpt === 'corner') ? postW : 0;
     const endXBound = (rightPostOpt === 'yes' || rightPostOpt === 'corner') ? (calcLength - postW) : calcLength;
 
@@ -2517,6 +2518,32 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         deltaLeft = 0,
         deltaRight = 0
     ) {
+        length = parseFloat(length) || 120.0;
+        fenceHeight = parseFloat(fenceHeight) || 41.0;
+        postHeight = parseFloat(postHeight) || 45.75;
+        postW = parseFloat(postW) || 1.5;
+        postH = parseFloat(postH) || 1.5;
+        postT = parseFloat(postT) || 0.1196;
+        topRailW = parseFloat(topRailW) || 1.5;
+        topRailH = parseFloat(topRailH) || 1.5;
+        topRailT = parseFloat(topRailT) || 0.0598;
+        botRailW = parseFloat(botRailW) || 1.5;
+        botRailH = parseFloat(botRailH) || 1.5;
+        botRailT = parseFloat(botRailT) || 0.0598;
+        midRailW = parseFloat(midRailW) || 1.5;
+        midRailH = parseFloat(midRailH) || 1.5;
+        midRailT = parseFloat(midRailT) || 0.0598;
+        midRailGap = parseFloat(midRailGap) || 12.0;
+        picketW = parseFloat(picketW) || 0.5;
+        picketH = parseFloat(picketH) || 0.5;
+        picketT = parseFloat(picketT) || 0.0598;
+        picketSpacing = parseFloat(picketSpacing) || 4.0;
+        meshGridW = parseFloat(meshGridW) || 2.0;
+        meshGridH = parseFloat(meshGridH) || 2.0;
+        meshWireD = parseFloat(meshWireD) || 0.135;
+        deltaLeft = parseFloat(deltaLeft) || 0;
+        deltaRight = parseFloat(deltaRight) || 0;
+
         if (style === 'executive') {
             fenceHeight = 41.0;
             postHeight = 45.75;
@@ -2642,6 +2669,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         // Mid posts coordinates
         const midPosts = [];
         const resolvedCenters = resolveMidPostCenters(length, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, postW, customSpacings, style, extra6, panelType, deltaLeft, deltaRight);
+
         resolvedCenters.forEach((midCx, idx) => {
             const midPx = midCx - postW / 2;
             midPosts.push({ type: 'mid', startX: midPx, endX: midPx + postW, center: midCx });
@@ -3050,8 +3078,8 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                     // Left: bottom to top
                     addWavyBorder(meshSpanModel.models.meshPanel, 'wave_left', [patchX, patchY], [patchX, patchY + patchH], numWavesY);
 
-                    const isLeftLoose = (idx === 0 && leftPostOpt !== 'yes');
-                    const isRightLoose = (idx === spanRanges.length - 1 && rightPostOpt !== 'yes');
+                    const isLeftLoose = (idx === 0 && leftPostOpt !== 'yes' && leftPostOpt !== 'corner');
+                    const isRightLoose = (idx === spanRanges.length - 1 && rightPostOpt !== 'yes' && rightPostOpt !== 'corner');
 
                     if (isLeftLoose) {
                         drawCornerMeshPatch(meshSpanModel.models.meshPanel, 'BL', mOpeningW, mOpeningH, gridSpaceX, gridSpaceY);
@@ -3110,14 +3138,14 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
 
         if (isMeshStyle) {
-            const isLeftLoose = (leftPostOpt !== 'yes');
+            const isLeftLoose = (leftPostOpt !== 'yes' && leftPostOpt !== 'corner');
             if (isLeftLoose) {
                 if (!model.paths) {
                     model.paths = {};
                 }
                 model.paths.leftLooseEndLine_wwm = new makerjs.paths.Line([0, botRailY], [0, postHeight]);
             }
-            const isRightLoose = (rightPostOpt !== 'yes');
+            const isRightLoose = (rightPostOpt !== 'yes' && rightPostOpt !== 'corner');
             if (isRightLoose) {
                 if (!model.paths) {
                     model.paths = {};
@@ -3746,18 +3774,18 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         if (style === 'classic_custom') {
             midRailType = 'none';
         }
-        let currentLength = panel.length || 120.0;
+        let currentLength = parseFloat(panel.length) || 120.0;
         if (panel.extra6) {
             currentLength += (panelType === 'main' ? 12.0 : 6.0);
         }
 
         const midPostCount = (panel.midPosts === 'default' || panel.midPosts === 'yes') 
-            ? Math.max(0, Math.ceil(panel.length / 48) - 1) 
+            ? Math.max(0, Math.ceil(parseFloat(panel.length) / 48) - 1) 
             : ((panel.midPosts === 'custom' || panel.midPosts === 'custom_standard') ? (parseInt(panel.midPostCount) || 0) : 0);
 
         const vals = {
             length: currentLength,
-            originalLength: panel.length || 120.0,
+            originalLength: parseFloat(panel.length) || 120.0,
             leftPost: leftPostVal,
             rightPost: rightPostVal,
             midPosts: panel.midPosts || 'none',
@@ -3843,7 +3871,9 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
         
         const mainLeftPost = main && main.leftPost === 'yes';
-        const leftCornerPost = left && LL > 0 && (left.leftPost || 'yes') === 'yes';
+        const leftStyle = left ? (left.railStyle || 'classical') : 'classical';
+        const isLeftReturnMeshStyle = (leftStyle === 'urban_balcony' || leftStyle === 'villa_balcony' || leftStyle === 'urban_custom' || leftStyle === 'villa_custom');
+        const leftCornerPost = left && LL > 0 && (isLeftReturnMeshStyle ? (left.rightPost !== 'none' && left.rightPost !== 'no') : (left.leftPost !== 'none' && left.leftPost !== 'no'));
         const hasLeftCornerPost = (leftCornerPost || mainLeftPost);
         
         if (left && LL > 0) {
@@ -3852,7 +3882,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
         
         const mainRightPost = main && main.rightPost === 'yes';
-        const rightCornerPost = right && LR > 0 && (right.leftPost || 'yes') === 'yes';
+        const rightCornerPost = right && LR > 0 && (right.leftPost !== 'none' && right.leftPost !== 'no');
         const hasRightCornerPost = (rightCornerPost || mainRightPost);
         
         if (right && LR > 0) {
@@ -3929,8 +3959,10 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
         
         if (left && LL > 0) {
-            const leftOuterPostOpt = left.rightPost || 'none';
-            if (leftOuterPostOpt === 'yes') {
+            const leftStyle = left.railStyle || 'classical';
+            const isLeftReturnMeshStyle = (leftStyle === 'urban_balcony' || leftStyle === 'villa_balcony' || leftStyle === 'urban_custom' || leftStyle === 'villa_custom');
+            const leftOuterPostOpt = isLeftReturnMeshStyle ? (left.leftPost || 'none') : (left.rightPost || 'none');
+            if (leftOuterPostOpt !== 'none' && leftOuterPostOpt !== 'no') {
                 const p = new makerjs.models.Rectangle(postW, postH);
                 p.origin = [-postW, LL - postH];
                 topView.models.posts.models['post_' + (postIdx++)] = p;
@@ -3939,7 +3971,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         
         if (right && LR > 0) {
             const rightOuterPostOpt = right.rightPost || 'none';
-            if (rightOuterPostOpt === 'yes') {
+            if (rightOuterPostOpt !== 'none' && rightOuterPostOpt !== 'no') {
                 const p = new makerjs.models.Rectangle(postW, postH);
                 p.origin = [LM, LR - postH];
                 topView.models.posts.models['post_' + (postIdx++)] = p;
@@ -3952,12 +3984,16 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
     createCombinedBalconyModel: function(set, activePanel, isPreview) {
         const style = (set.main && set.main.railStyle) ? set.main.railStyle : ((set.leftReturn && set.leftReturn.railStyle) ? set.leftReturn.railStyle : ((set.rightReturn && set.rightReturn.railStyle) ? set.rightReturn.railStyle : 'classical'));
         
-        let LM = set.main ? ((set.main.length || 120.0) + (set.main.extra6 ? 12.0 : 0.0)) : 0.0;
-        let LL = set.leftReturn ? ((set.leftReturn.length || 36.0) + (set.leftReturn.extra6 ? 6.0 : 0.0)) : 0.0;
-        let LR = set.rightReturn ? ((set.rightReturn.length || 36.0) + (set.rightReturn.extra6 ? 6.0 : 0.0)) : 0.0;
+        let LM = set.main ? ((parseFloat(set.main.length) || 120.0) + (set.main.extra6 ? 12.0 : 0.0)) : 0.0;
+        let LL = set.leftReturn ? ((parseFloat(set.leftReturn.length) || 36.0) + (set.leftReturn.extra6 ? 6.0 : 0.0)) : 0.0;
+        let LR = set.rightReturn ? ((parseFloat(set.rightReturn.length) || 36.0) + (set.rightReturn.extra6 ? 6.0 : 0.0)) : 0.0;
 
         let deltaLeftMain = 0;
         let deltaRightMain = 0;
+        let deltaLeftLeft = 0;
+        let deltaRightLeft = 0;
+        let deltaLeftRight = 0;
+        let deltaRightRight = 0;
 
         if (set.main) {
             const extMain = this.resolveFreeEndExtensions({
@@ -3996,7 +4032,9 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                 extra6: set.leftReturn.extra6 || false,
                 freeEnd4: set.leftReturn.freeEnd4 || false
             }, style, 'leftReturn');
-            LL += (extLeft.deltaLeft + extLeft.deltaRight);
+            deltaLeftLeft = extLeft.deltaLeft;
+            deltaRightLeft = extLeft.deltaRight;
+            LL += (deltaLeftLeft + deltaRightLeft);
         }
         
         if (set.rightReturn) {
@@ -4015,11 +4053,17 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                 extra6: set.rightReturn.extra6 || false,
                 freeEnd4: set.rightReturn.freeEnd4 || false
             }, style, 'rightReturn');
-            LR += (extRight.deltaLeft + extRight.deltaRight);
+            deltaLeftRight = extRight.deltaLeft;
+            deltaRightRight = extRight.deltaRight;
+            LR += (deltaLeftRight + deltaRightRight);
         }
 
+        const leftStyle = set.leftReturn ? (set.leftReturn.railStyle || 'classical') : 'classical';
+        const isLeftReturnMeshStyle = (leftStyle === 'urban_balcony' || leftStyle === 'villa_balcony' || leftStyle === 'urban_custom' || leftStyle === 'villa_custom');
         const mainModel = set.main ? this.getPanelModel(set.main, style, isPreview && (set.leftReturn && LL > 0), isPreview && (set.rightReturn && LR > 0), 'main') : null;
-        const leftModel = set.leftReturn ? this.getPanelModel(set.leftReturn, style, isPreview, false, 'leftReturn') : null;
+        const leftModel = set.leftReturn 
+            ? this.getPanelModel(set.leftReturn, style, isLeftReturnMeshStyle ? false : isPreview, isLeftReturnMeshStyle ? isPreview : false, 'leftReturn') 
+            : null;
         const rightModel = set.rightReturn ? this.getPanelModel(set.rightReturn, style, isPreview, false, 'rightReturn') : null;
 
         if (!isPreview) {
@@ -4028,18 +4072,22 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
             return mainModel;
         }
 
-        const H = set.main ? (set.main.postHeight || 45.75) : 45.75;
+        const H = set.main ? (parseFloat(set.main.postHeight) || 45.75) : 45.75;
         const S = 25.0; // Spacing between views
 
         const projectPoint = (x, y, panelType) => {
+            const numX = Number(x) || 0;
+            const numY = Number(y) || 0;
             if (panelType === 'main') {
-                return [x, -S - H + y];
+                return [numX, -Number(S) - Number(H) + numY];
             } else if (panelType === 'leftReturn') {
-                return [-S - H + y, x];
+                const leftStyle = set.leftReturn ? (set.leftReturn.railStyle || 'classical') : 'classical';
+                const isLeftReturnMeshStyle = (leftStyle === 'urban_balcony' || leftStyle === 'villa_balcony' || leftStyle === 'urban_custom' || leftStyle === 'villa_custom');
+                return [-Number(S) - Number(H) + numY, isLeftReturnMeshStyle ? (Number(LL) - numX) : numX];
             } else if (panelType === 'rightReturn') {
-                return [LM + S + H - y, x];
+                return [Number(LM) + Number(S) + Number(H) - numY, numX];
             }
-            return [x, y];
+            return [numX, numY];
         };
 
         const projectModel = (model, panelType) => {
@@ -4120,8 +4168,8 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                 ? Math.max(0, Math.ceil(LM / 48) - 1) 
                 : ((midPostsOpt === 'custom' || midPostsOpt === 'custom_standard') ? (parseInt(set.main.midPostCount) || 0) : 0);
             
-            const postW = set.main.postW || 1.5;
-            const postH = set.main.postH || 1.5;
+            const postW = parseFloat(set.main.postW) || 1.5;
+            const postH = parseFloat(set.main.postH) || 1.5;
             const startY = -postH;
             const endY = -S;
             const style = set.main.railStyle || 'classical';
@@ -4144,7 +4192,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
             }
             
             if (midPostsOpt !== 'none' && midPostCount > 0) {
-                const resolvedCenters = resolveMidPostCenters(LM, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, postW, customSpacings, style, set.main.extra6, 'main');
+                const resolvedCenters = resolveMidPostCenters(LM, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, postW, customSpacings, style, set.main.extra6, 'main', deltaLeftMain, deltaRightMain);
                 resolvedCenters.forEach(cx => {
                     projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([cx, startY], [cx, endY]);
                 });
@@ -4152,8 +4200,8 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
         
         if (activePanel === 'leftReturn' && leftModel && LL > 0) {
-            const postW = set.main ? (set.main.postW || 1.5) : 1.5;
-            const postH = set.main ? (set.main.postH || 1.5) : 1.5;
+            const postW = set.main ? (parseFloat(set.main.postW) || 1.5) : 1.5;
+            const postH = set.main ? (parseFloat(set.main.postH) || 1.5) : 1.5;
             const startX = -postW;
             const endX = -S;
             
@@ -4162,8 +4210,12 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
             projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([startX, cornerY], [endX, cornerY]);
             
             // Outer post (at y = LL - postH / 2)
-            const leftOuterPostOpt = set.leftReturn ? (set.leftReturn.rightPost || 'none') : 'none';
-            if (leftOuterPostOpt === 'yes') {
+            const leftStyle = set.leftReturn ? (set.leftReturn.railStyle || 'classical') : 'classical';
+            const isLeftReturnMeshStyle = (leftStyle === 'urban_balcony' || leftStyle === 'villa_balcony' || leftStyle === 'urban_custom' || leftStyle === 'villa_custom');
+            const leftOuterPostOpt = set.leftReturn 
+                ? (isLeftReturnMeshStyle ? (set.leftReturn.leftPost || 'none') : (set.leftReturn.rightPost || 'none')) 
+                : 'none';
+            if (leftOuterPostOpt !== 'none' && leftOuterPostOpt !== 'no') {
                 const outerY = LL - postH / 2;
                 projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([startX, outerY], [endX, outerY]);
             } else {
@@ -4179,7 +4231,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                 if (leftMidPostsOpt !== 'none' && leftMidPostCount > 0) {
                     const leftStyle = set.leftReturn.railStyle || 'classical';
                     const leftCustomSpacings = set.leftReturn.midPostSpacings || null;
-                    const resolvedCenters = resolveMidPostCenters(LL, 'yes', leftOuterPostOpt, leftMidPostsOpt, leftMidPostCount, postW, leftCustomSpacings, leftStyle, set.leftReturn.extra6, 'leftReturn');
+                    const resolvedCenters = resolveMidPostCenters(LL, 'yes', leftOuterPostOpt, leftMidPostsOpt, leftMidPostCount, postW, leftCustomSpacings, leftStyle, set.leftReturn.extra6, 'leftReturn', deltaLeftLeft, deltaRightLeft);
                 resolvedCenters.forEach(cy => {
                     projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([startX, cy], [endX, cy]);
                 });
@@ -4187,8 +4239,8 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         }
         
         if (activePanel === 'rightReturn' && rightModel && LR > 0) {
-            const postW = set.main ? (set.main.postW || 1.5) : 1.5;
-            const postH = set.main ? (set.main.postH || 1.5) : 1.5;
+            const postW = set.main ? (parseFloat(set.main.postW) || 1.5) : 1.5;
+            const postH = set.main ? (parseFloat(set.main.postH) || 1.5) : 1.5;
             const startX = LM + postW;
             const endX = LM + S;
             
@@ -4198,7 +4250,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
             
             // Outer post (at y = LR - postH / 2)
             const rightOuterPostOpt = set.rightReturn ? (set.rightReturn.rightPost || 'none') : 'none';
-            if (rightOuterPostOpt === 'yes') {
+            if (rightOuterPostOpt !== 'none' && rightOuterPostOpt !== 'no') {
                 const outerY = LR - postH / 2;
                 projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([startX, outerY], [endX, outerY]);
             } else {
@@ -4214,7 +4266,7 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
                 if (rightMidPostsOpt !== 'none' && rightMidPostCount > 0) {
                     const rightStyle = set.rightReturn.railStyle || 'classical';
                     const rightCustomSpacings = set.rightReturn.midPostSpacings || null;
-                    const resolvedCenters = resolveMidPostCenters(LR, 'yes', rightOuterPostOpt, rightMidPostsOpt, rightMidPostCount, postW, rightCustomSpacings, rightStyle, set.rightReturn.extra6, 'rightReturn');
+                    const resolvedCenters = resolveMidPostCenters(LR, 'yes', rightOuterPostOpt, rightMidPostsOpt, rightMidPostCount, postW, rightCustomSpacings, rightStyle, set.rightReturn.extra6, 'rightReturn', deltaLeftRight, deltaRightRight);
                 resolvedCenters.forEach(cy => {
                     projections.paths['proj_' + (projIdx++)] = new makerjs.paths.Line([startX, cy], [endX, cy]);
                 });
@@ -4229,6 +4281,33 @@ if (typeof makerjs !== 'undefined' && makerjs.measure) {
         } else if (activePanel === 'rightReturn') {
             makerjs.model.rotate(combined, -90, [LM, 0]);
         }
+
+        // Clean any accidental diagonal lines in the combined model
+        const cleanDiagonals = (m) => {
+            if (!m) return;
+            if (m.paths) {
+                for (const pk in m.paths) {
+                    const path = m.paths[pk];
+                    if (path.type === 'line') {
+                        const p1 = path.origin;
+                        const p2 = path.end;
+                        if (p1 && p2) {
+                            const dx = Math.abs(p1[0] - p2[0]);
+                            const dy = Math.abs(p1[1] - p2[1]);
+                            if (dx > 3.0 && dy > 3.0) {
+                                delete m.paths[pk];
+                            }
+                        }
+                    }
+                }
+            }
+            if (m.models) {
+                for (const mk in m.models) {
+                    cleanDiagonals(m.models[mk]);
+                }
+            }
+        };
+        cleanDiagonals(combined);
 
         return combined;
     },

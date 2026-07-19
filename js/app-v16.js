@@ -866,7 +866,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 seg.mark = "b" + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo) + suffix;
             });
         }
-
         return {
             bottomSegments,
             midSegments
@@ -882,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
             midPosts: 'default',
             midPostCount: 1,
             postType: 'hss_rect',
-            postSize: 'HSS1.5x1.5x14GA',
+            postSize: 'HSS1.5x1.5x11GA',
             postW: 1.5,
             postH: 1.5,
             postT: 0.1196,
@@ -936,6 +935,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return cfg;
     }
 
+    function createDefaultReturnConfigWithMainStyle(mainPanel, returnType) {
+        const cfg = createDefaultReturnConfig();
+        if (mainPanel) {
+            cfg.railStyle = mainPanel.railStyle;
+            const customKeys = ['postType', 'postSize', 'postW', 'postH', 'postT', 'topRailType', 'topRailSize', 'topRailW', 'topRailH', 'topRailT', 'botRailType', 'botRailSize', 'botRailW', 'botRailH', 'botRailT', 'midRailType', 'midRailSize', 'midRailW', 'midRailH', 'midRailT', 'midRailGap', 'picketType', 'picketSize', 'picketW', 'picketH', 'picketT', 'picketSpacing'];
+            customKeys.forEach(k => {
+                if (mainPanel[k] !== undefined) {
+                    cfg[k] = mainPanel[k];
+                }
+            });
+            // Apply return specific post defaults for urban/villa styles
+            const style = mainPanel.railStyle || 'classical';
+            const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
+            if (isMeshStyle && returnType === 'leftReturn') {
+                cfg.leftPost = 'none';
+                cfg.rightPost = 'yes';
+            } else {
+                cfg.leftPost = 'yes';
+                cfg.rightPost = 'none';
+            }
+        }
+        return cfg;
+    }
+
     // --- Balcony Wizard State ---
     let balconyWizardState = {
         sets: [
@@ -979,6 +1002,90 @@ document.addEventListener('DOMContentLoaded', () => {
         return { drawingNo, mainMark };
     }
 
+    function applyStyleDefaults(panelObj, style, forceOverwrite = false, returnType = null) {
+        if (!panelObj) return;
+
+        // Determine if leftReturn or rightReturn based on active wizard state if not passed explicitly
+        if (returnType === null && typeof balconyWizardState !== 'undefined') {
+            const activeSet = balconyWizardState.tempSet || (balconyWizardState.sets ? balconyWizardState.sets[balconyWizardState.activeSetIdx] : null);
+            if (activeSet) {
+                if (panelObj === activeSet.leftReturn) {
+                    returnType = 'leftReturn';
+                } else if (panelObj === activeSet.rightReturn) {
+                    returnType = 'rightReturn';
+                }
+            }
+        }
+
+        const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
+        const setVal = (key, val) => {
+            if (forceOverwrite || panelObj[key] === undefined) {
+                panelObj[key] = val;
+            }
+        };
+
+        if (returnType === 'leftReturn') {
+            if (isMeshStyle) {
+                setVal('leftPost', 'none');
+                setVal('rightPost', 'yes');
+            } else {
+                setVal('leftPost', 'yes');
+                setVal('rightPost', 'none');
+            }
+        } else if (returnType === 'rightReturn') {
+            setVal('leftPost', 'yes');
+            setVal('rightPost', 'none');
+        }
+
+        if (style === 'classic_custom') {
+            setVal('postType', 'hss_rect');
+            setVal('postSize', 'HSS1.5x1.5x11GA');
+            setVal('topRailType', 'hss_rect');
+            setVal('topRailSize', 'HSS1.5x1.5x16GA');
+            setVal('botRailType', 'hss_rect');
+            setVal('botRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailType', 'none');
+            setVal('picketType', 'hss_rect');
+            setVal('picketSize', 'HSS1/2x1/2x16GA');
+            setVal('picketSpacing', 4.0);
+        } else if (style === 'executive_custom') {
+            setVal('postType', 'hss_rect');
+            setVal('postSize', 'HSS1.5x1.5x11GA');
+            setVal('topRailType', 'hss_rect');
+            setVal('topRailSize', 'HSS1.5x1.5x16GA');
+            setVal('botRailType', 'hss_rect');
+            setVal('botRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailType', 'hss_rect');
+            setVal('midRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailGap', 3.0);
+            setVal('picketType', 'hss_rect');
+            setVal('picketSize', 'HSS1/2x1/2x16GA');
+            setVal('picketSpacing', 4.0);
+        } else if (style === 'urban_custom') {
+            setVal('postType', 'hss_rect');
+            setVal('postSize', 'HSS1.5x1.5x11GA');
+            setVal('topRailType', 'hss_rect');
+            setVal('topRailSize', 'HSS1.5x1.5x16GA');
+            setVal('botRailType', 'hss_rect');
+            setVal('botRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailType', 'none');
+            setVal('picketType', 'none');
+            setVal('picketSpacing', 0);
+        } else if (style === 'villa_custom') {
+            setVal('postType', 'hss_rect');
+            setVal('postSize', 'HSS1.5x1.5x11GA');
+            setVal('topRailType', 'hss_rect');
+            setVal('topRailSize', 'HSS1.5x1.5x16GA');
+            setVal('botRailType', 'hss_rect');
+            setVal('botRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailType', 'hss_rect');
+            setVal('midRailSize', 'HSS1.5x1.5x16GA');
+            setVal('midRailGap', 3.0);
+            setVal('picketType', 'none');
+            setVal('picketSpacing', 0);
+        }
+    }
+
     function saveCurrentInputsToActivePanel() {
         if (shapeCategory.value !== 'rail_catalog') return;
         const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
@@ -1007,9 +1114,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activePanel === 'main') {
                 if (activeSet.leftReturn) {
                     activeSet.leftReturn.railStyle = styleSelect.value;
+                    applyStyleDefaults(activeSet.leftReturn, styleSelect.value, true, 'leftReturn');
                 }
                 if (activeSet.rightReturn) {
                     activeSet.rightReturn.railStyle = styleSelect.value;
+                    applyStyleDefaults(activeSet.rightReturn, styleSelect.value, true, 'rightReturn');
                 }
             }
         }
@@ -1040,8 +1149,26 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeSet.leftReturn) activeSet.leftReturn.freeEnd4 = chkFreeEnd4.checked;
             if (activeSet.rightReturn) activeSet.rightReturn.freeEnd4 = chkFreeEnd4.checked;
         }
-    }
 
+        // Sync style/component properties from main panel to return panels
+        if (activeSet.main) {
+            const syncKeys = ['railStyle', 'postType', 'postSize', 'postW', 'postH', 'postT', 'topRailType', 'topRailSize', 'topRailW', 'topRailH', 'topRailT', 'botRailType', 'botRailSize', 'botRailW', 'botRailH', 'botRailT', 'midRailType', 'midRailSize', 'midRailW', 'midRailH', 'midRailT', 'midRailGap', 'picketType', 'picketSize', 'picketW', 'picketH', 'picketT', 'picketSpacing'];
+            if (activeSet.leftReturn) {
+                syncKeys.forEach(k => {
+                    if (activeSet.main[k] !== undefined) {
+                        activeSet.leftReturn[k] = activeSet.main[k];
+                    }
+                });
+            }
+            if (activeSet.rightReturn) {
+                syncKeys.forEach(k => {
+                    if (activeSet.main[k] !== undefined) {
+                        activeSet.rightReturn[k] = activeSet.main[k];
+                    }
+                });
+            }
+        }
+    }   
     function loadActivePanelToInputs() {
         if (shapeCategory.value !== 'rail_catalog') return;
         const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
@@ -1049,13 +1176,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const panelObj = activePanel === 'main' ? activeSet.main : (activePanel === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
         if (!panelObj) return;
 
+        applyStyleDefaults(panelObj, panelObj.railStyle || 'classical', false, activePanel);
+
+        // 1. First Pass: Set values of all type select inputs
+        ['postType', 'topRailType', 'botRailType', 'midRailType', 'picketType', 'includeBasePlates'].forEach(id => {
+            const inp = document.getElementById('inp-' + id);
+            if (inp && panelObj[id] !== undefined) {
+                inp.value = panelObj[id];
+            }
+        });
+
+        // 2. Trigger dynamic sizes/visibility update functions to populate select options and toggle visibility
+        ['postType', 'topRailType', 'botRailType', 'midRailType', 'picketType'].forEach(id => {
+            const el = document.getElementById('inp-' + id);
+            if (el && typeof el.updateSizes === 'function') {
+                el.updateSizes();
+            }
+        });
+        const includeBPSelect = document.getElementById('inp-includeBasePlates');
+        if (includeBPSelect && typeof includeBPSelect.updateVisibility === 'function') {
+            includeBPSelect.updateVisibility();
+        }
+
+        // 3. Second Pass: Set values of all input elements including the populated sizes
         for (const key in panelObj) {
             const inp = document.getElementById('inp-' + key);
             if (inp) {
                 inp.value = panelObj[key];
             }
         }
-        
+
         const styleSelect = document.getElementById('inp-railStyle');
         if (styleSelect) {
             styleSelect.value = panelObj.railStyle || 'classical';
@@ -1069,6 +1219,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const chkFreeEnd4 = document.getElementById('chk-free-end-4');
         if (chkFreeEnd4) {
             chkFreeEnd4.checked = !!panelObj.freeEnd4;
+            const style = panelObj.railStyle || 'classical';
+            const isEligible = (style === 'classical' || style === 'classic_custom' || style === 'executive' || style === 'executive_custom');
+            if (isEligible) {
+                chkFreeEnd4.parentElement.style.display = 'flex';
+            } else {
+                chkFreeEnd4.parentElement.style.display = 'none';
+            }
         }
         
         const customOptionsWrapper = document.getElementById('grp-rail-catalog-custom-options');
@@ -1830,6 +1987,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
             
+            typeSelect.updateSizes = updateSizes;
+            
             typeSelect.addEventListener('change', () => {
                 updateSizes();
                 renderCurrentCAD();
@@ -1872,6 +2031,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             };
+            
+            includeSelect.updateVisibility = updateVisibility;
             
             // Populate size select with standard plates
             bpSizeSelect.innerHTML = SHAPES_DB['plate'].map(s => `<option value="${s.id}">${s.name}</option>`).join('');
@@ -2250,7 +2411,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     html += `</div>`;
                 }
 
-                // Base Plates (always visible in main section)
+                // Base Plates (always visible in main section) - Hidden for now
+                html += `<div style="display: none;">`;
                 html += generateSelectInput('Base Plates', 'includeBasePlates', [
                     { val: 'no', lbl: 'None' },
                     { val: 'yes', lbl: 'Include Base Plates' }
@@ -2286,6 +2448,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label>Base Plate Hole Offset Y (in)</label>
                             <input type="number" id="inp-basePlateHoleOffsetY" value="0.25" step="0.01">
                          </div>`;
+                html += `</div>`;
                 html += `</div>`;
 
                 // Custom Options Wrapper
@@ -2392,7 +2555,6 @@ document.addEventListener('DOMContentLoaded', () => {
             html += '</div>'; // inputs-grid end
 
             dynamicInputs.innerHTML = html;
-            loadActivePanelToInputs();
             if (window.lucide) window.lucide.createIcons();
 
             // Wire listeners
@@ -2465,6 +2627,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (railStyleSelect) {
                 railStyleSelect.addEventListener('change', () => {
+                    const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
+                    const activePanel = balconyWizardState.activePanelType;
+                    const panelObj = activePanel === 'main' ? activeSet.main : (activePanel === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
+                    if (panelObj) {
+                        panelObj.railStyle = railStyleSelect.value;
+                        applyStyleDefaults(panelObj, railStyleSelect.value, true);
+                        loadActivePanelToInputs();
+                    }
                     toggleCustomOptions();
                     saveCurrentInputsToActivePanel();
                     renderCurrentCAD();
@@ -2501,7 +2671,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             balconyWizardState.activePanelType = 'main';
                         }
                     } else if (leftReturnToggle.value === 'yes' && !activeSet.leftReturn) {
-                        activeSet.leftReturn = createDefaultReturnConfig();
+                        activeSet.leftReturn = createDefaultReturnConfigWithMainStyle(activeSet.main, 'leftReturn');
                     }
                     updateInputs();
                     loadActivePanelToInputs();
@@ -2518,7 +2688,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             balconyWizardState.activePanelType = 'main';
                         }
                     } else if (rightReturnToggle.value === 'yes' && !activeSet.rightReturn) {
-                        activeSet.rightReturn = createDefaultReturnConfig();
+                        activeSet.rightReturn = createDefaultReturnConfigWithMainStyle(activeSet.main, 'rightReturn');
                     }
                     updateInputs();
                     loadActivePanelToInputs();
@@ -2595,8 +2765,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         drawingBase: nextBase,
                         quantity: 1,
                         main: nextMain,
-                        leftReturn: createDefaultReturnConfig(),
-                        rightReturn: createDefaultReturnConfig()
+                        leftReturn: createDefaultReturnConfigWithMainStyle(nextMain, 'leftReturn'),
+                        rightReturn: createDefaultReturnConfigWithMainStyle(nextMain, 'rightReturn')
                     };
                     
                     balconyWizardState.activeSetIdx = balconyWizardState.sets.length;
@@ -2827,13 +2997,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Set up dynamic profile sizing for custom options
-            setupDynamicProfile('postType', 'postSize', 'grp-postW', 'postW', 'HSS1.5x1.5x14GA');
+            setupDynamicProfile('postType', 'postSize', 'grp-postW', 'postW', 'HSS1.5x1.5x11GA');
             setupDynamicProfile('topRailType', 'topRailSize', 'grp-topRailH', 'topRailH', 'HSS1.5x1.5x16GA');
             setupDynamicProfile('botRailType', 'botRailSize', 'grp-botRailH', 'botRailH', 'HSS1.5x1.5x16GA');
             setupDynamicProfile('midRailType', 'midRailSize', 'grp-midRailH', 'midRailH', 'HSS1.5x1.5x16GA');
             setupDynamicProfile('picketType', 'picketSize', 'grp-picketW', 'picketW', 'HSS1/2x1/2x16GA');
             setupBasePlateProfile();
             setupMidRailGapToggle();
+            
+            loadActivePanelToInputs();
 
             // Setup general listeners
             ['length', 'midPostCount', 'fenceHeight', 'postHeight', 'picketSpacing'].forEach(id => {
@@ -3176,6 +3348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             html += generateNumInput('Picket Spacing (in)', 'picketSpacing', 4.0);
             html += generateNumInput('Slope at Bottom (deg)', 'slope', 0);
+            html += `<div style="display: none;">`;
             html += generateSelectInput('Base Plates', 'includeBasePlates', [{ val: 'no', lbl: 'None' }, { val: 'yes', lbl: 'Include Base Plates' }], 'no');
  
             // Base Plate AISC thickness & dimensions
@@ -3207,6 +3380,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <label>Base Plate Hole Offset Y (in)</label>
                         <input type="number" id="inp-basePlateHoleOffsetY" value="0.25" step="0.01">
                      </div>`;
+            html += `</div>`;
         } else if (cat === 'rails_gates') {
             html += generateSelectInput('Detailing Type', 'railsGatesType', [
                 { val: 'gates', lbl: 'Gates (Full Frame)' },
@@ -4409,6 +4583,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const svgElement = svgContainer.querySelector('svg');
             if (svgElement) {
+                // Remove any accidental diagonal lines (longer than 100 units in both dx and dy)
+                svgElement.querySelectorAll('line').forEach(line => {
+                    const x1 = parseFloat(line.getAttribute('x1')) || 0;
+                    const y1 = parseFloat(line.getAttribute('y1')) || 0;
+                    const x2 = parseFloat(line.getAttribute('x2')) || 0;
+                    const y2 = parseFloat(line.getAttribute('y2')) || 0;
+                    if (Math.abs(x1 - x2) > 100 && Math.abs(y1 - y2) > 100) {
+                        line.remove();
+                    }
+                });
+                svgElement.querySelectorAll('path').forEach(path => {
+                    const d = path.getAttribute('d') || '';
+                    const match = d.match(/^M\s*(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)[,\s]+L\s*(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)\s*$/i);
+                    if (match) {
+                        const x1 = parseFloat(match[1]);
+                        const y1 = parseFloat(match[2]);
+                        const x2 = parseFloat(match[3]);
+                        const y2 = parseFloat(match[4]);
+                        if (Math.abs(x1 - x2) > 100 && Math.abs(y1 - y2) > 100) {
+                            path.remove();
+                        }
+                    }
+                });
                 // Apply solid opaque fills to cover plates so pickets behind them are hidden
                 const fillSolidPlates = (svgEl, color) => {
                     const selectors = [
@@ -6372,7 +6569,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Predict BOM count and compute dynamic vertical boundaries
             let predictedBomCount = 0;
             
-            const midPostCountLocal = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.length || 120) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+            const midPostCountLocal = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length || 120) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
             const noPosts = (vals.leftPost !== 'yes') && (vals.rightPost !== 'yes') && (vals.midPosts === 'none' || midPostCountLocal <= 0);
             
             // Resolve component types for prediction exactly like the actual BOM builder
@@ -8324,8 +8521,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         doc.setLineWidth(0.28);
                         doc.line(pTop[0], pTop[1], pBot[0], pBot[1]);
                         
-                        // Draw horizontal hook at the top pointing left/right
-                        const isLeft = (activePanelType === 'leftReturn');
+                        // Draw horizontal hook at the top pointing left/right (points to post side)
+                        const isLeft = (activePanelType === 'rightReturn' || activePanelType === 'main');
                         const hookLength = 6.0; // in mm
                         const hookEndX = isLeft ? (pTop[0] - hookLength) : (pTop[0] + hookLength);
                         doc.line(pTop[0], pTop[1], hookEndX, pTop[1]);
@@ -8768,8 +8965,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fbDrawH = 1.0 * scale; // flat bar is a small line of 1" height attached to top runner bottom
                 
                 const postType = vals.postType || 'hss_rect';
-                const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                const hasPost = (postType !== 'none' && postType !== 'no') && (vals.leftPost === 'yes' || (vals.midPosts !== 'none' && midPostCount > 0));
+                const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+                const hasPost = (postType !== 'none' && postType !== 'no') && ((activePanelType === 'leftReturn' ? vals.rightPost === 'yes' : vals.leftPost === 'yes') || (vals.midPosts !== 'none' && midPostCount > 0));
 
                 doc.setLineWidth(0.09 * ratioX); // Thin structural outline
                 // Draw Top Runner
@@ -10216,7 +10413,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const startXBound = (vals.leftPost === 'yes') ? postW : 0;
                     const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                    midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+                    midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
                     const clearWidth = endXBound - startXBound - midPostCount * postW;
                     const spanW = clearWidth / (midPostCount + 1);
 
@@ -11277,7 +11474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     const hasLeftPost = (vals.leftPost === 'yes');
                     const hasRightPost = (vals.rightPost === 'yes');
-                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
                     const hasMidPosts = (vals.midPosts !== 'none' && midPostCount > 0);
                     
                     if (vals.postType === 'none' || (!hasLeftPost && !hasRightPost && !hasMidPosts)) {
@@ -15086,7 +15283,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     const startXBound = (vals.leftPost === 'yes') ? postW : 0;
                     const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
                     const clearWidth = endXBound - startXBound - midPostCount * postW;
                     const spanW = clearWidth / (midPostCount + 1);
                     lengthVal = spanW;
@@ -15691,7 +15888,7 @@ document.addEventListener('DOMContentLoaded', () => {
             postW = isHardcodedStyle ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
             let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
             let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.0 : (vals.picketSpacing || 4.0));
-            midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+            midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
             let botY = pHeight - fHeight;
             let midRailGap = (style === 'classical') ? 0 : (isHardcodedStyle ? 3.0 : (vals.midRailGap || 12.0));
             let picketType = (style === 'classical' || style === 'executive') ? 'hss_rect' : ((style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom') ? 'none' : (vals.picketType || 'hss_rect'));
