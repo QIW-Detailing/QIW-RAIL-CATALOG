@@ -39,7 +39,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QIW RAIL BUILDER v1.1 - Clean Grid</title>
+    <title>SteelDraft | Engineering CAD & Sketch</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,16 +108,34 @@
         <aside class="sidebar">
             <header class="logo">
                 <i data-lucide="ferris-wheel"></i>
-                <h1>QIW RAIL BUILDER<span>v1.0</span></h1>
+                <h1>SteelDraft<span>v1.0</span></h1>
             </header>
+
+            <nav class="mode-selector">
+                <button class="nav-btn active" data-mode="shapes">
+                    <i data-lucide="box"></i>
+                    <span>Standard Shapes</span>
+                </button>
+                <button class="nav-btn" data-mode="sketch">
+                    <i data-lucide="edit-3"></i>
+                    <span>Rough Sketch</span>
+                </button>
+                <button class="nav-btn" data-mode="draft">
+                    <i data-lucide="layout-grid"></i>
+                    <span>Drafting Space</span>
+                </button>
+            </nav>
 
             <div class="sidebar-content">
                 <!-- Shapes Mode Controls -->
                 <section id="shapes-controls" class="control-panel">
-                    <div class="input-group" style="display: none;">
+                    <div class="input-group">
                         <label>Category</label>
                         <select id="shape-category">
-                            <option value="rail_catalog" selected>Rail Builder</option>
+                            <option value="fence">FENCE</option>
+                            <option value="rails_gates">GATES</option>
+                            <option value="rail_catalog">Rail Catalog</option>
+                            <option value="plate">PLATE</option>
                         </select>
                     </div>
 
@@ -400,22 +418,21 @@
                                 <i data-lucide="maximize-2" style="width: 14px; height: 14px;"></i>
                             </button>
                         </div>
-                        <button id="toggle-pdf-preview" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: #ff9f43; color: #ff9f43; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Toggle real-time PDF blueprint preview">
-                            <i data-lucide="file-text"></i> <span>PDF Preview Off</span>
-                        </button>
-                        <button id="toggle-pan-mode" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-secondary); color: var(--accent-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Pan Viewport (AutoCAD style)">
+                         <button id="toggle-pan-mode" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-secondary); color: var(--accent-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Pan Viewport (AutoCAD style)">
                             <i data-lucide="hand"></i> <span>Pan View Off</span>
                         </button>
-                        <button id="btn-advance-features" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-primary); color: var(--accent-primary); display: flex; align-items: center; gap: 6px; cursor: pointer;" title="Toggle Advanced Features Panel">
-                            <i data-lucide="settings"></i> <span>Advance Features</span>
+                        <button id="toggle-interactive" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--accent-primary); color: var(--accent-primary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <i data-lucide="mouse-pointer"></i> <span>Tweak Mode Off</span>
+                        </button>
+                        <button id="toggle-autocad-dimensions" class="btn secondary" style="padding: 6px 12px; font-size: 0.8rem; border-color: #00d4ff; color: #00d4ff; display: flex; align-items: center; gap: 6px; cursor: pointer;" title="AutoCAD Interactive Dimensioning Mode">
+                            <i data-lucide="ruler"></i> <span>AutoCAD Dim Off</span>
                         </button>
                         <div class="view-stats">
                             <span id="dim-text">W: 0mm | H: 0mm</span>
                         </div>
                     </div>
                 </div>
-                <div id="svg-container" style="flex: 1; display: flex;"></div>
-                <iframe id="pdf-preview-iframe" class="hidden" style="flex: 1; border: none; background: #fff; width: 100%; height: 100%;"></iframe>
+                <div id="svg-container"></div>
                 <!-- Floating BOM & Piece Marks Preview Panel -->
                 <div id="bom-preview-panel" style="background: rgba(26, 30, 38, 0.85); backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); padding: 12px 20px; z-index: 10; display: flex; flex-direction: column; gap: 8px; max-height: 200px; transition: max-height 0.3s ease;">
                     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;">
@@ -443,29 +460,11 @@
                         </table>
                     </div>
                 </div>
-                <!-- Floating Advance Features Control Panel -->
-                <div id="advance-features-panel" class="hidden" style="position: absolute; top: 60px; right: 20px; z-index: 100; background: rgba(30, 30, 40, 0.95); backdrop-filter: blur(10px); border: 1px solid var(--accent-primary); border-radius: 8px; padding: 16px; width: 220px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;">
-                        <span style="font-weight: 600; color: var(--accent-primary); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="sliders" style="width: 14px; height: 14px;"></i> <span>Advance Features</span>
-                        </span>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-size: 0.8rem; user-select: none;">
-                            <input type="checkbox" id="chk-6-extra" style="width: 14px; height: 14px; cursor: pointer;" />
-                            <span>6" Extra</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-main); font-size: 0.8rem; user-select: none;">
-                            <input type="checkbox" id="chk-free-end-4" style="width: 14px; height: 14px; cursor: pointer;" />
-                            <span>4" at free end</span>
-                        </label>
-                    </div>
-                </div>
                 <!-- Floating AutoCAD Dimensioning Control Panel -->
                 <div id="autocad-dim-toolbar" class="hidden" style="position: absolute; top: 60px; right: 20px; z-index: 100; background: rgba(30, 30, 40, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 8px; padding: 12px; width: 250px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); font-family: 'Inter', sans-serif;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 6px;">
                         <span style="font-weight: 600; color: #00d4ff; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
-                            <i data-lucide="ruler" style="width: 14px; height: 14px;"></i> <span id="autocad-dim-panel-title">AutoCAD Dimensioning</span>
+                            <i data-lucide="ruler" style="width: 14px; height: 14px;"></i> AutoCAD Dimensioning
                         </span>
                     </div>
                     <div style="margin-bottom: 8px;">
@@ -479,16 +478,6 @@
                             <button id="dim-font-inc" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Increase Text Size">A+</button>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="font-size: 0.7rem; color: rgba(255, 255, 255, 0.7);">Text Gap: <span id="dim-text-gap-val" style="font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-weight: bold;">8px</span></span>
-                        <div style="display: flex; gap: 4px;">
-                            <button id="dim-gap-dec" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Decrease Text Gap">G-</button>
-                            <button id="dim-gap-inc" class="btn secondary" style="padding: 1px 6px; font-size: 0.7rem; min-width: 24px; cursor: pointer; border-color: rgba(255,255,255,0.15);" title="Increase Text Gap">G+</button>
-                        </div>
-                    </div>
-                    <button id="delete-selected-dim" class="btn secondary hidden" style="width: 100%; padding: 6px; font-size: 0.75rem; border-color: #ffaa00; color: #ffaa00; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; background: rgba(255, 170, 0, 0.05); margin-bottom: 6px;">
-                        <i data-lucide="trash" style="width: 12px; height: 12px;"></i> Delete Selected
-                    </button>
                     <button id="clear-custom-dims" class="btn secondary" style="width: 100%; padding: 5px; font-size: 0.75rem; border-color: rgba(255, 68, 68, 0.4); color: #ff6b6b; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; background: rgba(255, 68, 68, 0.05);">
                         <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> Clear Dimensions
                     </button>
@@ -582,14 +571,6 @@
                     <input type="text" id="exp-customFinish" placeholder="e.g. Powder Coat - Gloss Black">
                 </div>
                 
-                <div id="wiz-sheet-manager-container" class="hidden" style="margin-top: 15px; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px; color: var(--accent-primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Manage Drawing Sheets to Export</label>
-                    <p style="margin: 0 0 8px 0; font-size: 11px; color: #8c9ba5;">The drawing package will contain only the sheets listed below. You can delete any sheet you do not want to export.</p>
-                    <div id="wiz-sheet-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
-                        <!-- Dynamically populated sheets with delete buttons -->
-                    </div>
-                </div>
-
                 <div class="checkbox-group style-group" style="margin-top: 15px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px;">
                     <label style="display: flex; align-items: center; gap: 10px; font-weight: 600; cursor: pointer; color: var(--text-main);">
                         <input type="checkbox" id="exp-needFBOM" checked style="width: 16px; height: 16px; accent-color: var(--accent-primary);"> 
@@ -599,7 +580,7 @@
                 
                 <div class="modal-actions" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
                     <button type="button" id="exp-cancel" class="btn secondary" style="padding: 8px 16px;">Cancel</button>
-                    <button type="button" id="exp-submit" class="btn primary" style="padding: 8px 16px;"><i data-lucide="save"></i> Save & Generate Package</button>
+                    <button type="button" id="exp-submit" class="btn primary" style="padding: 8px 16px;"><i data-lucide="download"></i> Generate PDF & BOM</button>
                 </div>
             </form>
         </div>
@@ -608,9 +589,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/shapes-db.js"></script>
-    <script src="js/cad-engine-v16.js?v=21"></script>
+    <script src="js/cad-engine.js"></script>
     <script src="js/sketch-processor.js"></script>
-    <script src="js/app-v16.js?v=21"></script>
+    <script src="js/app.js?v=1.1.1"></script>
     <script>
         window.addEventListener("load", () => {
             if (window.lucide) {

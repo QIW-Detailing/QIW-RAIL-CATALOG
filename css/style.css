@@ -271,10 +271,6 @@ body {
 path {
     stroke-width: 2px;
 }
-path[id*="wwm"], path[id*="meshpanel"], path[id*="wave"], path[id*="looseend"], path[id*="loose_end"] {
-    stroke-width: 1px;
-    opacity: 0.75;
-}
 .makerjs-path { stroke: var(--accent-primary); fill: none; }
 .makerjs-dimension { stroke: var(--accent-secondary); font-family: 'JetBrains Mono'; font-size: 12px; }
 
@@ -582,25 +578,4 @@ path[id*="wwm"], path[id*="meshpanel"], path[id*="wave"], path[id*="looseend"], 
 @keyframes scaleUp {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
-}
-
-/* Balcony Set Configurator Wizard */
-.balcony-wizard-card select, 
-.balcony-wizard-card input {
-    background: #0f131a !important;
-    border: 1px solid var(--border-color) !important;
-    color: #fff !important;
-}
-.wiz-tab-btn {
-    transition: all 0.3s ease;
-}
-.wiz-tab-btn:hover:not(.disabled-tab) {
-    color: #fff !important;
-}
-.wiz-tab-btn.active {
-    border-bottom: 2px solid var(--accent-primary) !important;
-    color: var(--accent-primary) !important;
-}
-.wiz-tab-btn.disabled-tab {
-    cursor: not-allowed !important;
 }

@@ -6,635 +6,10 @@ if (typeof makerjs === 'undefined' && typeof MakerJs !== 'undefined') {
     window.makerjs = MakerJs;
 }
 
-function formatToArchitecturalDesc(desc) {
-    if (typeof desc !== 'string' || !desc) return desc;
-    return desc.replace(/([0-9]+)?\.([0-9]+)/g, (match) => {
-        const num = parseFloat(match);
-        const wholeNum = Math.floor(num);
-        const fracVal = num - wholeNum;
-        let fracStr = "";
-        if (Math.abs(fracVal - 0.5) < 0.01) {
-            fracStr = "1/2";
-        } else if (Math.abs(fracVal - 0.25) < 0.01) {
-            fracStr = "1/4";
-        } else if (Math.abs(fracVal - 0.75) < 0.01) {
-            fracStr = "3/4";
-        } else if (Math.abs(fracVal - 0.125) < 0.01) {
-            fracStr = "1/8";
-        } else if (Math.abs(fracVal - 0.375) < 0.01) {
-            fracStr = "3/8";
-        } else if (Math.abs(fracVal - 0.625) < 0.01) {
-            fracStr = "5/8";
-        } else if (Math.abs(fracVal - 0.875) < 0.01) {
-            fracStr = "7/8";
-        } else if (Math.abs(fracVal - 0.0625) < 0.001) {
-            fracStr = "1/16";
-        } else if (Math.abs(fracVal - 0.1875) < 0.001) {
-            fracStr = "3/16";
-        } else if (Math.abs(fracVal - 0.3125) < 0.001) {
-            fracStr = "5/16";
-        } else if (Math.abs(fracVal - 0.4375) < 0.001) {
-            fracStr = "7/16";
-        } else if (Math.abs(fracVal - 0.5625) < 0.001) {
-            fracStr = "9/16";
-        } else if (Math.abs(fracVal - 0.6875) < 0.001) {
-            fracStr = "11/16";
-        } else if (Math.abs(fracVal - 0.8125) < 0.001) {
-            fracStr = "13/16";
-        } else if (Math.abs(fracVal - 0.9375) < 0.001) {
-            fracStr = "15/16";
-        } else {
-            return match;
-        }
-        
-        if (wholeNum > 0) {
-            return `${wholeNum} ${fracStr}`;
-        } else {
-            return fracStr;
-        }
-    });
-}
-
-function formatFraction(val) {
-    if (typeof val !== 'number' || isNaN(val)) return '0"';
-    const totalSixteenths = Math.round(val * 16);
-    const totalInches = Math.floor(totalSixteenths / 16);
-    const sixteenths = totalSixteenths % 16;
-    const feet = Math.floor(totalInches / 12);
-    const inches = totalInches % 12;
-    
-    let fractionStr = '';
-    if (sixteenths > 0) {
-        let num = sixteenths, den = 16;
-        while (num % 2 === 0) { num /= 2; den /= 2; }
-        fractionStr = ` ${num}/${den}`;
-    }
-    
-    let res = '';
-    if (feet > 0) {
-        res = `${feet}'-${inches}${fractionStr}"`;
-    } else {
-        if (inches === 0 && fractionStr !== '') {
-            res = `${fractionStr.trim()}"`;
-        } else {
-            res = `${inches}${fractionStr}"`;
-        }
-    }
-    return res.replace(/1\/2/g, '½')
-              .replace(/3\/4/g, '¾')
-              .replace(/1\/4/g, '¼');
-}
-
-function consolidateBOMItems(items) {
-    const consolidated = [];
-    items.forEach(item => {
-        const existing = consolidated.find(c => c.mark === item.mark && c.desc === item.desc && c.len === item.len);
-        if (existing) {
-            if (existing.qty === 'AR' || item.qty === 'AR') {
-                existing.qty = 'AR';
-            } else {
-                existing.qty = (parseInt(existing.qty) || 0) + (parseInt(item.qty) || 0);
-            }
-            if (existing.weight !== undefined && item.weight !== undefined) {
-                existing.weight = (parseFloat(existing.weight) || 0) + (parseFloat(item.weight) || 0);
-            }
-            const remarks = [];
-            if (existing.remark) remarks.push(existing.remark);
-            if (item.remark) remarks.push(item.remark);
-            const uniqueRemarks = Array.from(new Set(remarks.map(r => r.trim()).filter(r => r !== "")));
-            if (uniqueRemarks.includes("BOTTOM RUNNER") && uniqueRemarks.includes("MID RUNNER")) {
-                const otherRemarks = uniqueRemarks.filter(r => r !== "BOTTOM RUNNER" && r !== "MID RUNNER");
-                existing.remark = ["BOTTOM/MID RUNNER", ...otherRemarks].join(" / ");
-            } else if (uniqueRemarks.includes("BOTTOM RAIL") && uniqueRemarks.includes("MID RAIL")) {
-                const otherRemarks = uniqueRemarks.filter(r => r !== "BOTTOM RAIL" && r !== "MID RAIL");
-                existing.remark = ["BOTTOM/MID RAIL", ...otherRemarks].join(" / ");
-            } else {
-                existing.remark = uniqueRemarks.join(" / ");
-            }
-        } else {
-            consolidated.push({ ...item });
-        }
-    });
-    return consolidated;
-}
-
-function parseFractionOrDecimal(str) {
-    if (!str) return 0;
-    str = str.trim().replace(/"/g, ''); // remove quotes
-    if (str.includes('/')) {
-        const parts = str.split(/[\s-]+/);
-        if (parts.length === 2) {
-            const whole = parseFloat(parts[0]) || 0;
-            const fracParts = parts[1].split('/');
-            const num = parseFloat(fracParts[0]) || 0;
-            const den = parseFloat(fracParts[1]) || 1;
-            return whole + num / den;
-        } else if (parts.length === 1) {
-            const fracParts = parts[0].split('/');
-            const num = parseFloat(fracParts[0]) || 0;
-            const den = parseFloat(fracParts[1]) || 1;
-            return num / den;
-        }
-    }
-    return parseFloat(str) || 0;
-}
-
-function parseCustomSize(sizeStr, defaultVal) {
-    if (!sizeStr) return { w: defaultVal, h: defaultVal, t: 0.12 };
-    const str = sizeStr.toString().trim();
-    if (/^\d+(\.\d+)?$/.test(str)) {
-        const val = parseFloat(str);
-        return { w: val, h: val, t: 0.12 };
-    }
-    const cleanStr = str.replace(/^(HSS|FB|PL|L|PIPE|TUBING|W)\s*/i, '').trim();
-    const parts = cleanStr.split(/\s*x\s*/i);
-    if (parts.length >= 2) {
-        const w = parseFractionOrDecimal(parts[0]);
-        const h = parseFractionOrDecimal(parts[1]);
-        let t = 0.12;
-        if (parts.length >= 3) {
-            const tStr = parts[2].trim();
-            if (tStr.toUpperCase().endsWith('GA')) {
-                const gaNum = parseInt(tStr) || 11;
-                if (gaNum === 10) t = 0.1345;
-                else if (gaNum === 11) t = 0.1196;
-                else if (gaNum === 12) t = 0.1046;
-                else if (gaNum === 14) t = 0.0747;
-                else if (gaNum === 16) t = 0.0598;
-                else t = 0.12;
-            } else {
-                t = parseFractionOrDecimal(tStr);
-            }
-        }
-        return { w, h, t };
-    }
-    const w = parseFractionOrDecimal(cleanStr);
-    return { w, h: w, t: w };
-}
-
-function getProfileThickness(type, size, customVal) {
-    if (type === 'none' || size === 'NONE') return 0;
-    if (size === 'CUSTOM') {
-        const parsed = parseCustomSize(customVal, 0.12);
-        return parsed.t;
-    }
-    const shapes = SHAPES_DB[type] || [];
-    const selected = shapes.find(s => s.id === size);
-    if (selected) return selected.t || 0.12;
-    return typeof customVal === 'string' ? parseCustomSize(customVal, 0.12).t : (parseFloat(customVal) || 0.12);
-}
-
-function getPicketDimension(type, size, customVal) {
-    if (type === 'none' || size === 'NONE') return 0;
-    if (size === 'CUSTOM') {
-        const parsed = parseCustomSize(customVal, 0.5);
-        return parsed.w;
-    }
-    const shapes = SHAPES_DB[type] || [];
-    const selected = shapes.find(s => s.id === size);
-    if (selected) {
-        if (type === 'hss_rect') return selected.w || 0;
-        if (type === 'hss_circ') return selected.d || 0;
-        if (type === 'w_beam') return selected.bf || 0;
-        if (type === 'angles') return selected.leg1 || 0;
-        if (type === 'plate') return selected.t || 0;
-    }
-    return typeof customVal === 'string' ? parseCustomSize(customVal, 0.5).w : (parseFloat(customVal) || 0);
-}
-
-function getProfileDimension(type, size, customVal) {
-    if (type === 'none' || size === 'NONE') return 0;
-    if (size === 'CUSTOM') {
-        const parsed = parseCustomSize(customVal, 1.5);
-        return parsed.h;
-    }
-    const shapes = SHAPES_DB[type] || [];
-    const selected = shapes.find(s => s.id === size);
-    if (selected) {
-        if (type === 'hss_rect') return selected.h || selected.w || 0;
-        if (type === 'hss_circ') return selected.d || 0;
-        if (type === 'w_beam') return selected.d || 0;
-        if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
-        if (type === 'plate') return selected.t || 0;
-    }
-    return typeof customVal === 'string' ? parseCustomSize(customVal, 1.5).h : (parseFloat(customVal) || 0);
-}
-
-function formatPlateDesc(sizeId, width) {
-    let thick = sizeId || 'PL11GA';
-    if (thick.startsWith('PL')) {
-        thick = thick.substring(2);
-    }
-    if (thick.endsWith('GA')) {
-        thick = thick.replace('GA', ' GA');
-    }
-    
-    const formatFracLocal = (val) => {
-        if (typeof val !== 'number' || isNaN(val)) return '0';
-        const totalSixteenths = Math.round(val * 16);
-        const totalInches = Math.floor(totalSixteenths / 16);
-        const sixteenths = totalSixteenths % 16;
-        if (sixteenths > 0) {
-            let num = sixteenths, den = 16;
-            while (num % 2 === 0) { num /= 2; den /= 2; }
-            return totalInches === 0 ? `${num}/${den}` : `${totalInches} ${num}/${den}`;
-        }
-        return `${totalInches}`;
-    };
-}
-
-function getResolvedPanelProperties(panel, style) {
-    if (!panel) return null;
-    let fHeight = panel.fenceHeight !== undefined ? panel.fenceHeight : 41.0;
-    let pHeight = panel.postHeight !== undefined ? panel.postHeight : 45.75;
-    let postType = panel.postType || 'hss_rect';
-    let postW = panel.postW !== undefined ? panel.postW : 1.5;
-    let postH = panel.postH !== undefined ? panel.postH : 1.5;
-    let postT = panel.postT !== undefined ? panel.postT : 0.1196;
-    let topRailType = panel.topRailType || 'hss_rect';
-    let topRailW = panel.topRailW !== undefined ? panel.topRailW : 1.5;
-    let topRailH = panel.topRailH !== undefined ? panel.topRailH : 1.5;
-    let topRailT = panel.topRailT !== undefined ? panel.topRailT : 0.0598;
-    let botRailType = panel.botRailType || 'hss_rect';
-    let botRailW = panel.botRailW !== undefined ? panel.botRailW : 1.5;
-    let botRailH = panel.botRailH !== undefined ? panel.botRailH : 1.5;
-    let botRailT = panel.botRailT !== undefined ? panel.botRailT : 0.0598;
-    let midRailType = panel.midRailType || 'none';
-    let midRailW = panel.midRailW !== undefined ? panel.midRailW : 1.5;
-    let midRailH = panel.midRailH !== undefined ? panel.midRailH : 1.5;
-    let midRailT = panel.midRailT !== undefined ? panel.midRailT : 0.0598;
-    let midRailGap = panel.midRailGap !== undefined ? panel.midRailGap : 12.0;
-    let picketType = panel.picketType || 'hss_rect';
-    let picketW = panel.picketW !== undefined ? panel.picketW : 0.5;
-    let picketH = panel.picketH !== undefined ? panel.picketH : 0.5;
-    let picketT = panel.picketT !== undefined ? panel.picketT : 0.0598;
-    let picketSpacing = panel.picketSpacing !== undefined ? panel.picketSpacing : 4.0;
-    let includeBasePlates = panel.includeBasePlates || 'no';
-    let bpW = panel.basePlateW !== undefined ? panel.basePlateW : 6.0;
-    let bpL = panel.basePlateL !== undefined ? panel.basePlateL : 6.0;
-    let bpH = panel.basePlateT !== undefined ? panel.basePlateT : 0.5;
-    let bpHoleD = panel.basePlateHoleD !== undefined ? panel.basePlateHoleD : 0.5;
-    let bpHoleOffsetX = panel.basePlateHoleOffsetX !== undefined ? panel.basePlateHoleOffsetX : 0.5;
-    let bpHoleOffsetY = panel.basePlateHoleOffsetY !== undefined ? panel.basePlateHoleOffsetY : 0.25;
-
-    if (style === 'classical') {
-        fHeight = 41.0; pHeight = 45.75;
-        postType = 'hss_rect'; postW = 1.5; postH = 1.5; postT = 0.1196;
-        topRailType = 'hss_rect'; topRailW = 1.5; topRailH = 1.5; topRailT = 0.0598;
-        botRailType = 'hss_rect'; botRailW = 1.5; botRailH = 1.5; botRailT = 0.0598;
-        midRailType = 'none';
-        picketType = 'hss_rect'; picketW = 0.5; picketH = 0.5; picketT = 0.0598; picketSpacing = 4.0;
-        includeBasePlates = 'no';
-    } else if (style === 'executive') {
-        fHeight = 41.0; pHeight = 45.75;
-        postType = 'hss_rect'; postW = 1.5; postH = 1.5; postT = 0.1196;
-        topRailType = 'hss_rect'; topRailW = 1.5; topRailH = 1.5; topRailT = 0.0598;
-        botRailType = 'hss_rect'; botRailW = 1.5; botRailH = 1.5; botRailT = 0.0598;
-        midRailType = 'hss_rect'; midRailW = 1.5; midRailH = 1.5; midRailT = 0.0598; midRailGap = 3.0;
-        picketType = 'hss_rect'; picketW = 0.5; picketH = 0.5; picketT = 0.0598; picketSpacing = 4.0;
-        includeBasePlates = 'no';
-    } else if (style === 'urban_balcony') {
-        fHeight = 41.0; pHeight = 45.75;
-        postType = 'hss_rect'; postW = 1.5; postH = 1.5; postT = 0.1196;
-        topRailType = 'hss_rect'; topRailW = 1.5; topRailH = 1.5; topRailT = 0.0598;
-        botRailType = 'hss_rect'; botRailW = 1.5; botRailH = 1.5; botRailT = 0.0598;
-        midRailType = 'none';
-        picketType = 'none'; picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-        includeBasePlates = 'no';
-    } else if (style === 'villa_balcony') {
-        fHeight = 41.0; pHeight = 45.75;
-        postType = 'hss_rect'; postW = 1.5; postH = 1.5; postT = 0.1196;
-        topRailType = 'hss_rect'; topRailW = 1.5; topRailH = 1.5; topRailT = 0.0598;
-        botRailType = 'hss_rect'; botRailW = 1.5; botRailH = 1.5; botRailT = 0.0598;
-        midRailType = 'hss_rect'; midRailW = 1.5; midRailH = 1.5; midRailT = 0.0598; midRailGap = 3.0;
-        picketType = 'none'; picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-        includeBasePlates = 'no';
-    } else if (style === 'urban_custom' || style === 'villa_custom') {
-        fHeight = panel.fenceHeight || 36;
-        pHeight = panel.postHeight || 36;
-        postType = panel.postType || 'hss_rect';
-        postW = getPicketDimension(panel.postType, panel.postSize, panel.postW || 1.5);
-        postH = getProfileDimension(panel.postType, panel.postSize, panel.postW || 1.5);
-        postT = getProfileThickness(panel.postType, panel.postSize, panel.postW || 0.12);
-        topRailType = panel.topRailType || 'hss_rect';
-        topRailW = getPicketDimension(panel.topRailType, panel.topRailSize, panel.topRailH || 1.5);
-        topRailH = getProfileDimension(panel.topRailType, panel.topRailSize, panel.topRailH || 1.5);
-        topRailT = getProfileThickness(panel.topRailType, panel.topRailSize, panel.topRailH || 0.12);
-        botRailType = panel.botRailType || 'hss_rect';
-        botRailW = getPicketDimension(panel.botRailType, panel.botRailSize, panel.botRailH || 1.5);
-        botRailH = getProfileDimension(panel.botRailType, panel.botRailSize, panel.botRailH || 1.5);
-        botRailT = getProfileThickness(panel.botRailType, panel.botRailSize, panel.botRailH || 0.12);
-        midRailType = (style === 'villa_custom') ? (panel.midRailType || 'hss_rect') : 'none';
-        midRailW = getPicketDimension(midRailType, panel.midRailSize, panel.midRailH || 1.5);
-        midRailH = getProfileDimension(midRailType, panel.midRailSize, panel.midRailH || 1.5);
-        midRailT = getProfileThickness(midRailType, panel.midRailSize, panel.midRailH || 0.12);
-        midRailGap = panel.midRailGap !== undefined ? panel.midRailGap : 12.0;
-        picketType = 'none';
-        picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-        includeBasePlates = panel.includeBasePlates || 'no';
-        bpW = panel.basePlateW || 6.0;
-        bpL = panel.basePlateL || 6.0;
-        bpH = getProfileDimension('plate', panel.basePlateSize, panel.basePlateT || 0.5);
-        bpHoleD = panel.basePlateHoleD || 0.5;
-        bpHoleOffsetX = panel.basePlateHoleOffsetX || 0.5;
-        bpHoleOffsetY = panel.basePlateHoleOffsetY || 0.25;
-    } else {
-        fHeight = panel.fenceHeight || 36;
-        pHeight = panel.postHeight || 36;
-        postType = panel.postType || 'hss_rect';
-        postW = getPicketDimension(panel.postType, panel.postSize, panel.postW || 1.5);
-        postH = getProfileDimension(panel.postType, panel.postSize, panel.postW || 1.5);
-        postT = getProfileThickness(panel.postType, panel.postSize, panel.postW || 0.12);
-        topRailType = panel.topRailType || 'hss_rect';
-        topRailW = getPicketDimension(panel.topRailType, panel.topRailSize, panel.topRailH || 1.5);
-        topRailH = getProfileDimension(panel.topRailType, panel.topRailSize, panel.topRailH || 1.5);
-        topRailT = getProfileThickness(panel.topRailType, panel.topRailSize, panel.topRailH || 0.12);
-        botRailType = panel.botRailType || 'hss_rect';
-        botRailW = getPicketDimension(panel.botRailType, panel.botRailSize, panel.botRailH || 1.5);
-        botRailH = getProfileDimension(panel.botRailType, panel.botRailSize, panel.botRailH || 1.5);
-        botRailT = getProfileThickness(panel.botRailType, panel.botRailSize, panel.botRailH || 0.12);
-        midRailType = panel.midRailType || 'none';
-        midRailW = getPicketDimension(panel.midRailType, panel.midRailSize, panel.midRailH || 1.5);
-        midRailH = getProfileDimension(panel.midRailType, panel.midRailSize, panel.midRailH || 1.5);
-        midRailT = getProfileThickness(panel.midRailType, panel.midRailSize, panel.midRailH || 0.12);
-        midRailGap = panel.midRailGap !== undefined ? panel.midRailGap : 12.0;
-        picketType = panel.picketType || 'hss_rect';
-        picketW = getPicketDimension(panel.picketType, panel.picketSize, panel.picketW || 0.5);
-        picketH = getProfileDimension(panel.picketType, panel.picketSize, panel.picketW || 0.5);
-        picketT = getProfileThickness(panel.picketType, panel.picketSize, panel.picketW || 0.083);
-        picketSpacing = panel.picketSpacing || 4.0;
-        includeBasePlates = panel.includeBasePlates || 'no';
-        bpW = panel.basePlateW || 6.0;
-        bpL = panel.basePlateL || 6.0;
-        bpH = getProfileDimension('plate', panel.basePlateSize, panel.basePlateT || 0.5);
-        bpHoleD = panel.basePlateHoleD || 0.5;
-        bpHoleOffsetX = panel.basePlateHoleOffsetX || 0.5;
-        bpHoleOffsetY = panel.basePlateHoleOffsetY || 0.25;
-    }
-
-    return {
-        length: panel.length || 0,
-        fHeight, pHeight, postType, postW, postH, postT,
-        topRailType, topRailW, topRailH, topRailT,
-        botRailType, botRailW, botRailH, botRailT,
-        midRailType, midRailW, midRailH, midRailT, midRailGap,
-        picketType, picketW, picketH, picketT, picketSpacing,
-        leftPost: panel.leftPost || 'yes',
-        rightPost: panel.rightPost || 'yes',
-        midPosts: panel.midPosts || 'none',
-        midPostCount: (panel.midPosts === 'default' || panel.midPosts === 'yes') ? Math.max(0, Math.ceil((panel.length || 0) / 48) - 1) : ((panel.midPosts === 'custom' || panel.midPosts === 'custom_standard') ? (parseInt(panel.midPostCount) || 0) : 0),
-        includeBasePlates, bpW, bpL, bpH, bpHoleD, bpHoleOffsetX, bpHoleOffsetY,
-        meshGridW: panel.meshGridW !== undefined ? parseFloat(panel.meshGridW) : 2.0,
-        meshGridH: panel.meshGridH !== undefined ? parseFloat(panel.meshGridH) : 2.0,
-        meshWireD: panel.meshWireD !== undefined ? parseFloat(panel.meshWireD) : 0.135,
-        extraFlatBar: panel.extraFlatBar || 'no'
-    };
-}
-window.getResolvedPanelProperties = getResolvedPanelProperties;
-
-function parseMeshSpec(meshType, spec, heightVal) {
-    const clean = (spec || '').trim();
-    const formattedHeight = formatFraction(heightVal).replace(/"/g, '');
-    
-    if (meshType === 'mesh') {
-        const m = clean.match(/^(?:WWM)?\s*(\d+(?:\.\d+)?\s*x\s*\d+(?:\.\d+)?)\s*x\s*([0-9.#\/]+)/i);
-        if (m) {
-            const grid = m[1].replace(/\s+/g, '');
-            let wire = m[2];
-            if (wire.startsWith('0.')) {
-                wire = wire.substring(1);
-            }
-            const bomDesc = `WWM${grid}x${wire}x${formattedHeight}`;
-            const dimensions = `${grid} * ${wire} * ${formattedHeight}`;
-            return { bomDesc, dimensions };
-        }
-        const fallbackGrid = clean.replace(/^WWM/i, '').trim();
-        return {
-            bomDesc: `${clean}x${formattedHeight}`,
-            dimensions: `${fallbackGrid} * ${formattedHeight}`
-        };
-    } else if (meshType === 'xf') {
-        const m = clean.match(/^(?:XF)?\s*([0-9.\/]+)\s*x\s*(?:#)?(\d+)(?:GA)?/i);
-        if (m) {
-            const opening = m[1];
-            const gage = m[2];
-            const bomDesc = `XF${opening}x#${gage}x${formattedHeight}`;
-            const dimensions = `${opening} - ${gage}GAx${formattedHeight}`;
-            return { bomDesc, dimensions };
-        }
-        const fallbackGage = clean.replace(/^XF/i, '').trim();
-        return {
-            bomDesc: `${clean}x${formattedHeight}`,
-            dimensions: `${fallbackGage}x${formattedHeight}`
-        };
-    }
-    return { bomDesc: clean, dimensions: clean };
-}
-
-function formatPlateDesc(sizeId, width) {
-    let thick = sizeId || 'PL11GA';
-    if (thick.startsWith('PL')) {
-        thick = thick.substring(2);
-    }
-    if (thick.endsWith('GA')) {
-        thick = thick.replace('GA', ' GA');
-    }
-    
-    const formatFracLocal = (val) => {
-        if (typeof val !== 'number' || isNaN(val)) return '0';
-        const totalSixteenths = Math.round(val * 16);
-        const totalInches = Math.floor(totalSixteenths / 16);
-        const sixteenths = totalSixteenths % 16;
-        if (sixteenths > 0) {
-            let num = sixteenths, den = 16;
-            while (num % 2 === 0) { num /= 2; den /= 2; }
-            return totalInches === 0 ? `${num}/${den}` : `${totalInches} ${num}/${den}`;
-        }
-        return `${totalInches}`;
-    };
-    return `${formatFracLocal(width)}" x ${thick} PL`;
-}
-
-function resolveFreeEndExtensions(vals, style, panelType) {
-    let deltaLeft = 0;
-    let deltaRight = 0;
-    const isClassicOrExec = (style === 'classical' || style === 'classic_custom' || style === 'executive' || style === 'executive_custom');
-    if (vals.freeEnd4 && isClassicOrExec) {
-        const leftPostOpt = vals.leftPost || 'yes';
-        const rightPostOpt = vals.rightPost || 'yes';
-        const hasLeftFree = (leftPostOpt === 'none' || leftPostOpt === 'corner_none' || leftPostOpt === 'no');
-        const hasRightFree = (rightPostOpt === 'none' || rightPostOpt === 'corner_none' || rightPostOpt === 'no');
-        
-        let baseLen = vals.length || 120.0;
-        const postW = vals.postW !== undefined ? vals.postW : 1.5;
-        const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') 
-            ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) 
-            : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-            
-        // Calculate mid-post centers on base length (excluding freeEnd4 extension)
-        const centers = resolveMidPostCenters(baseLen, leftPostOpt, rightPostOpt, vals.midPosts || 'none', midPostCount, postW, vals.midPostSpacings || null, style, vals.extra6, panelType, 0, 0);
-        
-        const pSpacing = vals.picketSpacing !== undefined ? vals.picketSpacing : 4.0;
-        
-        if (hasLeftFree) {
-            let c2_base = baseLen;
-            if (centers.length > 0) {
-                c2_base = centers[0];
-            } else if (rightPostOpt === 'yes' || rightPostOpt === 'corner') {
-                c2_base = baseLen - postW / 2;
-            }
-            const c2_prime = 4.0 + Math.ceil((c2_base - 4.0) / pSpacing) * pSpacing;
-            deltaLeft = Math.max(0, c2_prime - c2_base);
-        }
-        
-        if (hasRightFree) {
-            let c1 = 0;
-            if (centers.length > 0) {
-                c1 = centers[centers.length - 1];
-            } else if (leftPostOpt === 'yes' || leftPostOpt === 'corner') {
-                c1 = postW / 2;
-            }
-            const numP = Math.max(0, Math.floor((baseLen - c1) / pSpacing - 0.001));
-            const p2 = c1 + numP * pSpacing;
-            const c2_prime = p2 + 4.0;
-            deltaRight = Math.max(0, c2_prime - baseLen);
-        }
-    }
-    return { deltaLeft, deltaRight };
-}
-
-function resolveMidPostCenters(length, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, postW, customSpacings, style, extra6 = false, panelType = 'main', deltaLeft = 0, deltaRight = 0) {
-    const centers = [];
-    if (midPostsOpt === 'none') return centers;
-
-    let baseLength = length - (deltaLeft + deltaRight);
-    let calcLength = baseLength;
-    if (extra6) {
-        calcLength = baseLength - (panelType === 'main' ? 12.0 : 6.0);
-    }
-
-    const startXBound = (leftPostOpt === 'yes' || leftPostOpt === 'corner') ? postW : 0;
-    const endXBound = (rightPostOpt === 'yes' || rightPostOpt === 'corner') ? (calcLength - postW) : calcLength;
-
-    if (midPostsOpt === 'default' || midPostsOpt === 'yes') {
-        const count = Math.max(0, Math.ceil(calcLength / 48) - 1);
-        if (count > 0) {
-            const D = (calcLength - (count - 1) * 48) / 2;
-            for (let i = 1; i <= count; i++) {
-                let cx = D + (i - 1) * 48;
-                if (extra6 && panelType === 'main') {
-                    cx += 6.0;
-                }
-                cx += deltaLeft;
-                centers.push(cx);
-            }
-        }
-    } else if (midPostsOpt === 'custom_standard') {
-        const count = midPostCount;
-        if (count > 0) {
-            const centerDist = endXBound - startXBound;
-            const spanSpacing = centerDist / (count + 1);
-            for (let i = 1; i <= count; i++) {
-                let cx = startXBound + i * spanSpacing;
-                if (extra6 && panelType === 'main') {
-                    cx += 6.0;
-                }
-                cx += deltaLeft;
-                centers.push(cx);
-            }
-        }
-    } else if (midPostsOpt === 'custom') {
-        const count = midPostCount;
-        let currentX = 0;
-        for (let i = 0; i < count; i++) {
-            const spacing = (customSpacings && customSpacings[i] !== undefined) ? customSpacings[i] : 48;
-            currentX += spacing;
-            let cx = currentX;
-            if (extra6 && panelType === 'main') {
-                cx += 6.0;
-            }
-            cx += deltaLeft;
-            centers.push(cx);
-        }
-    }
-    return centers;
-}
-
-function getPicketPositions(style, length, leftPostW, rightPostW, pickW, picketSpacing, midPostCount, midPostW, midPostsOpt = 'none', customSpacings = null, extra6 = false, panelType = 'main', deltaLeft = 0, deltaRight = 0) {
-    let picketPositions = [];
-    
-    let baseLength = length - (deltaLeft + deltaRight);
-    const leftPostOpt = leftPostW > 0 ? 'yes' : 'no';
-    const rightPostOpt = rightPostW > 0 ? 'yes' : 'no';
-    
-    // Resolve mid-post centers (on baseLength, relative to base length)
-    const midPostCenters = resolveMidPostCenters(baseLength, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, midPostW, customSpacings, style, extra6, panelType, 0, 0);
-
-    // Determine grid alignment anchor point
-    let anchor = null;
-    if (midPostCenters.length > 0) {
-        anchor = midPostCenters[0];
-    } else if (leftPostW > 0) {
-        anchor = leftPostW / 2;
-    } else if (rightPostW > 0) {
-        anchor = baseLength - rightPostW / 2;
-    }
-
-    if (anchor !== null && picketSpacing > 0) {
-        // Align picket centers to the anchor point on the picketSpacing grid
-        const minCenter = leftPostW + pickW / 2;
-        const maxCenter = baseLength - rightPostW / 2 - pickW / 2;
-        
-        // Find the range of integer multipliers (k)
-        const startK = Math.ceil((minCenter - anchor) / picketSpacing);
-        const endK = Math.floor((maxCenter - anchor) / picketSpacing);
-        
-        for (let k = startK; k <= endK; k++) {
-            const cx = anchor + k * picketSpacing;
-            picketPositions.push(cx - pickW / 2);
-        }
-    } else {
-        // Centered fallback (no posts, or picketSpacing <= 0)
-        const clearWidth = baseLength - leftPostW - rightPostW;
-        const numPickets = picketSpacing > 0 ? Math.floor((clearWidth - pickW) / picketSpacing) : 0;
-        if (numPickets > 0) {
-            const usedWidth = (numPickets - 1) * picketSpacing + pickW;
-            const startX = leftPostW + (clearWidth - usedWidth) / 2;
-            for (let i = 0; i < numPickets; i++) {
-                picketPositions.push(startX + i * picketSpacing);
-            }
-        }
-    }
-
-    // Shift pickets if left end is extended
-    if (deltaLeft > 0) {
-        picketPositions = picketPositions.map(px => px + deltaLeft);
-    }
-
-    // Filter out pickets that overlap with mid posts
-    const midPostCentersShifted = resolveMidPostCenters(length, leftPostOpt, rightPostOpt, midPostsOpt, midPostCount, midPostW, customSpacings, style, extra6, panelType, deltaLeft, deltaRight);
-    if (midPostCentersShifted.length > 0) {
-        picketPositions = picketPositions.filter(px => {
-            for (let j = 0; j < midPostCentersShifted.length; j++) {
-                const midCx = midPostCentersShifted[j];
-                if (Math.abs(px + pickW/2 - midCx) < (midPostW/2 + pickW/2 + 0.1)) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    }
-
-    return picketPositions;
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // --- State ---
     let currentMode = 'shapes';
-    let pdfPreviewModeActive = false;
-    let activePdfPreviewUrl = null;
     let currentModel = null;
-    let isGeneratingZipBatch = false;
     let selectedShapeData = null;
     let tweakModeActive = false;
     let draftMembers = [];
@@ -649,495 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let customSketchStrokes = null;
     let justSelectedInMousedown = false;
     
-    const formatFraction = (val) => {
-        if (typeof val !== 'number' || isNaN(val)) return '0"';
-        const totalSixteenths = Math.round(val * 16);
-        const totalInches = Math.floor(totalSixteenths / 16);
-        const sixteenths = totalSixteenths % 16;
-        const feet = Math.floor(totalInches / 12);
-        const inches = totalInches % 12;
-        
-        let fractionStr = '';
-        if (sixteenths > 0) {
-            let num = sixteenths, den = 16;
-            while (num % 2 === 0) { num /= 2; den /= 2; }
-            fractionStr = ` ${num}/${den}`;
-        }
-        
-        if (feet > 0) {
-            return `${feet}'-${inches}${fractionStr}"`;
-        } else {
-            if (totalInches === 0 && sixteenths > 0) {
-                return `${fractionStr.trim()}"`;
-            }
-            return `${inches}${fractionStr}"`;
-        }
-    };
-
     // AutoCAD Interactive Dimensioning State
     let autocadDimModeActive = false;
     let customDimensionsList = [];
     let customDimFontSize = 12;
-    let customDimTextGap = 8;
     let dimStartPoint = null;
     let activeSnapPoint = null;
     let cachedSnapPoints = [];
-    let activeDraggedGripIdx = null;
-    let activeDraggedGripName = null;
 
     // AutoCAD Dragging Annotation State
     let activeDraggedAnnotId = null;
     let activeDraggedAnnotType = null;
-    let activeDraggedAnnotAxis = 'Y';
     let dragStartMousePos = null;
-    let dragStartMouseCadPos = null;
     let dragStartOffset = null;
     let annotationOffsets = {};
-    let selectedAnnotId = null;
-    let selectedAnnotType = null;
-    let selectedCustomDimIdx = null;
-    let hiddenAnnotations = new Set();
-    let annotationProperties = {};
-
-    // --- Custom Plate State ---
-    let customPlatePoints = [[0, 0]];
-    let customPlateHoles = [];
-    let selectedCustomLineIdx = null;
-
-    // --- Helper to convert set index to letter (A, B, ..., Z, AA, AB, ...) ---
-    function getSetLetter(idx) {
-        let letter = "";
-        let temp = idx;
-        while (temp >= 0) {
-            letter = String.fromCharCode((temp % 26) + 65) + letter;
-            temp = Math.floor(temp / 26) - 1;
-        }
-        return letter;
-    }
-
-    function resolveRailMarksAndSpans(vals, drawingNo, cat, style, postW, singleLen = null) {
-        const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        
-        // Calculate spans
-        const clearSpans = [];
-        if (cat === 'rail_catalog') {
-            const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') 
-                ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) 
-                : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-            const startXBound = (vals.leftPost === 'yes') ? postW : 0;
-            const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-            
-            const customSpacings = [];
-            if (vals.midPosts === 'custom') {
-                for (let i = 1; i <= midPostCount; i++) {
-                    const spKey = `midPostSpacing-${i}`;
-                    customSpacings.push(vals[spKey] !== undefined ? vals[spKey] : 48);
-                }
-            }
-
-            let lastX = 0;
-            const allPosts = [];
-            if (vals.leftPost === 'yes') {
-                allPosts.push({ startX: 0, endX: postW });
-            }
-            if (vals.midPosts !== 'none' && midPostCount > 0) {
-                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, balconyWizardState.activePanelType || 'main', vals.deltaLeft || 0, vals.deltaRight || 0);
-                resolvedCenters.forEach(midCx => {
-                    allPosts.push({ startX: midCx - postW/2, endX: midCx + postW/2 });
-                });
-            }
-            if (vals.rightPost === 'yes') {
-                allPosts.push({ startX: vals.length - postW, endX: vals.length });
-            }
-
-            for (let i = 0; i < allPosts.length; i++) {
-                const p = allPosts[i];
-                if (p.startX > lastX + 0.01) {
-                    clearSpans.push({ start: lastX, end: p.startX });
-                }
-                lastX = p.endX;
-            }
-            if (vals.length > lastX + 0.01) {
-                clearSpans.push({ start: lastX, end: vals.length });
-            }
-        } else {
-            clearSpans.push({ start: 0, end: (singleLen !== null ? singleLen : vals.length) });
-        }
-
-        const roundTo16th = (val) => Math.round(val * 16) / 16;
-        
-        const bottomSegments = [];
-        if (vals.botRailType !== 'none') {
-            clearSpans.forEach((span, idx) => {
-                const len = roundTo16th(span.end - span.start);
-                bottomSegments.push({
-                    idx: idx,
-                    start: span.start,
-                    end: span.end,
-                    len: len
-                });
-            });
-        }
-
-        const midSegments = [];
-        const hasMidRail = (cat === 'rail_catalog') ? (style === 'executive' || style === 'villa_balcony' || style === 'villa_custom' || style === 'executive_custom' || (style.includes('custom') && vals.midRailType !== 'none')) : (vals.midRailType !== 'none');
-        if (hasMidRail) {
-            clearSpans.forEach((span, idx) => {
-                const len = roundTo16th(span.end - span.start);
-                midSegments.push({
-                    idx: idx,
-                    start: span.start,
-                    end: span.end,
-                    len: len
-                });
-            });
-        }
-
-        const areDescSame = (() => {
-            if (cat === 'rail_catalog') {
-                if (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') {
-                    return true;
-                }
-                const botRailSize = vals.botRailSize || 'HSS 1.5x1.5x16GA';
-                const midRailSize = vals.midRailSize || 'HSS 1.5x1.5x16GA';
-                const botRailType = vals.botRailType || 'hss_rect';
-                const midRailType = vals.midRailType || 'hss_rect';
-                if (botRailType !== midRailType) return false;
-                if (botRailSize !== midRailSize) return false;
-                if (botRailSize === 'CUSTOM') {
-                    const botRailH = vals.botRailH || 1.5;
-                    const midRailH = vals.midRailH || 1.5;
-                    return botRailH === midRailH;
-                }
-                return true;
-            } else if (cat === 'rails_gates') {
-                const botRailSize = vals.botRailSize || 'HSS 1.5x1.5x16GA';
-                const midRailSize = vals.midRailSize || 'HSS 1.5x1.5x16GA';
-                const botRailType = vals.botRailType || 'hss_rect';
-                const midRailType = vals.midRailType || 'hss_rect';
-                if (botRailType !== midRailType) return false;
-                if (botRailSize !== midRailSize) return false;
-                if (botRailSize === 'CUSTOM') {
-                    const botRailH = vals.botRailH || 1.5;
-                    const midRailH = vals.midRailH || 1.5;
-                    return botRailH === midRailH;
-                }
-                return true;
-            }
-            return false;
-        })();
-
-        if (areDescSame) {
-            const sharedUniqueLengths = [];
-            bottomSegments.forEach(seg => {
-                if (!sharedUniqueLengths.includes(seg.len)) {
-                    sharedUniqueLengths.push(seg.len);
-                }
-                const uIdx = sharedUniqueLengths.indexOf(seg.len);
-                const suffix = uIdx === 0 ? "" : String.fromCharCode(64 + uIdx);
-                seg.mark = "a" + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo) + suffix;
-            });
-            midSegments.forEach(seg => {
-                if (!sharedUniqueLengths.includes(seg.len)) {
-                    sharedUniqueLengths.push(seg.len);
-                }
-                const uIdx = sharedUniqueLengths.indexOf(seg.len);
-                const suffix = uIdx === 0 ? "" : String.fromCharCode(64 + uIdx);
-                seg.mark = "a" + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo) + suffix;
-            });
-        } else {
-            const bottomUniqueLengths = [];
-            bottomSegments.forEach(seg => {
-                if (!bottomUniqueLengths.includes(seg.len)) {
-                    bottomUniqueLengths.push(seg.len);
-                }
-                const uIdx = bottomUniqueLengths.indexOf(seg.len);
-                const suffix = uIdx === 0 ? "" : String.fromCharCode(64 + uIdx); // 65 is 'A'
-                seg.mark = "a" + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo) + suffix;
-            });
-
-            const midUniqueLengths = [];
-            midSegments.forEach(seg => {
-                if (!midUniqueLengths.includes(seg.len)) {
-                    midUniqueLengths.push(seg.len);
-                }
-                const uIdx = midUniqueLengths.indexOf(seg.len);
-                const suffix = uIdx === 0 ? "" : String.fromCharCode(64 + uIdx); // 65 is 'A'
-                seg.mark = "b" + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo) + suffix;
-            });
-        }
-
-        return {
-            bottomSegments,
-            midSegments
-        };
-    }
-
-    function getDefaultPanelConfig() {
-        return {
-            railStyle: 'classical',
-            length: 144,
-            leftPost: 'none',
-            rightPost: 'none',
-            midPosts: 'default',
-            midPostCount: 1,
-            postType: 'hss_rect',
-            postSize: 'HSS1.5x1.5x14GA',
-            postW: 1.5,
-            postH: 1.5,
-            postT: 0.1196,
-            topRailType: 'hss_rect',
-            topRailSize: 'HSS1.5x1.5x16GA',
-            topRailW: 1.5,
-            topRailH: 1.5,
-            topRailT: 0.0598,
-            botRailType: 'hss_rect',
-            botRailSize: 'HSS1.5x1.5x16GA',
-            botRailW: 1.5,
-            botRailH: 1.5,
-            botRailT: 0.0598,
-            midRailType: 'none',
-            midRailSize: 'HSS1.5x1.5x16GA',
-            midRailW: 1.5,
-            midRailH: 1.5,
-            midRailT: 0.0598,
-            midRailGap: 12.0,
-            picketType: 'hss_rect',
-            picketSize: 'HSS1/2x1/2x16GA',
-            picketW: 0.5,
-            picketH: 0.5,
-            picketT: 0.0598,
-            picketSpacing: 4.0,
-            includeBasePlates: 'no',
-            basePlateSize: 'PL1/2',
-            basePlateW: 6.0,
-            basePlateL: 6.0,
-            basePlateT: 0.5,
-            basePlateHoleD: 0.5,
-            basePlateHoleOffsetX: 0.5,
-            basePlateHoleOffsetY: 0.25,
-            meshGridW: 2.0,
-            meshGridH: 2.0,
-            meshWireD: 0.135,
-            extraFlatBar: 'no',
-            customScaleOverride: 'auto',
-            customOffsetX: 0,
-            customOffsetY: 0
-        };
-    }
-
-    function createDefaultReturnConfig() {
-        const cfg = getDefaultPanelConfig();
-        cfg.length = 36.0;
-        cfg.leftPost = 'yes';
-        cfg.rightPost = 'none';
-        cfg.midPosts = 'none';
-        cfg.midPostCount = 0;
-        return cfg;
-    }
-
-    // --- Balcony Wizard State ---
-    let balconyWizardState = {
-        sets: [
-            {
-                id: 1,
-                drawingBase: "1",
-                quantity: 1,
-                main: getDefaultPanelConfig(),
-                leftReturn: createDefaultReturnConfig(),
-                rightReturn: createDefaultReturnConfig()
-            }
-        ],
-        activeSetIdx: 0,
-        activePanelType: 'main',
-        step: 'done',
-        tempSet: null
-    };
-
-    function getActiveBalconyDwgAndMark() {
-        if (!balconyWizardState) {
-            return { drawingNo: '1.0', mainMark: '1FB' };
-        }
-        const activeSet = balconyWizardState.tempSet || (balconyWizardState.sets ? balconyWizardState.sets[balconyWizardState.activeSetIdx] : null);
-        if (!activeSet) return { drawingNo: '1.0', mainMark: '1FB' };
-        const baseDwg = activeSet.drawingBase || '1';
-        const panelType = balconyWizardState.activePanelType;
-        
-        let drawingNo = baseDwg + ".0";
-        let mainMark = baseDwg + "FB";
-        
-        if (panelType === 'leftReturn') {
-            drawingNo = baseDwg + ".2";
-            mainMark = baseDwg + "LB";
-        } else if (panelType === 'rightReturn') {
-            drawingNo = activeSet.leftReturn ? (baseDwg + ".3") : (baseDwg + ".2");
-            mainMark = baseDwg + "RB";
-        } else if (panelType === 'loosePost') {
-            drawingNo = baseDwg + ".1";
-            mainMark = baseDwg + "P1";
-        }
-        return { drawingNo, mainMark };
-    }
-
-    function saveCurrentInputsToActivePanel() {
-        if (shapeCategory.value !== 'rail_catalog') return;
-        const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-        const activePanel = balconyWizardState.activePanelType;
-        const panelObj = activePanel === 'main' ? activeSet.main : (activePanel === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
-        if (!panelObj) return;
-
-        dynamicInputs.querySelectorAll('input').forEach(inp => {
-            const id = inp.id.replace('inp-', '');
-            if (id === 'balconyDrawingNo' || id === 'railStyle' || id === 'wizLeftReturnToggle' || id === 'wizRightReturnToggle') return;
-            if (inp.type === 'text') {
-                panelObj[id] = inp.value;
-            } else {
-                panelObj[id] = parseFloat(inp.value) || 0;
-            }
-        });
-        dynamicInputs.querySelectorAll('select').forEach(sel => {
-            const id = sel.id.replace('inp-', '');
-            if (id === 'balconyDrawingNo' || id === 'railStyle' || id === 'wizLeftReturnToggle' || id === 'wizRightReturnToggle') return;
-            panelObj[id] = sel.value;
-        });
-        
-        const styleSelect = document.getElementById('inp-railStyle');
-        if (styleSelect) {
-            panelObj.railStyle = styleSelect.value;
-            if (activePanel === 'main') {
-                if (activeSet.leftReturn) {
-                    activeSet.leftReturn.railStyle = styleSelect.value;
-                }
-                if (activeSet.rightReturn) {
-                    activeSet.rightReturn.railStyle = styleSelect.value;
-                }
-            }
-        }
-
-        // Collect custom spacings if midPosts is custom
-        const midPostsSelect = document.getElementById('inp-midPosts');
-        if (midPostsSelect && midPostsSelect.value === 'custom') {
-            const midPostCountInput = document.getElementById('inp-midPostCount');
-            const count = midPostCountInput ? (parseInt(midPostCountInput.value) || 0) : 0;
-            const spacings = [];
-            for (let i = 1; i <= count; i++) {
-                const spInput = document.getElementById(`inp-midPostSpacing-${i}`);
-                spacings.push(spInput ? (parseFloat(spInput.value) || 48) : 48);
-            }
-            panelObj.midPostSpacings = spacings;
-        }
-        const chk6Extra = document.getElementById('chk-6-extra');
-        if (chk6Extra) {
-            panelObj.extra6 = chk6Extra.checked;
-            if (activeSet.main) activeSet.main.extra6 = chk6Extra.checked;
-            if (activeSet.leftReturn) activeSet.leftReturn.extra6 = chk6Extra.checked;
-            if (activeSet.rightReturn) activeSet.rightReturn.extra6 = chk6Extra.checked;
-        }
-        const chkFreeEnd4 = document.getElementById('chk-free-end-4');
-        if (chkFreeEnd4) {
-            panelObj.freeEnd4 = chkFreeEnd4.checked;
-            if (activeSet.main) activeSet.main.freeEnd4 = chkFreeEnd4.checked;
-            if (activeSet.leftReturn) activeSet.leftReturn.freeEnd4 = chkFreeEnd4.checked;
-            if (activeSet.rightReturn) activeSet.rightReturn.freeEnd4 = chkFreeEnd4.checked;
-        }
-    }
-
-    function loadActivePanelToInputs() {
-        if (shapeCategory.value !== 'rail_catalog') return;
-        const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-        const activePanel = balconyWizardState.activePanelType;
-        const panelObj = activePanel === 'main' ? activeSet.main : (activePanel === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
-        if (!panelObj) return;
-
-        for (const key in panelObj) {
-            const inp = document.getElementById('inp-' + key);
-            if (inp) {
-                inp.value = panelObj[key];
-            }
-        }
-        
-        const styleSelect = document.getElementById('inp-railStyle');
-        if (styleSelect) {
-            styleSelect.value = panelObj.railStyle || 'classical';
-        }
-
-        const chk6Extra = document.getElementById('chk-6-extra');
-        if (chk6Extra) {
-            chk6Extra.checked = !!panelObj.extra6;
-        }
-
-        const chkFreeEnd4 = document.getElementById('chk-free-end-4');
-        if (chkFreeEnd4) {
-            chkFreeEnd4.checked = !!panelObj.freeEnd4;
-        }
-        
-        const customOptionsWrapper = document.getElementById('grp-rail-catalog-custom-options');
-        if (customOptionsWrapper) {
-            const style = panelObj.railStyle || 'classical';
-            const isCustomStyle = (style === 'classic_custom' || style === 'executive_custom' || style === 'urban_custom' || style === 'villa_custom');
-            const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-            if (isCustomStyle || isMeshStyle) {
-                customOptionsWrapper.classList.remove('hidden');
-            } else {
-                customOptionsWrapper.classList.add('hidden');
-            }
-
-            const runnerGroup = document.getElementById('grp-rail-runner-custom-options');
-            if (runnerGroup) {
-                if (isCustomStyle) runnerGroup.classList.remove('hidden');
-                else runnerGroup.classList.add('hidden');
-            }
-
-            const midRunnerGroup = document.getElementById('grp-midRailProfileSection');
-            if (midRunnerGroup) {
-                if (style === 'classic_custom' || style === 'urban_custom') midRunnerGroup.classList.add('hidden');
-                else midRunnerGroup.classList.remove('hidden');
-            }
-
-            const picketGroup = document.getElementById('grp-rail-picket-options');
-            if (picketGroup) {
-                if (isMeshStyle) picketGroup.classList.add('hidden');
-                else picketGroup.classList.remove('hidden');
-            }
-
-            const meshGroup = document.getElementById('grp-rail-mesh-options');
-            if (meshGroup) {
-                if (isMeshStyle) meshGroup.classList.remove('hidden');
-                else meshGroup.classList.add('hidden');
-            }
-        }
-
-        const midPostsSelect = document.getElementById('inp-midPosts');
-        const midPostCountGroup = document.getElementById('grp-rail-midPostCount');
-        if (midPostsSelect && midPostCountGroup) {
-            if (midPostsSelect.value === 'custom' || midPostsSelect.value === 'custom_standard') {
-                midPostCountGroup.classList.remove('hidden');
-            } else {
-                midPostCountGroup.classList.add('hidden');
-            }
-        }
-
-        // Load spacing values
-        if (midPostsSelect && midPostsSelect.value === 'custom' && panelObj.midPostSpacings) {
-            const count = parseInt(panelObj.midPostCount) || 0;
-            for (let i = 1; i <= count; i++) {
-                const spInput = document.getElementById(`inp-midPostSpacing-${i}`);
-                if (spInput && panelObj.midPostSpacings[i - 1] !== undefined) {
-                    spInput.value = panelObj.midPostSpacings[i - 1];
-                }
-            }
-        }
-
-        // Set value of Left/Right Return toggles on Main panel inputs
-        const leftReturnToggle = document.getElementById('inp-wizLeftReturnToggle');
-        if (leftReturnToggle) {
-            leftReturnToggle.value = activeSet.leftReturn ? 'yes' : 'no';
-        }
-        const rightReturnToggle = document.getElementById('inp-wizRightReturnToggle');
-        if (rightReturnToggle) {
-            rightReturnToggle.value = activeSet.rightReturn ? 'yes' : 'no';
-        }
-    }
     
     // Viewport Panning State (AutoCAD-Style)
     let currentPanX = 0;
@@ -1197,47 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const safeGetFloat = (id, fallback = 0.0) => {
         const el = document.getElementById(id);
         return el ? (parseFloat(el.value) || fallback) : fallback;
-    };
-
-    const getSvgScale = (svg) => {
-        const isReady = CadEngine.isLibReady();
-        let scale = isReady ? 25.4 : 10.0;
-        let actualWidthInches = 0;
-        if (isReady && currentModel) {
-            const extents = makerjs.measure.modelExtents(currentModel);
-            if (extents) {
-                actualWidthInches = extents.high[0] - extents.low[0];
-            }
-        }
-        if (svg) {
-            const viewBoxAttr = svg.getAttribute('viewBox');
-            if (viewBoxAttr) {
-                const vb = viewBoxAttr.split(/[\s,]+/).map(Number);
-                if (vb.length === 4 && vb[2] > 0) {
-                    if (actualWidthInches > 0) {
-                        scale = vb[2] / actualWidthInches;
-                    }
-                }
-            }
-        }
-        return scale;
-    };
-
-    const getModelExtents = () => {
-        if (window.makerjs && currentModel) {
-            return makerjs.measure.modelExtents(currentModel);
-        }
-        return null;
-    };
-
-    const cadToSvg = (x, y, scale, extents) => {
-        if (!extents) return [x * scale, -y * scale];
-        return [(x - extents.low[0]) * scale, (extents.high[1] - y) * scale];
-    };
-
-    const svgToCad = (x_svg, y_svg, scale, extents) => {
-        if (!extents) return [x_svg / scale, -y_svg / scale];
-        return [x_svg / scale + extents.low[0], extents.high[1] - y_svg / scale];
     };
 
     function findDraftMemberFromElement(el) {
@@ -1338,8 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentMode === 'shapes') {
                 shapeControls.classList.remove('hidden');
                 cadView.classList.remove('hidden');
-                const advBtn = document.getElementById('btn-advance-features');
-                if (advBtn) advBtn.classList.remove('hidden');
+                document.getElementById('toggle-interactive').classList.remove('hidden');
                 if (viewTitle) viewTitle.textContent = "Dynamic Preview";
                 renderCurrentCAD();
             } else if (currentMode === 'sketch') {
@@ -1350,10 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentMode === 'draft') {
                 document.getElementById('draft-controls').classList.remove('hidden');
                 cadView.classList.remove('hidden');
-                const advBtn = document.getElementById('btn-advance-features');
-                if (advBtn) advBtn.classList.add('hidden');
-                const advPanel = document.getElementById('advance-features-panel');
-                if (advPanel) advPanel.classList.add('hidden');
+                document.getElementById('toggle-interactive').classList.add('hidden');
                 if (viewTitle) viewTitle.textContent = "2D Drafting Canvas";
                 renderDraftSpace();
             }
@@ -1510,8 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!snapPoint) return;
         
-        const extents = getModelExtents();
-        const [sx, sy] = cadToSvg(snapPoint.x, snapPoint.y, scale, extents);
+        const sx = snapPoint.x * scale;
+        const sy = -snapPoint.y * scale;
         
         const svgRect = svg.getBoundingClientRect();
         const viewBoxAttr = svg.getAttribute('viewBox');
@@ -1553,9 +408,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!startPoint) return;
         
-        const extents = getModelExtents();
-        const [x1, y1] = cadToSvg(startPoint.x, startPoint.y, scale, extents);
-        const [x2, y2] = cadToSvg(currentMouseX, currentMouseY, scale, extents);
+        const x1 = startPoint.x * scale;
+        const y1 = -startPoint.y * scale;
+        const x2 = currentMouseX * scale;
+        const y2 = -currentMouseY * scale;
         
         const line = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
         line.setAttribute("x1", x1);
@@ -1635,84 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         applyZoom();
     }, { passive: false });
-
-    // PDF Preview Mode Toggle Button Listener
-    const togglePdfPreviewBtn = document.getElementById('toggle-pdf-preview');
-    const pdfIframe = document.getElementById('pdf-preview-iframe');
-    if (togglePdfPreviewBtn && pdfIframe) {
-        togglePdfPreviewBtn.addEventListener('click', () => {
-            pdfPreviewModeActive = !pdfPreviewModeActive;
-            if (pdfPreviewModeActive) {
-                // Hide SVG container, show iframe
-                svgContainer.classList.add('hidden');
-                pdfIframe.classList.remove('hidden');
-                togglePdfPreviewBtn.classList.add('active');
-                togglePdfPreviewBtn.querySelector('span').textContent = "PDF Preview On";
-                togglePdfPreviewBtn.style.backgroundColor = 'rgba(255, 159, 67, 0.2)';
-                togglePdfPreviewBtn.style.borderColor = '#ff9f43';
-                updatePdfPreview();
-            } else {
-                // Show SVG container, hide iframe
-                svgContainer.classList.remove('hidden');
-                pdfIframe.classList.add('hidden');
-                togglePdfPreviewBtn.classList.remove('active');
-                togglePdfPreviewBtn.querySelector('span').textContent = "PDF Preview Off";
-                togglePdfPreviewBtn.style.backgroundColor = 'transparent';
-                togglePdfPreviewBtn.style.borderColor = 'var(--border-color)';
-                // Revoke active preview URL to clean up
-                if (activePdfPreviewUrl) {
-                    URL.revokeObjectURL(activePdfPreviewUrl);
-                    activePdfPreviewUrl = null;
-                }
-                pdfIframe.src = '';
-                renderCurrentCAD();
-            }
-        });
-    }
-
-    // Advance Features Panel Toggle Button Listener
-    const btnAdvanceFeatures = document.getElementById('btn-advance-features');
-    const advanceFeaturesPanel = document.getElementById('advance-features-panel');
-    if (btnAdvanceFeatures && advanceFeaturesPanel) {
-        btnAdvanceFeatures.addEventListener('click', () => {
-            const isHidden = advanceFeaturesPanel.classList.contains('hidden');
-            if (isHidden) {
-                advanceFeaturesPanel.classList.remove('hidden');
-                btnAdvanceFeatures.classList.add('active');
-                btnAdvanceFeatures.style.backgroundColor = 'rgba(0, 212, 255, 0.2)';
-                btnAdvanceFeatures.style.borderColor = 'var(--accent-primary)';
-            } else {
-                advanceFeaturesPanel.classList.add('hidden');
-                btnAdvanceFeatures.classList.remove('active');
-                btnAdvanceFeatures.style.backgroundColor = 'transparent';
-                btnAdvanceFeatures.style.borderColor = 'var(--border-color)';
-            }
-        });
-    }
-
-    const chk6Extra = document.getElementById('chk-6-extra');
-    if (chk6Extra) {
-        chk6Extra.addEventListener('change', () => {
-            saveCurrentInputsToActivePanel();
-            renderCurrentCAD();
-            updateBOMPreview();
-            if (pdfPreviewModeActive) {
-                updatePdfPreview();
-            }
-        });
-    }
-
-    const chkFreeEnd4 = document.getElementById('chk-free-end-4');
-    if (chkFreeEnd4) {
-        chkFreeEnd4.addEventListener('change', () => {
-            saveCurrentInputsToActivePanel();
-            renderCurrentCAD();
-            updateBOMPreview();
-            if (pdfPreviewModeActive) {
-                updatePdfPreview();
-            }
-        });
-    }
 
     // Panning Mode Toggle Button Listener
     const togglePanModeBtn = document.getElementById('toggle-pan-mode');
@@ -1845,7 +623,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const setupBasePlateProfile = () => {
             const includeSelect = document.getElementById('inp-includeBasePlates');
-            const bpDetailsGroup = document.getElementById('grp-basePlateDetails');
+            const bpSizeGroup = document.getElementById('grp-basePlateSizeGroup');
+            const bpWGroup = document.getElementById('grp-basePlateW');
+            const bpLGroup = document.getElementById('grp-basePlateL');
             const bpTGroup = document.getElementById('grp-basePlateT');
             const bpSizeSelect = document.getElementById('inp-basePlateSize');
             
@@ -1853,23 +633,30 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const updateVisibility = () => {
                 const active = includeSelect.value === 'yes';
-                if (bpDetailsGroup) {
-                    if (active) {
-                        bpDetailsGroup.classList.remove('hidden');
-                        toggleCustom();
-                    } else {
-                        bpDetailsGroup.classList.add('hidden');
-                    }
+                if (active) {
+                    bpSizeGroup.classList.remove('hidden');
+                    bpWGroup.classList.remove('hidden');
+                    bpLGroup.classList.remove('hidden');
+                    document.getElementById('grp-basePlateHoleD').classList.remove('hidden');
+                    document.getElementById('grp-basePlateHoleOffsetX').classList.remove('hidden');
+                    document.getElementById('grp-basePlateHoleOffsetY').classList.remove('hidden');
+                    toggleCustom();
+                } else {
+                    bpSizeGroup.classList.add('hidden');
+                    bpWGroup.classList.add('hidden');
+                    bpLGroup.classList.add('hidden');
+                    bpTGroup.classList.add('hidden');
+                    document.getElementById('grp-basePlateHoleD').classList.add('hidden');
+                    document.getElementById('grp-basePlateHoleOffsetX').classList.add('hidden');
+                    document.getElementById('grp-basePlateHoleOffsetY').classList.add('hidden');
                 }
             };
             
             const toggleCustom = () => {
-                if (bpTGroup) {
-                    if (bpSizeSelect.value === 'CUSTOM') {
-                        bpTGroup.classList.remove('hidden');
-                    } else {
-                        bpTGroup.classList.add('hidden');
-                    }
+                if (bpSizeSelect.value === 'CUSTOM') {
+                    bpTGroup.classList.remove('hidden');
+                } else {
+                    bpTGroup.classList.add('hidden');
                 }
             };
             
@@ -1968,7 +755,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 { val: 'angles', lbl: 'Angle (L-Shape)' }
             ];
             const profileOptions = [
-                { val: 'none', lbl: 'None (Disabled)' },
                 { val: 'plate', lbl: 'Plate / Flat Bar' },
                 { val: 'hss_rect', lbl: 'HSS Rectangular' },
                 { val: 'hss_circ', lbl: 'HSS Circular (Pipe)' },
@@ -1976,424 +762,143 @@ document.addEventListener('DOMContentLoaded', () => {
                 { val: 'angles', lbl: 'Angle (L-Shape)' }
             ];
 
-            // Build Balcony Wizard UI
-            const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-            const baseDwg = activeSet.drawingBase;
-            const badgeText = balconyWizardState.tempSet ? 
-                `Balcony ${getSetLetter(balconyWizardState.activeSetIdx)} [DRAFT]` : 
-                `Balcony ${getSetLetter(balconyWizardState.activeSetIdx)} (Total: ${balconyWizardState.sets.length})`;
-
-            let wizardHtml = `
-                <div class="balcony-wizard-card" style="background: rgba(0, 212, 255, 0.04); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 8px; padding: 16px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); grid-column: span 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0; color: #00d4ff; font-family: 'Outfit', sans-serif; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center;">
-                            <i data-lucide="layers" style="width: 16px; height: 16px; margin-right: 6px;"></i> Balcony Rail Configurator
-                        </h4>
-                        <span style="font-size: 11px; background: rgba(0,212,255,0.15); color: #00d4ff; padding: 2px 8px; border-radius: 12px; font-weight: bold;">
-                            ${badgeText}
-                        </span>
-                    </div>
-            `;
-
-            // Active Set Select & Add buttons
-            wizardHtml += `
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <select id="wiz-active-set" style="flex: 1; padding: 6px 10px; background: #0f131a; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 13px;">
-                        ${balconyWizardState.sets.map((set, idx) => `
-                            <option value="${idx}" ${!balconyWizardState.tempSet && idx === balconyWizardState.activeSetIdx ? 'selected' : ''}>Balcony ${getSetLetter(idx)} (Base: ${set.drawingBase})</option>
-                        `).join('')}
-                        ${balconyWizardState.tempSet ? `
-                            <option value="draft" selected>Balcony ${getSetLetter(balconyWizardState.activeSetIdx)} [DRAFT]</option>
-                        ` : ''}
-                    </select>
-                    ${!balconyWizardState.tempSet && balconyWizardState.sets.length > 1 ? `
-                        <button id="wiz-delete-set-btn" class="btn danger" style="padding: 6px 10px; font-size: 12px; background: rgba(255, 68, 68, 0.15); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; font-weight: bold; cursor: pointer;" title="Delete Current Balcony">
-                            Delete
-                        </button>
-                    ` : ''}
-                    <button id="wiz-add-set-btn" class="btn primary" style="padding: 4px 10px; font-size: 14px; background: var(--accent-primary); color: #000; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;" title="Start New Balcony (Draft)">
-                        +
-                    </button>
-                </div>
-            `;
-
-            // Base Drawing Number Input
-            wizardHtml += `
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                    <div class="input-group" style="flex: 2;">
-                        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Base Drawing Number</label>
-                        <input type="text" id="wiz-drawing-base" value="${baseDwg}" style="width: 100%; padding: 6px 10px; background: #0f131a; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 13px;">
-                    </div>
-                    <div class="input-group" style="flex: 1;">
-                        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Quantity</label>
-                        <input type="number" id="wiz-set-qty" value="${activeSet.quantity || 1}" min="1" step="1" style="width: 100%; padding: 6px 10px; background: #0f131a; border: 1px solid var(--border-color); border-radius: 6px; color: #fff; font-size: 13px;">
-                    </div>
-                </div>
-            `;
-
-            const rightReturnDwg = activeSet.leftReturn ? `${baseDwg}.3` : `${baseDwg}.2`;
-            const leftReturnDwg = `${baseDwg}.2`;
-
-            // Panel view tabs (Main, Left Return, Right Return)
-            wizardHtml += `
-                <div style="display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 12px; gap: 4px;">
-                    <button class="wiz-tab-btn ${balconyWizardState.activePanelType === 'main' ? 'active' : ''} ${!activeSet.main ? 'disabled-tab' : ''}" data-panel="main" style="flex: 1; padding: 6px; font-size: 11px; font-weight: bold; background: transparent; border: none; border-bottom: 2px solid ${balconyWizardState.activePanelType === 'main' ? '#00d4ff' : 'transparent'}; color: ${balconyWizardState.activePanelType === 'main' ? '#00d4ff' : 'var(--text-dim)'}; cursor: pointer; text-transform: uppercase; ${!activeSet.main ? 'opacity: 0.4;' : ''}">
-                        Main (${activeSet.main ? `${baseDwg}.0` : 'None'})
-                    </button>
-                    <button class="wiz-tab-btn ${balconyWizardState.activePanelType === 'leftReturn' ? 'active' : ''} ${!activeSet.leftReturn ? 'disabled-tab' : ''}" data-panel="leftReturn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: bold; background: transparent; border: none; border-bottom: 2px solid ${balconyWizardState.activePanelType === 'leftReturn' ? '#00d4ff' : 'transparent'}; color: ${balconyWizardState.activePanelType === 'leftReturn' ? '#00d4ff' : 'var(--text-dim)'}; cursor: pointer; text-transform: uppercase; ${!activeSet.leftReturn ? 'opacity: 0.4;' : ''}">
-                        Left return (${activeSet.leftReturn ? leftReturnDwg : 'None'})
-                    </button>
-                    <button class="wiz-tab-btn ${balconyWizardState.activePanelType === 'rightReturn' ? 'active' : ''} ${!activeSet.rightReturn ? 'disabled-tab' : ''}" data-panel="rightReturn" style="flex: 1; padding: 6px; font-size: 11px; font-weight: bold; background: transparent; border: none; border-bottom: 2px solid ${balconyWizardState.activePanelType === 'rightReturn' ? '#00d4ff' : 'transparent'}; color: ${balconyWizardState.activePanelType === 'rightReturn' ? '#00d4ff' : 'var(--text-dim)'}; cursor: pointer; text-transform: uppercase; ${!activeSet.rightReturn ? 'opacity: 0.4;' : ''}">
-                        Right return (${activeSet.rightReturn ? rightReturnDwg : 'None'})
-                    </button>
-                </div>
-            `;
-
-            // Wizard Guide / Step Actions
-            wizardHtml += `<div class="wiz-guide-box" style="background: rgba(0,0,0,0.2); border-radius: 6px; padding: 12px; margin-bottom: 12px; font-size: 12px; line-height: 1.4;">`;
+            let html = '<div class="inputs-grid">';
             
-            if (balconyWizardState.tempSet) {
-                const draftLetter = getSetLetter(balconyWizardState.activeSetIdx);
-                wizardHtml += `
-                    <div style="background: rgba(255, 170, 0, 0.1); border: 1px solid rgba(255, 170, 0, 0.3); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; font-size: 11px; color: #ffaa00; font-weight: bold; display: flex; align-items: center; justify-content: space-between;">
-                        <span>DRAFT BALCONY ${draftLetter}</span>
-                        <div style="display: flex; gap: 4px;">
-                            <button id="wiz-save-draft-btn" class="btn success" style="padding: 2px 6px; font-size: 10px; background: #00ff88; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">SAVE</button>
-                            <button id="wiz-cancel-draft-btn" class="btn danger" style="padding: 2px 6px; font-size: 10px; background: #ff4d4d; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">DISCARD</button>
-                        </div>
-                    </div>
-                `;
-            }
+            // Style Selection
+            html += generateSelectInput('Rail Style', 'railStyle', [
+                { val: 'classical', lbl: 'Classical Style (Preset)' },
+                { val: 'executive', lbl: 'Executive Style (Preset)' },
+                { val: 'classic_custom', lbl: 'Classic Custom' },
+                { val: 'executive_custom', lbl: 'Executive Custom' }
+            ], 'classical');
 
-            if (balconyWizardState.step === 'main') {
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00d4ff;">Step 1: Main Panel</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">Configure the Main Balcony Railing (${baseDwg}.0) below, then click save.</div>
-                    <button id="wiz-save-main-btn" class="btn success" style="width: 100%; padding: 8px; font-size: 12px; font-weight: bold; background: #00ff88; color: #000; border-radius: 6px; border: none; cursor: pointer;">
-                        Save Main Panel & Continue
-                    </button>
-                `;
-            } else if (balconyWizardState.step === 'ask_leftReturn') {
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00ff88;">Add Left Return?</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">Would you like to add a Left Return for Balcony ${getSetLetter(balconyWizardState.activeSetIdx)}?</div>
-                    <div style="display: flex; gap: 8px;">
-                        <button id="wiz-add-r1-btn" class="btn primary" style="flex: 1; padding: 8px; font-weight: bold; background: #00d4ff; color: #000; border: none; border-radius: 6px; cursor: pointer;">
-                            Yes, Add Left Return
-                        </button>
-                        <button id="wiz-skip-r1-btn" class="btn secondary" style="flex: 1; padding: 8px; font-weight: bold; background: transparent; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; cursor: pointer;">
-                            No Left Return
-                        </button>
-                    </div>
-                `;
-            } else if (balconyWizardState.step === 'edit_leftReturn') {
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00d4ff;">Step 2: Edit Left Return</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">Configure the Left Return (${baseDwg}.2) below.</div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button id="wiz-save-r1-btn" class="btn success" style="width: 100%; padding: 8px; font-size: 12px; font-weight: bold; background: #00ff88; color: #000; border-radius: 6px; border: none; cursor: pointer;">
-                            Save Left Return & Continue
-                        </button>
-                        <button id="wiz-remove-r1-btn" class="btn secondary" style="width: 100%; padding: 6px; font-size: 11px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; cursor: pointer;">
-                            Remove Left Return
-                        </button>
-                    </div>
-                `;
-            } else if (balconyWizardState.step === 'ask_rightReturn') {
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00ff88;">Add Right Return?</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">Would you like to add a Right Return for Balcony ${getSetLetter(balconyWizardState.activeSetIdx)}?</div>
-                    <div style="display: flex; gap: 8px;">
-                        <button id="wiz-add-r2-btn" class="btn primary" style="flex: 1; padding: 8px; font-weight: bold; background: #00d4ff; color: #000; border: none; border-radius: 6px; cursor: pointer;">
-                            Yes, Add Right Return
-                        </button>
-                        <button id="wiz-skip-r2-btn" class="btn secondary" style="flex: 1; padding: 8px; font-weight: bold; background: transparent; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; cursor: pointer;">
-                            No Right Return
-                        </button>
-                    </div>
-                `;
-            } else if (balconyWizardState.step === 'edit_rightReturn') {
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00d4ff;">Step 3: Edit Right Return</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">Configure the Right Return below.</div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button id="wiz-save-r2-btn" class="btn success" style="width: 100%; padding: 8px; font-size: 12px; font-weight: bold; background: #00ff88; color: #000; border-radius: 6px; border: none; cursor: pointer;">
-                            Save Right Return & Finish
-                        </button>
-                        <button id="wiz-remove-r2-btn" class="btn secondary" style="width: 100%; padding: 6px; font-size: 11px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; cursor: pointer;">
-                            Remove Right Return
-                        </button>
-                    </div>
-                `;
-            } else if (balconyWizardState.step === 'done') {
-                const draftSuffix = balconyWizardState.tempSet ? ' [DRAFT]' : '';
-                wizardHtml += `
-                    <div style="font-weight: bold; margin-bottom: 4px; color: #00ff88; text-transform: uppercase;">Balcony ${getSetLetter(balconyWizardState.activeSetIdx)}${draftSuffix} Complete!</div>
-                    <div style="color: var(--text-dim); margin-bottom: 8px;">
-                        ${balconyWizardState.tempSet ? 'Click SAVE at the top to save this balcony to your project.' : 'Click + to configure or check the next balcony.'}
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        ${!balconyWizardState.tempSet ? `
-                            <button id="wiz-start-draft-btn" class="btn primary" style="width: 100%; padding: 8px; font-size: 12px; font-weight: bold; background: #00d4ff; color: #000; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <span style="font-size: 16px; font-weight: bold; line-height: 1;">+</span> NEW BALCONY
-                            </button>
-                        ` : ''}
-                        ${balconyWizardState.activePanelType === 'leftReturn' ? `
-                            <button id="wiz-remove-r1-btn" class="btn secondary" style="width: 100%; padding: 6px; font-size: 11px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; cursor: pointer;">
-                                Remove Left Return
-                            </button>
-                        ` : ''}
-                        ${balconyWizardState.activePanelType === 'rightReturn' ? `
-                            <button id="wiz-remove-r2-btn" class="btn secondary" style="width: 100%; padding: 6px; font-size: 11px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; cursor: pointer;">
-                                Remove Right Return
-                            </button>
-                        ` : ''}
-                    </div>
-                `;
-            }
-            wizardHtml += `</div></div>`;
+            // Length
+            html += generateNumInput('Total Length (in)', 'length', 120);
 
-            let html = '<div class="inputs-grid">' + wizardHtml;
+            // Corner / Mid Posts Options
+            html += generateSelectInput('Left Corner Post', 'leftPost', [
+                { val: 'yes', lbl: 'Yes' },
+                { val: 'none', lbl: 'None' }
+            ], 'yes');
             
-            const activePanel = balconyWizardState.activePanelType;
-            const panelObj = activePanel === 'main' ? activeSet.main : (activePanel === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
+            html += generateSelectInput('Right Corner Post', 'rightPost', [
+                { val: 'yes', lbl: 'Yes' },
+                { val: 'none', lbl: 'None' }
+            ], 'yes');
 
-            if (!panelObj) {
-                const panelLabel = activePanel === 'main' ? 'Main Panel' : (activePanel === 'leftReturn' ? 'Left Return' : 'Right Return');
-                const addBtnId = activePanel === 'main' ? 'wiz-warning-add-main-btn' : (activePanel === 'leftReturn' ? 'wiz-warning-add-left-btn' : 'wiz-warning-add-right-btn');
-                html += `
-                    <div style="grid-column: span 2; background: rgba(255, 170, 0, 0.05); border: 1px dashed rgba(255, 170, 0, 0.3); border-radius: 8px; padding: 24px; text-align: center; margin-top: 10px;">
-                        <i data-lucide="alert-triangle" style="width: 32px; height: 32px; color: #ffaa00; margin: 0 auto 12px; display: block;"></i>
-                        <h4 style="margin: 0 0 8px; color: #ffaa00; font-family: 'Outfit', sans-serif;">${panelLabel} is not added/active</h4>
-                        <p style="margin: 0 0 16px; font-size: 13px; color: var(--text-dim);">This panel is currently deleted/not active. To design or edit it, add it to this balcony.</p>
-                        <button id="${addBtnId}" class="btn success" style="padding: 8px 16px; font-size: 13px; font-weight: bold; background: #00ff88; color: #000; border-radius: 6px; border: none; cursor: pointer;">
-                            Add ${panelLabel}
-                        </button>
-                    </div>
-                `;
-            } else {
-                // Style Selection
-                html += generateSelectInput('Rail Style', 'railStyle', [
-                    { val: 'classical', lbl: 'Classical Style (Preset)' },
-                    { val: 'executive', lbl: 'Executive Style (Preset)' },
-                    { val: 'urban_balcony', lbl: 'Urban Balcony Rail (Preset)' },
-                    { val: 'villa_balcony', lbl: 'Villa Balcony Rail (Preset)' },
-                    { val: 'classic_custom', lbl: 'Classic Custom' },
-                    { val: 'executive_custom', lbl: 'Executive Custom' },
-                    { val: 'urban_custom', lbl: 'Urban Balcony Rail Custom' },
-                    { val: 'villa_custom', lbl: 'Villa Balcony Rail Custom' }
-                ], 'classical');
+            html += generateSelectInput('Mid Posts', 'midPosts', [
+                { val: 'yes', lbl: 'Yes' },
+                { val: 'none', lbl: 'None' }
+            ], 'none');
 
-                // Length
-                html += generateNumInput('Total Length (in)', 'length', 120);
+            // Mid Post Count
+            html += `<div id="grp-rail-midPostCount" class="input-group hidden">
+                        <label>Number of Mid Posts</label>
+                        <input type="number" id="inp-midPostCount" value="1" step="1" min="1">
+                     </div>`;
 
-                // Return Toggles (only visible on Main Panel inputs)
-                if (activePanel === 'main') {
-                    html += generateSelectInput('Include Left Return', 'wizLeftReturnToggle', [
-                        { val: 'yes', lbl: 'Yes' },
-                        { val: 'no', lbl: 'No' }
-                    ], activeSet.leftReturn ? 'yes' : 'no');
-                    
-                    html += generateSelectInput('Include Right Return', 'wizRightReturnToggle', [
-                        { val: 'yes', lbl: 'Yes' },
-                        { val: 'no', lbl: 'No' }
-                    ], activeSet.rightReturn ? 'yes' : 'no');
-                }
+            // Custom Options Wrapper
+            html += `<div id="grp-rail-catalog-custom-options" class="hidden" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">`;
+            
+            // Heights
+            html += generateNumInput('Fence Height (in)', 'fenceHeight', 41.0);
+            html += generateNumInput('Post Height (in)', 'postHeight', 45.75);
 
-                // Corner / Mid Posts Options
-                html += generateSelectInput('Left Corner Post', 'leftPost', [
-                    { val: 'yes', lbl: 'Yes' },
-                    { val: 'none', lbl: 'None' }
-                ], 'yes');
-                
-                html += generateSelectInput('Right Corner Post', 'rightPost', [
-                    { val: 'yes', lbl: 'Yes' },
-                    { val: 'none', lbl: 'None' }
-                ], 'yes');
+            // Post Profile
+            html += generateSelectInput('Post Profile', 'postType', runnerProfileOptions, 'hss_rect');
+            html += `<div class="input-group">
+                        <label>Post AISC Size</label>
+                        <select id="inp-postSize"></select>
+                     </div>`;
+            html += `<div id="grp-postW" class="input-group hidden">
+                        <label>Post Custom Dimension (in)</label>
+                        <input type="number" id="inp-postW" value="1.5" step="0.01">
+                     </div>`;
 
-                html += generateSelectInput('Mid Posts', 'midPosts', [
-                    { val: 'default', lbl: 'Default' },
-                    { val: 'custom_standard', lbl: 'Custom standard' },
-                    { val: 'custom', lbl: 'Custom' },
-                    { val: 'none', lbl: 'None' }
-                ], 'default');
+            // Top Runner Profile
+            html += generateSelectInput('Top Runner Profile', 'topRailType', runnerProfileOptions, 'hss_rect');
+            html += `<div class="input-group">
+                        <label>Top Runner AISC Size</label>
+                        <select id="inp-topRailSize"></select>
+                     </div>`;
+            html += `<div id="grp-topRailH" class="input-group hidden">
+                        <label>Top Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-topRailH" value="1.5" step="0.01">
+                     </div>`;
 
-                // Mid Post Count
-                html += `<div id="grp-rail-midPostCount" class="input-group hidden">
-                            <label>Number of Mid Posts</label>
-                            <input type="number" id="inp-midPostCount" value="1" step="1" min="1">
-                         </div>`;
+            // Bottom Runner Profile
+            html += generateSelectInput('Bottom Runner Profile', 'botRailType', runnerProfileOptions, 'hss_rect');
+            html += `<div class="input-group">
+                        <label>Bottom Runner AISC Size</label>
+                        <select id="inp-botRailSize"></select>
+                     </div>`;
+            html += `<div id="grp-botRailH" class="input-group hidden">
+                        <label>Bottom Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-botRailH" value="1.5" step="0.01">
+                     </div>`;
 
-                // Spacings wrapper (if custom)
-                if (panelObj.midPosts === 'custom') {
-                    const count = parseInt(panelObj.midPostCount) || 0;
-                    html += `<div id="grp-rail-midPostSpacings" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.01);">`;
-                    for (let i = 1; i <= count; i++) {
-                        let labelText = "";
-                        if (i === 1) {
-                            labelText = `Spacing of 1st post (left corner to 1st post center)`;
-                        } else if (i === 2) {
-                            labelText = `Spacing of 2nd post (1st to 2nd center)`;
-                        } else if (i === 3) {
-                            labelText = `Spacing of 3rd post (2nd to 3rd center)`;
-                        } else {
-                            labelText = `Spacing of ${i}th post (${i-1} to ${i} center)`;
-                        }
-                        const defaultSpacing = panelObj.midPostSpacings?.[i - 1] !== undefined ? panelObj.midPostSpacings[i - 1] : 48;
-                        html += `
-                            <div class="input-group">
-                                <label>${labelText}</label>
-                                <input type="number" id="inp-midPostSpacing-${i}" value="${defaultSpacing}" step="0.1" min="0.1">
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                }
+            // Mid Runner Profile
+            html += generateSelectInput('Mid Runner Profile', 'midRailType', runnerProfileOptions, 'none');
+            html += `<div class="input-group">
+                        <label>Mid Runner AISC Size</label>
+                        <select id="inp-midRailSize"></select>
+                     </div>`;
+            html += `<div id="grp-midRailH" class="input-group hidden">
+                        <label>Mid Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-midRailH" value="1.5" step="0.01">
+                     </div>`;
+            html += `<div id="grp-midRailGap" class="input-group hidden">
+                        <label>Mid Runner Gap (in)</label>
+                        <input type="number" id="inp-midRailGap" value="12.0" step="0.1">
+                     </div>`;
 
-                // Base Plates (always visible in main section)
-                html += generateSelectInput('Base Plates', 'includeBasePlates', [
-                    { val: 'no', lbl: 'None' },
-                    { val: 'yes', lbl: 'Include Base Plates' }
-                ], 'no');
+            // Picket Profile
+            html += generateSelectInput('Vertical Picket Profile', 'picketType', profileOptions, 'hss_rect');
+            html += `<div class="input-group">
+                        <label>Picket AISC Size</label>
+                        <select id="inp-picketSize"></select>
+                     </div>`;
+            html += `<div id="grp-picketW" class="input-group hidden">
+                        <label>Picket Custom Dim (in)</label>
+                        <input type="number" id="inp-picketW" value="0.5" step="0.01">
+                     </div>`;
+            html += generateNumInput('Picket Spacing (in)', 'picketSpacing', 4.0);
 
-                // Base Plate Details (sub-group toggled by includeBasePlates value)
-                html += `<div id="grp-basePlateDetails" class="hidden" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; margin-bottom: 10px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.01);">`;
-                html += `<div id="grp-basePlateSizeGroup" class="input-group">
-                            <label>Base Plate AISC Thickness</label>
-                            <select id="inp-basePlateSize"></select>
-                         </div>`;
-                html += `<div id="grp-basePlateW" class="input-group">
-                            <label>Base Plate Width (in)</label>
-                            <input type="number" id="inp-basePlateW" value="6.0" step="0.01">
-                         </div>`;
-                html += `<div id="grp-basePlateL" class="input-group">
-                            <label>Base Plate Length (in)</label>
-                            <input type="number" id="inp-basePlateL" value="6.0" step="0.01">
-                         </div>`;
-                html += `<div id="grp-basePlateT" class="input-group">
-                            <label>Base Plate Custom Thickness (in)</label>
-                            <input type="number" id="inp-basePlateT" value="0.5" step="0.01">
-                         </div>`;
-                html += `<div id="grp-basePlateHoleD" class="input-group">
-                            <label>Base Plate Hole Diameter (in)</label>
-                            <input type="number" id="inp-basePlateHoleD" value="0.5" step="0.01">
-                         </div>`;
-                html += `<div id="grp-basePlateHoleOffsetX" class="input-group">
-                            <label>Base Plate Hole Offset X (in)</label>
-                            <input type="number" id="inp-basePlateHoleOffsetX" value="0.5" step="0.01">
-                         </div>`;
-                html += `<div id="grp-basePlateHoleOffsetY" class="input-group">
-                            <label>Base Plate Hole Offset Y (in)</label>
-                            <input type="number" id="inp-basePlateHoleOffsetY" value="0.25" step="0.01">
-                         </div>`;
-                html += `</div>`;
+            // Base Plates
+            html += generateSelectInput('Base Plates', 'includeBasePlates', [{ val: 'no', lbl: 'None' }, { val: 'yes', lbl: 'Include Base Plates' }], 'no');
+            html += `<div id="grp-basePlateSizeGroup" class="input-group hidden">
+                        <label>Base Plate AISC Thickness</label>
+                        <select id="inp-basePlateSize"></select>
+                     </div>`;
+            html += `<div id="grp-basePlateW" class="input-group hidden">
+                        <label>Base Plate Width (in)</label>
+                        <input type="number" id="inp-basePlateW" value="6.0" step="0.01">
+                     </div>`;
+            html += `<div id="grp-basePlateL" class="input-group hidden">
+                        <label>Base Plate Length (in)</label>
+                        <input type="number" id="inp-basePlateL" value="6.0" step="0.01">
+                     </div>`;
+            html += `<div id="grp-basePlateT" class="input-group hidden">
+                        <label>Base Plate Custom Thickness (in)</label>
+                        <input type="number" id="inp-basePlateT" value="0.5" step="0.01">
+                     </div>`;
+            html += `<div id="grp-basePlateHoleD" class="input-group hidden">
+                        <label>Base Plate Hole Diameter (in)</label>
+                        <input type="number" id="inp-basePlateHoleD" value="0.5" step="0.01">
+                     </div>`;
+            html += `<div id="grp-basePlateHoleOffsetX" class="input-group hidden">
+                        <label>Base Plate Hole Offset X (in)</label>
+                        <input type="number" id="inp-basePlateHoleOffsetX" value="0.5" step="0.01">
+                     </div>`;
+            html += `<div id="grp-basePlateHoleOffsetY" class="input-group hidden">
+                        <label>Base Plate Hole Offset Y (in)</label>
+                        <input type="number" id="inp-basePlateHoleOffsetY" value="0.25" step="0.01">
+                     </div>`;
 
-                // Custom Options Wrapper
-                html += `<div id="grp-rail-catalog-custom-options" class="hidden" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">`;
-                
-                // Heights & Runner options (only visible for custom styles)
-                html += `<div id="grp-rail-runner-custom-options" class="inputs-subgrid" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">`;
-                
-                // Heights
-                html += generateNumInput('Panel Body Height (in)', 'fenceHeight', 41.0);
-                html += generateNumInput('Post Height (in)', 'postHeight', 45.75);
-
-                // Post Profile
-                html += generateSelectInput('Post Profile', 'postType', runnerProfileOptions, 'hss_rect');
-                html += `<div class="input-group">
-                            <label>Post AISC Size</label>
-                            <select id="inp-postSize"></select>
-                         </div>`;
-                html += `<div id="grp-postW" class="input-group hidden">
-                            <label>Post Custom Dimension (in)</label>
-                            <input type="number" id="inp-postW" value="1.5" step="0.01">
-                         </div>`;
-
-                // Top Runner Profile
-                html += generateSelectInput('Top Runner Profile', 'topRailType', runnerProfileOptions, 'hss_rect');
-                html += `<div class="input-group">
-                            <label>Top Runner AISC Size</label>
-                            <select id="inp-topRailSize"></select>
-                         </div>`;
-                html += `<div id="grp-topRailH" class="input-group hidden">
-                            <label>Top Runner Custom Dim (in)</label>
-                            <input type="number" id="inp-topRailH" value="1.5" step="0.01">
-                         </div>`;
-
-                // Bottom Runner Profile
-                html += generateSelectInput('Bottom Runner Profile', 'botRailType', runnerProfileOptions, 'hss_rect');
-                html += `<div class="input-group">
-                            <label>Bottom Runner AISC Size</label>
-                            <select id="inp-botRailSize"></select>
-                         </div>`;
-                html += `<div id="grp-botRailH" class="input-group hidden">
-                            <label>Bottom Runner Custom Dim (in)</label>
-                            <input type="number" id="inp-botRailH" value="1.5" step="0.01">
-                         </div>`;
-
-                // Mid Runner Profile section (hidden for classic_custom & urban_custom)
-                html += `<div id="grp-midRailProfileSection" class="inputs-subgrid" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">`;
-                html += generateSelectInput('Mid Runner Profile', 'midRailType', runnerProfileOptions, 'none');
-                html += `<div class="input-group">
-                            <label>Mid Runner AISC Size</label>
-                            <select id="inp-midRailSize"></select>
-                         </div>`;
-                html += `<div id="grp-midRailH" class="input-group hidden">
-                            <label>Mid Runner Custom Dim (in)</label>
-                            <input type="number" id="inp-midRailH" value="1.5" step="0.01">
-                         </div>`;
-                html += `<div id="grp-midRailGap" class="input-group hidden">
-                            <label>Mid Runner Gap (in)</label>
-                            <input type="number" id="inp-midRailGap" value="12.0" step="0.1">
-                         </div>`;
-                html += `</div>`; // grp-midRailProfileSection end
-
-                html += `</div>`; // grp-rail-runner-custom-options end
-
-                // Picket Profile section (hidden for mesh styles)
-                html += `<div id="grp-rail-picket-options" class="inputs-subgrid" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">`;
-                html += generateSelectInput('Vertical Picket Profile', 'picketType', profileOptions, 'hss_rect');
-                html += `<div class="input-group">
-                            <label>Picket AISC Size</label>
-                            <select id="inp-picketSize"></select>
-                         </div>`;
-                html += `<div id="grp-picketW" class="input-group hidden">
-                            <label>Picket Custom Dim (in)</label>
-                            <input type="number" id="inp-picketW" value="0.5" step="0.01">
-                         </div>`;
-                html += generateNumInput('Picket Spacing (in)', 'picketSpacing', 4.0);
-                html += `</div>`; // grp-rail-picket-options end
-
-                // Mesh Profile section (visible only for mesh styles)
-                html += `<div id="grp-rail-mesh-options" class="inputs-subgrid hidden" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">`;
-                html += generateNumInput('Mesh Grid Width (in)', 'meshGridW', 2.0);
-                html += generateNumInput('Mesh Grid Height (in)', 'meshGridH', 2.0);
-                html += generateNumInput('Mesh Wire Diameter (in)', 'meshWireD', 0.135);
-                html += `<div style="display: none;">`;
-                html += generateSelectInput('Extra Flat Bar', 'extraFlatBar', [
-                    { val: 'no', lbl: 'No' },
-                    { val: 'yes', lbl: 'Yes' }
-                ], 'no');
-                html += `</div>`;
-                html += `</div>`; // grp-rail-mesh-options end
-
-                html += `</div>`; // grp-rail-catalog-custom-options end
-
-                // Render bottom Delete Panel button
-                const panelLabel = activePanel === 'main' ? 'Main Panel' : (activePanel === 'leftReturn' ? 'Left Return' : 'Right Return');
-                html += `
-                    <div style="grid-column: span 2; display: flex; justify-content: flex-end; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
-                        <button id="wiz-delete-active-panel-btn" class="btn danger" style="padding: 6px 12px; font-size: 12px; background: rgba(255, 68, 68, 0.15); border: 1px solid rgba(255, 68, 68, 0.3); color: #ff6b6b; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                            Delete ${panelLabel}
-                        </button>
-                    </div>
-                `;
-            }
+            html += `</div>`; // grp-rail-catalog-custom-options end
             html += '</div>'; // inputs-grid end
 
             dynamicInputs.innerHTML = html;
-            loadActivePanelToInputs();
-            if (window.lucide) window.lucide.createIcons();
 
             // Wire listeners
             const railStyleSelect = document.getElementById('inp-railStyle');
@@ -2402,428 +907,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const midPostCountGroup = document.getElementById('grp-rail-midPostCount');
 
             const toggleCustomOptions = () => {
-                if (!railStyleSelect || !customOptionsWrapper) return;
                 const style = railStyleSelect.value;
-                const isCustomStyle = (style === 'classic_custom' || style === 'executive_custom' || style === 'urban_custom' || style === 'villa_custom');
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-
-                if (isCustomStyle || isMeshStyle) {
+                if (style === 'classic_custom' || style === 'executive_custom') {
                     customOptionsWrapper.classList.remove('hidden');
                 } else {
                     customOptionsWrapper.classList.add('hidden');
                 }
-
-                const runnerGroup = document.getElementById('grp-rail-runner-custom-options');
-                if (runnerGroup) {
-                    if (isCustomStyle) {
-                        runnerGroup.classList.remove('hidden');
-                    } else {
-                        runnerGroup.classList.add('hidden');
-                    }
-                }
-
-                const midRunnerGroup = document.getElementById('grp-midRailProfileSection');
-                if (midRunnerGroup) {
-                    if (style === 'classic_custom' || style === 'urban_custom') {
-                        midRunnerGroup.classList.add('hidden');
-                        const midRailTypeSelect = document.getElementById('inp-midRailType');
-                        if (midRailTypeSelect) {
-                            midRailTypeSelect.value = 'none';
-                        }
-                    } else {
-                        midRunnerGroup.classList.remove('hidden');
-                    }
-                }
-
-                const picketGroup = document.getElementById('grp-rail-picket-options');
-                if (picketGroup) {
-                    if (isMeshStyle) {
-                        picketGroup.classList.add('hidden');
-                    } else {
-                        picketGroup.classList.remove('hidden');
-                    }
-                }
-
-                const meshGroup = document.getElementById('grp-rail-mesh-options');
-                if (meshGroup) {
-                    if (isMeshStyle) {
-                        meshGroup.classList.remove('hidden');
-                    } else {
-                        meshGroup.classList.add('hidden');
-                    }
-                }
             };
 
             const toggleMidPosts = () => {
-                if (!midPostsSelect || !midPostCountGroup) return;
-                if (midPostsSelect.value === 'custom' || midPostsSelect.value === 'custom_standard') {
+                if (midPostsSelect.value === 'yes') {
                     midPostCountGroup.classList.remove('hidden');
                 } else {
                     midPostCountGroup.classList.add('hidden');
                 }
             };
 
-            if (railStyleSelect) {
-                railStyleSelect.addEventListener('change', () => {
-                    toggleCustomOptions();
-                    saveCurrentInputsToActivePanel();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (midPostsSelect) {
-                midPostsSelect.addEventListener('change', () => {
-                    toggleMidPosts();
-                    saveCurrentInputsToActivePanel();
-                    updateInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            const midPostCountInput = document.getElementById('inp-midPostCount');
-            if (midPostCountInput) {
-                midPostCountInput.addEventListener('input', () => {
-                    saveCurrentInputsToActivePanel();
-                    updateInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            const leftReturnToggle = document.getElementById('inp-wizLeftReturnToggle');
-            const rightReturnToggle = document.getElementById('inp-wizRightReturnToggle');
-            
-            if (leftReturnToggle) {
-                leftReturnToggle.addEventListener('change', () => {
-                    const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    if (leftReturnToggle.value === 'no') {
-                        activeSet.leftReturn = null;
-                        if (balconyWizardState.activePanelType === 'leftReturn') {
-                            balconyWizardState.activePanelType = 'main';
-                        }
-                    } else if (leftReturnToggle.value === 'yes' && !activeSet.leftReturn) {
-                        activeSet.leftReturn = createDefaultReturnConfig();
-                    }
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-            
-            if (rightReturnToggle) {
-                rightReturnToggle.addEventListener('change', () => {
-                    const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    if (rightReturnToggle.value === 'no') {
-                        activeSet.rightReturn = null;
-                        if (balconyWizardState.activePanelType === 'rightReturn') {
-                            balconyWizardState.activePanelType = 'main';
-                        }
-                    } else if (rightReturnToggle.value === 'yes' && !activeSet.rightReturn) {
-                        activeSet.rightReturn = createDefaultReturnConfig();
-                    }
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            // Wire Balcony Wizard components
-            const wizActiveSet = document.getElementById('wiz-active-set');
-            const wizDeleteSetBtn = document.getElementById('wiz-delete-set-btn');
-            const wizAddSetBtn = document.getElementById('wiz-add-set-btn');
-            const wizDrawingBase = document.getElementById('wiz-drawing-base');
-            const wizTabBtns = document.querySelectorAll('.wiz-tab-btn');
-
-            if (wizActiveSet) {
-                wizActiveSet.addEventListener('change', (e) => {
-                    if (e.target.value === 'draft') return;
-                    saveCurrentInputsToActivePanel();
-                    balconyWizardState.tempSet = null; // Discard draft if we switch away
-                    balconyWizardState.activeSetIdx = parseInt(e.target.value);
-                    balconyWizardState.activePanelType = 'main';
-                    balconyWizardState.step = 'done';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (wizDeleteSetBtn) {
-                wizDeleteSetBtn.addEventListener('click', () => {
-                    const activeSetIdx = balconyWizardState.activeSetIdx;
-                    const letter = getSetLetter(activeSetIdx);
-                    if (confirm(`Are you sure you want to delete Balcony ${letter}?`)) {
-                        saveCurrentInputsToActivePanel(); // Save other sets
-                        
-                        // Remove the set
-                        balconyWizardState.sets.splice(activeSetIdx, 1);
-                        
-                        // Re-index remaining sets
-                        balconyWizardState.sets.forEach((set, idx) => {
-                            set.id = idx + 1;
-                            set.drawingBase = (idx + 1).toString();
-                        });
-                        
-                        // Switch active index to a valid index
-                        balconyWizardState.activeSetIdx = Math.max(0, activeSetIdx - 1);
-                        balconyWizardState.activePanelType = 'main';
-                        balconyWizardState.step = 'done';
-                        
-                        updateInputs();
-                        loadActivePanelToInputs();
-                        renderCurrentCAD();
-                    }
-                });
-            }
-
-            if (wizAddSetBtn) {
-                wizAddSetBtn.addEventListener('click', () => {
-                    if (balconyWizardState.tempSet) {
-                        alert("Please save or discard the current draft balcony first.");
-                        return;
-                    }
-                    saveCurrentInputsToActivePanel();
-                    
-                    const nextId = balconyWizardState.sets.length + 1;
-                    const prevSet = balconyWizardState.sets.length > 0 ? balconyWizardState.sets[balconyWizardState.sets.length - 1] : null;
-                    const prevBase = prevSet ? (parseInt(prevSet.drawingBase) || nextId - 1) : 0;
-                    const nextBase = (prevBase + 1).toString();
-                    const nextMain = (prevSet && prevSet.main) ? JSON.parse(JSON.stringify(prevSet.main)) : getDefaultPanelConfig();
-                    
-                    // Create draft set instead of adding to sets array immediately!
-                    balconyWizardState.tempSet = {
-                        id: nextId,
-                        drawingBase: nextBase,
-                        quantity: 1,
-                        main: nextMain,
-                        leftReturn: createDefaultReturnConfig(),
-                        rightReturn: createDefaultReturnConfig()
-                    };
-                    
-                    balconyWizardState.activeSetIdx = balconyWizardState.sets.length;
-                    balconyWizardState.activePanelType = 'main';
-                    balconyWizardState.step = 'done';
-                    
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (wizDrawingBase) {
-                wizDrawingBase.addEventListener('input', (e) => {
-                    const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    activeSet.drawingBase = e.target.value.trim() || "1";
-                    
-                    const tabs = document.querySelectorAll('.wiz-tab-btn');
-                    if (tabs.length >= 3) {
-                        tabs[0].textContent = `Main (${activeSet.drawingBase}B1)`;
-                        tabs[1].textContent = `Return 1 (${activeSet.drawingBase}R1)`;
-                        tabs[2].textContent = `Return 2 (${activeSet.drawingBase}R2)`;
-                    }
-                    saveCurrentInputsToActivePanel();
-                });
-            }
-
-            const wizSetQty = document.getElementById('wiz-set-qty');
-            if (wizSetQty) {
-                wizSetQty.addEventListener('input', (e) => {
-                    const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    activeSet.quantity = Math.max(1, parseInt(e.target.value) || 1);
-                    saveCurrentInputsToActivePanel();
-                    renderCurrentCAD();
-                });
-            }
-
-            wizTabBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const panelType = e.target.getAttribute('data-panel');
-                    saveCurrentInputsToActivePanel();
-                    balconyWizardState.activePanelType = panelType;
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
+            railStyleSelect.addEventListener('change', () => {
+                toggleCustomOptions();
+                renderCurrentCAD();
             });
 
-            const saveMainBtn = document.getElementById('wiz-save-main-btn');
-            const addR1Btn = document.getElementById('wiz-add-r1-btn');
-            const skipR1Btn = document.getElementById('wiz-skip-r1-btn');
-            const saveR1Btn = document.getElementById('wiz-save-r1-btn');
-            const removeR1Btn = document.getElementById('wiz-remove-r1-btn');
-            const addR2Btn = document.getElementById('wiz-add-r2-btn');
-            const skipR2Btn = document.getElementById('wiz-skip-r2-btn');
-            const saveR2Btn = document.getElementById('wiz-save-r2-btn');
-            const removeR2Btn = document.getElementById('wiz-remove-r2-btn');
-            const nextSetBtn = document.getElementById('wiz-next-set-btn');
-
-            if (saveMainBtn) {
-                saveMainBtn.addEventListener('click', () => {
-                    saveCurrentInputsToActivePanel();
-                    balconyWizardState.step = 'ask_leftReturn';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (addR1Btn) {
-                addR1Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.leftReturn = JSON.parse(JSON.stringify(set.main || getDefaultPanelConfig()));
-                    set.leftReturn.length = 36.0;
-                    set.leftReturn.leftPost = 'yes';
-                    set.leftReturn.rightPost = 'none';
-                    set.leftReturn.midPosts = 'none';
-                    set.leftReturn.midPostCount = 0;
-                    
-                    balconyWizardState.activePanelType = 'leftReturn';
-                    balconyWizardState.step = 'edit_leftReturn';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (skipR1Btn) {
-                skipR1Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.leftReturn = null;
-                    balconyWizardState.step = 'ask_rightReturn';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (saveR1Btn) {
-                saveR1Btn.addEventListener('click', () => {
-                    saveCurrentInputsToActivePanel();
-                    balconyWizardState.step = 'ask_rightReturn';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (removeR1Btn) {
-                removeR1Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.leftReturn = null;
-                    balconyWizardState.activePanelType = 'main';
-                    balconyWizardState.step = 'done';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (addR2Btn) {
-                addR2Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.rightReturn = JSON.parse(JSON.stringify(set.leftReturn || set.main || getDefaultPanelConfig()));
-                    set.rightReturn.length = 36.0;
-                    set.rightReturn.leftPost = 'yes';
-                    set.rightReturn.rightPost = 'none';
-                    set.rightReturn.midPosts = 'none';
-                    
-                    balconyWizardState.activePanelType = 'rightReturn';
-                    balconyWizardState.step = 'edit_rightReturn';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (skipR2Btn) {
-                skipR2Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.rightReturn = null;
-                    balconyWizardState.step = 'done';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (saveR2Btn) {
-                saveR2Btn.addEventListener('click', () => {
-                    saveCurrentInputsToActivePanel();
-                    balconyWizardState.step = 'done';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (removeR2Btn) {
-                removeR2Btn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.rightReturn = null;
-                    balconyWizardState.activePanelType = 'main';
-                    balconyWizardState.step = 'done';
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (nextSetBtn) {
-                nextSetBtn.addEventListener('click', () => {
-                    if (wizAddSetBtn) wizAddSetBtn.click();
-                });
-            }
-
-            // Wire up new draft balcony buttons
-            const startDraftBtn = document.getElementById('wiz-start-draft-btn');
-            const saveDraftBtn = document.getElementById('wiz-save-draft-btn');
-            const cancelDraftBtn = document.getElementById('wiz-cancel-draft-btn');
-
-            if (startDraftBtn) {
-                startDraftBtn.addEventListener('click', () => {
-                    if (wizAddSetBtn) wizAddSetBtn.click();
-                });
-            }
-
-            if (saveDraftBtn) {
-                saveDraftBtn.addEventListener('click', () => {
-                    if (!balconyWizardState.tempSet) return;
-                    saveCurrentInputsToActivePanel(); // Save any pending inputs
-                    
-                    // Add the draft set to the official sets array!
-                    balconyWizardState.sets.push(balconyWizardState.tempSet);
-                    balconyWizardState.activeSetIdx = balconyWizardState.sets.length - 1;
-                    balconyWizardState.tempSet = null;
-                    
-                    // Stay on the same wizard step (e.g. done or edit) but now officially committed
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            if (cancelDraftBtn) {
-                cancelDraftBtn.addEventListener('click', () => {
-                    balconyWizardState.tempSet = null;
-                    // Go back to the last saved set
-                    balconyWizardState.activeSetIdx = Math.max(0, balconyWizardState.sets.length - 1);
-                    balconyWizardState.step = 'done';
-                    
-                    updateInputs();
-                    loadActivePanelToInputs();
-                    renderCurrentCAD();
-                });
-            }
-
-            const inputs = dynamicInputs.querySelectorAll('input, select');
-            inputs.forEach(inp => {
-                if (inp.id.startsWith('inp-')) {
-                    inp.addEventListener('input', () => {
-                        saveCurrentInputsToActivePanel();
-                    });
-                    inp.addEventListener('change', () => {
-                        saveCurrentInputsToActivePanel();
-                    });
-                }
+            midPostsSelect.addEventListener('change', () => {
+                toggleMidPosts();
+                renderCurrentCAD();
             });
 
             // Set up dynamic profile sizing for custom options
@@ -2850,84 +957,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     inp.addEventListener('change', renderCurrentCAD);
                 }
             });
-
-            // Wire Warning Add Buttons and Delete Button
-            const warningAddMainBtn = document.getElementById('wiz-warning-add-main-btn');
-            const warningAddLeftBtn = document.getElementById('wiz-warning-add-left-btn');
-            const warningAddRightBtn = document.getElementById('wiz-warning-add-right-btn');
-            const deleteActivePanelBtn = document.getElementById('wiz-delete-active-panel-btn');
-
-            if (warningAddMainBtn) {
-                warningAddMainBtn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.main = getDefaultPanelConfig();
-                    balconyWizardState.activePanelType = 'main';
-                    updateInputs();
-                });
-            }
-
-            if (warningAddLeftBtn) {
-                warningAddLeftBtn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.leftReturn = JSON.parse(JSON.stringify(set.main || getDefaultPanelConfig()));
-                    set.leftReturn.length = 36.0;
-                    set.leftReturn.leftPost = 'yes';
-                    set.leftReturn.rightPost = 'none';
-                    set.leftReturn.midPosts = 'none';
-                    set.leftReturn.midPostCount = 0;
-                    
-                    balconyWizardState.activePanelType = 'leftReturn';
-                    balconyWizardState.step = 'edit_leftReturn';
-                    updateInputs();
-                });
-            }
-
-            if (warningAddRightBtn) {
-                warningAddRightBtn.addEventListener('click', () => {
-                    const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                    set.rightReturn = JSON.parse(JSON.stringify(set.leftReturn || set.main || getDefaultPanelConfig()));
-                    set.rightReturn.length = 36.0;
-                    set.rightReturn.leftPost = 'yes';
-                    set.rightReturn.rightPost = 'none';
-                    set.rightReturn.midPosts = 'none';
-                    
-                    balconyWizardState.activePanelType = 'rightReturn';
-                    balconyWizardState.step = 'edit_rightReturn';
-                    updateInputs();
-                });
-            }
-
-            if (deleteActivePanelBtn) {
-                deleteActivePanelBtn.addEventListener('click', () => {
-                    const activePanel = balconyWizardState.activePanelType;
-                    const panelLabel = activePanel === 'main' ? 'Main Panel' : (activePanel === 'leftReturn' ? 'Left Return' : 'Right Return');
-                    if (confirm(`Are you sure you want to delete the ${panelLabel}?`)) {
-                        saveCurrentInputsToActivePanel();
-                        const set = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                        
-                        if (activePanel === 'main') {
-                            set.main = null;
-                            if (set.leftReturn) {
-                                balconyWizardState.activePanelType = 'leftReturn';
-                            } else if (set.rightReturn) {
-                                balconyWizardState.activePanelType = 'rightReturn';
-                            } else {
-                                balconyWizardState.activePanelType = 'main';
-                            }
-                        } else if (activePanel === 'leftReturn') {
-                            set.leftReturn = null;
-                            balconyWizardState.activePanelType = 'main';
-                            balconyWizardState.step = 'done';
-                        } else if (activePanel === 'rightReturn') {
-                            set.rightReturn = null;
-                            balconyWizardState.activePanelType = 'main';
-                            balconyWizardState.step = 'done';
-                        }
-                        
-                        updateInputs();
-                    }
-                });
-            }
 
             // Initial trigger
             toggleCustomOptions();
@@ -3038,17 +1067,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Bending/Forming Options for standard shapes
         if (['hss_rect', 'hss_circ', 'angles', 'plate'].includes(cat)) {
-            const fabSelect = document.getElementById('inp-fabMethod');
-            const fabMethod = fabSelect ? fabSelect.value : 'straight';
-            const fabOptions = [
+            html += `<div style="grid-column: span 2; margin-bottom: 8px;">`;
+            html += generateSelectInput('Fabrication Method', 'fabMethod', [
                 { val: 'straight', lbl: 'Straight Cut' },
                 { val: 'bent', lbl: 'Bent / Formed (Single Piece)' }
-            ];
-            if (cat === 'plate') {
-                fabOptions.push({ val: 'custom', lbl: 'Custom Shaped Plate' });
-            }
-            html += `<div style="grid-column: span 2; margin-bottom: 8px;">`;
-            html += generateSelectInput('Fabrication Method', 'fabMethod', fabOptions, fabMethod);
+            ], 'straight');
             html += `</div>`;
             
             html += `
@@ -3067,7 +1090,6 @@ document.addEventListener('DOMContentLoaded', () => {
         html += '<div class="inputs-grid">';
         
         const profileOptions = [
-            { val: 'none', lbl: 'None (Disabled)' },
             { val: 'plate', lbl: 'Plate / Flat Bar' },
             { val: 'hss_rect', lbl: 'HSS Rectangular' },
             { val: 'hss_circ', lbl: 'HSS Circular (Pipe)' },
@@ -3110,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += generateNumInput('Thickness (in)', 't', 0.25);
         } else if (cat === 'fence') {
             html += generateNumInput('Total Length (in)', 'length', 120);
-            html += generateNumInput('Panel Body Height (in)', 'fenceHeight', 72);
+            html += generateNumInput('Fence Height (in)', 'fenceHeight', 72);
             html += generateNumInput('Post Height (in)', 'postHeight', 80);
             html += generateNumInput('Top Gap (in)', 'topGap', 2.0);
             html += generateNumInput('Post Spacing (in)', 'postSpacing', 48);
@@ -3122,8 +1144,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-postSize"></select>
                      </div>`;
             html += `<div id="grp-postW" class="input-group hidden">
-                        <label>Post Custom Dimension (in/AISC)</label>
-                        <input type="text" id="inp-postW" value="HSS 3x3x16GA">
+                        <label>Post Custom Dimension (in)</label>
+                        <input type="number" id="inp-postW" value="3.0" step="0.01">
                      </div>`;
             
             // Top Runner Profile & AISC standard sizes
@@ -3133,8 +1155,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-topRailSize"></select>
                      </div>`;
             html += `<div id="grp-topRailH" class="input-group hidden">
-                        <label>Top Runner Custom Dimension (in/AISC)</label>
-                        <input type="text" id="inp-topRailH" value="HSS 2x2x14GA">
+                        <label>Top Runner Custom Dimension (in)</label>
+                        <input type="number" id="inp-topRailH" value="2.0" step="0.01">
                      </div>`;
             
             // Mid Runner Profile & AISC standard sizes
@@ -3144,8 +1166,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-midRailSize"></select>
                      </div>`;
             html += `<div id="grp-midRailH" class="input-group hidden">
-                        <label>Mid Runner Custom Dimension (in/AISC)</label>
-                        <input type="text" id="inp-midRailH" value="HSS 1.5x1.5x14GA">
+                        <label>Mid Runner Custom Dimension (in)</label>
+                        <input type="number" id="inp-midRailH" value="1.5" step="0.01">
                      </div>`;
             html += `<div id="grp-midRailGap" class="input-group hidden">
                         <label>Mid Runner Gap (in)</label>
@@ -3159,8 +1181,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-botRailSize"></select>
                      </div>`;
             html += `<div id="grp-botRailH" class="input-group hidden">
-                        <label>Bottom Runner Custom Dimension (in/AISC)</label>
-                        <input type="text" id="inp-botRailH" value="HSS 2x2x14GA">
+                        <label>Bottom Runner Custom Dimension (in)</label>
+                        <input type="number" id="inp-botRailH" value="2.0" step="0.01">
                      </div>`;
             
             // Vertical Picket Profile & AISC standard sizes
@@ -3170,14 +1192,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-picketSize"></select>
                      </div>`;
             html += `<div id="grp-picketW" class="input-group hidden">
-                        <label>Vertical Picket Custom Dimension (in/AISC)</label>
-                        <input type="text" id="inp-picketW" value="HSS 0.75x0.75x14GA">
+                        <label>Vertical Picket Custom Dimension (in)</label>
+                        <input type="number" id="inp-picketW" value="0.75" step="0.01">
                      </div>`;
             
             html += generateNumInput('Picket Spacing (in)', 'picketSpacing', 4.0);
             html += generateNumInput('Slope at Bottom (deg)', 'slope', 0);
             html += generateSelectInput('Base Plates', 'includeBasePlates', [{ val: 'no', lbl: 'None' }, { val: 'yes', lbl: 'Include Base Plates' }], 'no');
- 
+
             // Base Plate AISC thickness & dimensions
             html += `<div id="grp-basePlateSizeGroup" class="input-group hidden">
                         <label>Base Plate AISC Thickness</label>
@@ -3185,15 +1207,15 @@ document.addEventListener('DOMContentLoaded', () => {
                      </div>`;
             html += `<div id="grp-basePlateW" class="input-group hidden">
                         <label>Base Plate Width (in)</label>
-                        <input type="text" id="inp-basePlateW" value="6.0">
+                        <input type="number" id="inp-basePlateW" value="6.0" step="0.01">
                      </div>`;
             html += `<div id="grp-basePlateL" class="input-group hidden">
                         <label>Base Plate Length (in)</label>
-                        <input type="text" id="inp-basePlateL" value="6.0">
+                        <input type="number" id="inp-basePlateL" value="6.0" step="0.01">
                      </div>`;
             html += `<div id="grp-basePlateT" class="input-group hidden">
-                        <label>Base Plate Custom Thickness (in/AISC)</label>
-                        <input type="text" id="inp-basePlateT" value="0.5">
+                        <label>Base Plate Custom Thickness (in)</label>
+                        <input type="number" id="inp-basePlateT" value="0.5" step="0.01">
                      </div>`;
             html += `<div id="grp-basePlateHoleD" class="input-group hidden">
                         <label>Base Plate Hole Diameter (in)</label>
@@ -3214,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ], 'gates');
 
             html += generateNumInput('Total Length (in)', 'length', 120);
-            html += generateNumInput('Panel Body Height (in)', 'fenceHeight', 72);
+            html += generateNumInput('Fence Height (in)', 'fenceHeight', 72);
             html += `<div id="grp-postHeight" class="input-group">
                         <label>Post Height (in)</label>
                         <input type="number" id="inp-postHeight" value="72" step="0.01">
@@ -3229,10 +1251,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-leftPostSize"></select>
                      </div>`;
             html += `<div id="grp-leftPostW" class="input-group hidden">
-                        <label>Left Side Runner Custom (in/AISC)</label>
-                        <input type="text" id="inp-leftPostW" value="HSS 3x3x16GA">
+                        <label>Left Side Runner Custom (in)</label>
+                        <input type="number" id="inp-leftPostW" value="3.0" step="0.01">
                      </div>`;
- 
+
             // Right Side Runner Profile & AISC standard sizes
             html += generateSelectInput('Right Side Runner Profile', 'rightPostType', runnerProfileOptions, 'hss_rect');
             html += `<div class="input-group">
@@ -3240,11 +1262,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-rightPostSize"></select>
                      </div>`;
             html += `<div id="grp-rightPostW" class="input-group hidden">
-                        <label>Right Side Runner Custom (in/AISC)</label>
-                        <input type="text" id="inp-rightPostW" value="HSS 3x3x16GA">
+                        <label>Right Side Runner Custom (in)</label>
+                        <input type="number" id="inp-rightPostW" value="3.0" step="0.01">
                      </div>`;
             html += `</div>`;
- 
+
             // Rails Options Wrapper
             html += `<div id="grp-railsgates-rails-options" class="hidden" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">`;
             html += generateNumInput('Number of Mid Posts', 'midPostCount', 1);
@@ -3254,11 +1276,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-midPostSize"></select>
                      </div>`;
             html += `<div id="grp-midPostW" class="input-group hidden">
-                        <label>Mid Post Custom Dim (in/AISC)</label>
-                        <input type="text" id="inp-midPostW" value="HSS 3x3x16GA">
+                        <label>Mid Post Custom Dim (in)</label>
+                        <input type="number" id="inp-midPostW" value="3.0" step="0.01">
                      </div>`;
             html += `</div>`;
- 
+
             // Top, Mid, Bottom Runners (common)
             html += generateSelectInput('Top Runner Profile', 'topRailType', runnerProfileOptions, 'hss_rect');
             html += `<div class="input-group">
@@ -3266,8 +1288,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-topRailSize"></select>
                      </div>`;
             html += `<div id="grp-topRailH" class="input-group hidden">
-                        <label>Top Runner Custom Dim (in/AISC)</label>
-                        <input type="text" id="inp-topRailH" value="HSS 2x2x14GA">
+                        <label>Top Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-topRailH" value="2.0" step="0.01">
                      </div>`;
             
             html += generateSelectInput('Mid Runner Profile', 'midRailType', runnerProfileOptions, 'none');
@@ -3276,8 +1298,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-midRailSize"></select>
                      </div>`;
             html += `<div id="grp-midRailH" class="input-group hidden">
-                        <label>Mid Runner Custom Dim (in/AISC)</label>
-                        <input type="text" id="inp-midRailH" value="HSS 1.5x1.5x14GA">
+                        <label>Mid Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-midRailH" value="1.5" step="0.01">
                      </div>`;
             html += `<div id="grp-midRailGap" class="input-group hidden">
                         <label>Mid Runner Gap (in)</label>
@@ -3290,8 +1312,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <select id="inp-botRailSize"></select>
                      </div>`;
             html += `<div id="grp-botRailH" class="input-group hidden">
-                        <label>Bottom Runner Custom Dim (in/AISC)</label>
-                        <input type="text" id="inp-botRailH" value="HSS 2x2x14GA">
+                        <label>Bottom Runner Custom Dim (in)</label>
+                        <input type="number" id="inp-botRailH" value="2.0" step="0.01">
                      </div>`;
 
             // Kick Plate Section (Gates only)
@@ -3319,49 +1341,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             <option value="PL11GA" selected>PL 11GA (0.1196")</option>
                             <option value="PL12GA">PL 12GA (0.1046")</option>
                             <option value="PL3/16">PL 3/16" (0.1875")</option>
-                            <option value="PL1/4">PL 1/4" (0.25")</option>
-                        </select>
-                     </div>`;
-            html += `</div>`;
-
-            // Wire Mesh / Expanded Metal Section (Gates only)
-            html += `<div id="grp-railsgates-mesh-section" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">`;
-            html += generateSelectInput('Wire Mesh / XF Type', 'meshType', [
-                { val: 'none', lbl: 'None' },
-                { val: 'mesh', lbl: 'Welded Wire Mesh' },
-                { val: 'xf', lbl: 'Expanded Metal (XF)' }
-            ], 'none');
-            html += `<div id="grp-meshFbSize" class="input-group hidden">
-                        <label>Mesh Flat Bar Size (e.g. FB1x1/8)</label>
-                        <input type="text" id="inp-meshFbSize" value="FB1x1/8">
-                     </div>`;
-            html += `<div id="grp-meshSize" class="input-group hidden">
-                        <label>Mesh / XF Spec (e.g. WWM2x2x0.135)</label>
-                        <input type="text" id="inp-meshSize" value="WWM2x2x0.135">
-                     </div>`;
-            html += `</div>`;
-
-            // Panic Bar Plate Section (Gates only)
-            html += `<div id="grp-railsgates-panicbar-section" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">`;
-            html += generateSelectInput('Panic Bar Plate', 'panicBarPlate', [
-                { val: 'none', lbl: 'None' },
-                { val: 'yes', lbl: 'Yes' }
-            ], 'none');
-            html += `<div id="grp-panicBarPlateGap" class="input-group hidden">
-                        <label>Panic Bar Plate Center Gap (in)</label>
-                        <input type="number" id="inp-panicBarPlateGap" value="36.0" step="0.1">
-                     </div>`;
-            html += `<div id="grp-panicBarPlateW" class="input-group hidden">
-                        <label>Panic Bar Plate Width (in)</label>
-                        <input type="number" id="inp-panicBarPlateW" value="8.0" step="0.1">
-                     </div>`;
-            html += `<div id="grp-panicBarPlateSizeGroup" class="input-group hidden">
-                        <label>Panic Bar Plate Thickness</label>
-                        <select id="inp-panicBarPlateSize">
-                            <option value="PL10GA">PL 10GA (0.1345")</option>
-                            <option value="PL11GA">PL 11GA (0.1196")</option>
-                            <option value="PL12GA">PL 12GA (0.1046")</option>
-                            <option value="PL3/16" selected>PL 3/16" (0.1875")</option>
                             <option value="PL1/4">PL 1/4" (0.25")</option>
                         </select>
                      </div>`;
@@ -3412,168 +1391,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="number" id="inp-basePlateHoleOffsetY" value="0.25" step="0.01">
                      </div>`;
         } else if (cat === 'plate') {
-            const fabSelect = document.getElementById('inp-fabMethod');
-            const fabMethod = fabSelect ? fabSelect.value : 'straight';
-            if (fabMethod === 'custom') {
-                let pointsListHtml = "";
-                customPlatePoints.forEach((pt, idx) => {
-                    const isStart = (idx === 0);
-                    const lineIdx = idx - 1;
-                    const isSelected = (selectedCustomLineIdx === lineIdx);
-                    
-                    if (isStart) {
-                        pointsListHtml += `
-                            <div class="custom-pt-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--accent-primary);">
-                                <span style="font-size: 11px; font-weight: 600;">Point 1 (Start)</span>
-                                <span style="font-size: 11px;">(0.00", 0.00")</span>
-                            </div>
-                        `;
-                    } else {
-                        pointsListHtml += `
-                            <div class="custom-pt-row ${isSelected ? 'selected' : ''}" data-line-idx="${lineIdx}" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); background: ${isSelected ? 'rgba(0, 212, 255, 0.15)' : 'transparent'}; cursor: pointer;">
-                                <div style="display: flex; align-items: center; gap: 4px;">
-                                    <span style="font-size: 11px; color: ${isSelected ? '#00d4ff' : 'var(--text-dim)'}; font-weight: ${isSelected ? 'bold' : 'normal'};">Line ${idx} (Pt ${idx+1})</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 4px;" class="prevent-row-click">
-                                    <span style="font-size: 9px; color: var(--text-dim);">X:</span>
-                                    <input type="number" class="inp-edit-custom-pt-x" data-idx="${idx}" value="${pt[0]}" step="0.1" style="width: 50px; background: #0f131a; color: #fff; border: 1px solid ${isSelected ? '#00d4ff' : 'var(--border-color)'}; border-radius: 4px; padding: 2px 4px; font-size: 11px;">
-                                    <span style="font-size: 9px; color: var(--text-dim);">Y:</span>
-                                    <input type="number" class="inp-edit-custom-pt-y" data-idx="${idx}" value="${pt[1]}" step="0.1" style="width: 50px; background: #0f131a; color: #fff; border: 1px solid ${isSelected ? '#00d4ff' : 'var(--border-color)'}; border-radius: 4px; padding: 2px 4px; font-size: 11px;">
-                                    <button type="button" class="btn-delete-custom-pt" data-idx="${idx}" title="Delete this line segment" style="background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 14px; font-weight: bold; padding: 2px 4px; line-height: 1;">&times;</button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                if (customPlatePoints.length >= 3) {
-                    const closingLineIdx = customPlatePoints.length - 1;
-                    const isSelected = (selectedCustomLineIdx === closingLineIdx);
-                    pointsListHtml += `
-                        <div class="custom-pt-row ${isSelected ? 'selected' : ''}" data-line-idx="${closingLineIdx}" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); background: ${isSelected ? 'rgba(0, 212, 255, 0.15)' : 'transparent'}; cursor: pointer;">
-                            <span style="font-size: 11px; color: ${isSelected ? '#00d4ff' : 'var(--text-dim)'}; font-weight: ${isSelected ? 'bold' : 'normal'};">Closing Line (Pt ${customPlatePoints.length} to Start)</span>
-                            <span style="font-size: 10px; color: var(--text-dim); font-style: italic;">Auto-closes to (0,0)</span>
-                        </div>
-                    `;
-                }
-
-                let selectionPanelHtml = "";
-                if (selectedCustomLineIdx !== null) {
-                    const lineIdx = selectedCustomLineIdx;
-                    const isClosing = (lineIdx === customPlatePoints.length - 1 && customPlatePoints.length >= 3);
-                    const pStartIdx = lineIdx;
-                    const pEndIdx = isClosing ? 0 : lineIdx + 1;
-                    
-                    const pStart = customPlatePoints[pStartIdx];
-                    const pEnd = customPlatePoints[pEndIdx];
-                    
-                    selectionPanelHtml = `
-                        <div style="margin-top: 10px; padding: 10px; border: 1px dashed #00d4ff; background: rgba(0, 212, 255, 0.04); border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <span style="font-weight: bold; color: #00d4ff; font-size: 11px; text-transform: uppercase;">Selected Segment: Line ${lineIdx + 1}</span>
-                                <span style="font-size: 9px; background: rgba(0, 212, 255, 0.2); color: #00d4ff; padding: 2px 6px; border-radius: 4px;">Active Selection</span>
-                            </div>
-                            <p style="margin: 0 0 8px 0; font-size: 10px; color: var(--text-dim); line-height: 1.3;">
-                                Connects Point ${pStartIdx + 1} (${pStart[0].toFixed(2)}", ${pStart[1].toFixed(2)}") to Point ${pEndIdx + 1} (${pEnd[0].toFixed(2)}", ${pEnd[1].toFixed(2)}")
-                            </p>
-                            ${isClosing ? `
-                                <p style="margin: 0; font-size: 10px; color: #ffaa00; font-style: italic; line-height: 1.3;">
-                                    Closing line endpoint is fixed at (0,0). To change its slope/direction, edit Point ${pStartIdx + 1}'s coordinates.
-                                </p>
-                            ` : `
-                                <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;">
-                                    <div style="flex: 1;">
-                                        <label style="font-size: 9px; display: block; color: var(--text-dim); margin-bottom: 2px;">End Pt ${pEndIdx + 1} X (in)</label>
-                                        <input type="number" id="inp-selected-end-x" value="${pEnd[0]}" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <label style="font-size: 9px; display: block; color: var(--text-dim); margin-bottom: 2px;">End Pt ${pEndIdx + 1} Y (in)</label>
-                                        <input type="number" id="inp-selected-end-y" value="${pEnd[1]}" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; font-size: 12px;">
-                                    </div>
-                                </div>
-                                <div style="display: flex; gap: 6px;">
-                                    <button type="button" id="btn-selected-delete" class="btn secondary" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,68,68,0.1); color: #ff6b6b; border: 1px solid rgba(255,68,68,0.2); border-radius: 6px; cursor: pointer;">Delete Line</button>
-                                    <button type="button" id="btn-selected-save" class="btn success" style="flex: 1; padding: 6px; font-size: 11px; background: #00ff88; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Apply</button>
-                                </div>
-                            `}
-                        </div>
-                    `;
-                }
-                
-                let holesListHtml = "";
-                if (customPlateHoles.length === 0) {
-                    holesListHtml = `<div style="color: var(--text-dim); text-align: center; padding: 4px 0;">No holes defined yet.</div>`;
-                } else {
-                    customPlateHoles.forEach((h, idx) => {
-                        holesListHtml += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <span>Hole ${idx+1}: Center (${h.x.toFixed(2)}", ${h.y.toFixed(2)}"), Dia: ${h.d.toFixed(3)}"</span>
-                            <button type="button" class="btn-remove-hole" data-idx="${idx}" style="background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 10px; font-weight: bold; padding: 0 4px;">Delete</button>
-                        </div>`;
-                    });
-                }
-                
-                const nextLineNum = customPlatePoints.length;
-
-                html += `
-                <div style="grid-column: span 2; border: 1px solid rgba(0, 212, 255, 0.15); background: rgba(0, 212, 255, 0.02); border-radius: 8px; padding: 12px; font-family: 'Inter', sans-serif;">
-                    <h4 style="margin: 0 0 6px 0; color: #00d4ff; font-size: 12px; font-weight: 600; text-transform: uppercase;">1. Custom Plate Outline</h4>
-                    <p style="margin: 0 0 8px 0; font-size: 11px; color: var(--text-dim); line-height: 1.3;">
-                        Define outline points sequentially. The first point is fixed at (0,0). The last point will connect back to (0,0) automatically to close the plate. Click a segment in the preview or list to edit/delete it.
-                    </p>
-                    <div id="custom-plate-points-list" style="background: rgba(0,0,0,0.2); border-radius: 6px; padding: 8px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); font-family: 'JetBrains Mono', monospace;">
-                        ${pointsListHtml}
-                    </div>
-                    
-                    <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 10px;">
-                        <div style="flex: 1;">
-                            <label style="font-size: 10px; display: block; color: var(--text-dim); margin-bottom: 2px;">Line ${nextLineNum} Endpoint X (in)</label>
-                            <input type="number" id="inp-custom-next-x" value="4.0" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 10px; display: block; color: var(--text-dim); margin-bottom: 2px;">Line ${nextLineNum} Endpoint Y (in)</label>
-                            <input type="number" id="inp-custom-next-y" value="0.0" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px;">
-                        </div>
-                        <button type="button" id="btn-custom-save-point" class="btn success" style="padding: 6px 12px; font-weight: bold; background: #00ff88; color: #000; border: none; border-radius: 6px; cursor: pointer; height: 32px;">Save</button>
-                    </div>
-                    
-                    <div style="display: flex; gap: 8px; margin-bottom: 4px;">
-                        <button type="button" id="btn-custom-remove-last" class="btn secondary" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">Remove Last Line</button>
-                        <button type="button" id="btn-custom-reset-outline" class="btn secondary" style="flex: 1; padding: 6px; font-size: 11px; background: rgba(255,68,68,0.1); color: #ff6b6b; border: 1px solid rgba(255,68,68,0.2); border-radius: 6px; cursor: pointer;">Reset Outline</button>
-                    </div>
-                    
-                    ${selectionPanelHtml}
-                </div>
-
-                <div style="grid-column: span 2; border: 1px solid rgba(0, 212, 255, 0.15); background: rgba(0, 212, 255, 0.02); border-radius: 8px; padding: 12px; font-family: 'Inter', sans-serif;">
-                    <h4 style="margin: 0 0 6px 0; color: var(--accent-secondary); font-size: 12px; font-weight: 600; text-transform: uppercase;">2. Plate Holes</h4>
-                    <div id="custom-plate-holes-list" style="background: rgba(0,0,0,0.2); border-radius: 6px; padding: 8px; max-height: 100px; overflow-y: auto; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); font-family: 'JetBrains Mono', monospace;">
-                        ${holesListHtml}
-                    </div>
-                    
-                    <div style="display: flex; gap: 6px; align-items: flex-end; margin-bottom: 10px;">
-                        <div style="flex: 1;">
-                            <label style="font-size: 10px; display: block; color: var(--text-dim); margin-bottom: 2px;">Center X</label>
-                            <input type="number" id="inp-custom-hole-x" value="2.0" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label style="font-size: 10px; display: block; color: var(--text-dim); margin-bottom: 2px;">Center Y</label>
-                            <input type="number" id="inp-custom-hole-y" value="2.0" step="0.1" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px;">
-                        </div>
-                        <div style="flex: 1.2;">
-                            <label style="font-size: 10px; display: block; color: var(--text-dim); margin-bottom: 2px;">Diameter</label>
-                            <input type="number" id="inp-custom-hole-d" value="0.875" step="0.01" style="width: 100%; box-sizing: border-box; background: #0f131a; color: #fff; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; font-size: 13px;">
-                        </div>
-                    </div>
-                    <button type="button" id="btn-custom-add-hole" class="btn primary" style="width: 100%; padding: 8px; font-weight: bold; background: #00d4ff; color: #000; border: none; border-radius: 6px; cursor: pointer;">Add Hole</button>
-                </div>
-                `;
-            } else {
-                html += generateNumInput('Plate Width (in)', 'w', 12);
-                html += generateNumInput('Plate Height (in)', 'h', 12);
-                html += generateNumInput('Hole Diameter (in)', 'holeD', 0.875);
-                html += generateNumInput('Hole Offset X (in)', 'holeOffsetX', 1.5);
-                html += generateNumInput('Hole Offset Y (in)', 'holeOffsetY', 1.5);
-            }
+            html += generateNumInput('Plate Width (in)', 'w', 12);
+            html += generateNumInput('Plate Height (in)', 'h', 12);
+            html += generateNumInput('Hole Diameter (in)', 'holeD', 0.875);
+            html += generateNumInput('Hole Offset X (in)', 'holeOffsetX', 1.5);
+            html += generateNumInput('Hole Offset Y (in)', 'holeOffsetY', 1.5);
         } else if (cat === 'custom_sketch') {
             html += `<div style="grid-column: span 2; border: 1px solid rgba(0, 212, 255, 0.15); background: rgba(0, 212, 255, 0.02); border-radius: 8px; padding: 16px; margin-bottom: 12px; font-family: 'Inter', sans-serif;">
                         <h4 style="margin: 0 0 6px 0; color: var(--accent-primary); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
@@ -3667,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const fhGroup = document.getElementById('inp-fenceHeight')?.closest('.input-group');
                         if (fhGroup) {
                             const lbl = fhGroup.querySelector('label');
-                            if (lbl) lbl.textContent = isGates ? 'Gate Height (in)' : 'Panel Body Height (in)';
+                            if (lbl) lbl.textContent = isGates ? 'Gate Height (in)' : 'Fence Height (in)';
                         }
 
                         const leftPostTypeGroup = document.getElementById('inp-leftPostType')?.closest('.input-group');
@@ -3772,38 +1594,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 document.getElementById('grp-kickPlateWeld')?.classList.add('hidden');
                                 document.getElementById('grp-kickPlateSizeGroup')?.classList.add('hidden');
                             }
-                            
-                            // Wire Mesh options
-                            const meshSection = document.getElementById('grp-railsgates-mesh-section');
-                            const meshTypeSelect = document.getElementById('inp-meshType');
-                            const meshFbGroup = document.getElementById('grp-meshFbSize');
-                            const meshSizeGroup = document.getElementById('grp-meshSize');
-                            if (meshSection) meshSection.classList.remove('hidden');
-                            if (meshTypeSelect && meshTypeSelect.value !== 'none') {
-                                if (meshFbGroup) meshFbGroup.classList.remove('hidden');
-                                if (meshSizeGroup) meshSizeGroup.classList.remove('hidden');
-                            } else {
-                                if (meshFbGroup) meshFbGroup.classList.add('hidden');
-                                if (meshSizeGroup) meshSizeGroup.classList.add('hidden');
-                            }
-
-                            // Panic Bar Plate options
-                            const panicbarSection = document.getElementById('grp-railsgates-panicbar-section');
-                            const panicBarSelect = document.getElementById('inp-panicBarPlate');
-                            const pbpGapGroup = document.getElementById('grp-panicBarPlateGap');
-                            const pbpWGroup = document.getElementById('grp-panicBarPlateW');
-                            const pbpSizeGroup = document.getElementById('grp-panicBarPlateSizeGroup');
-                            if (panicbarSection) panicbarSection.classList.remove('hidden');
-                            if (panicBarSelect && panicBarSelect.value === 'yes') {
-                                if (pbpGapGroup) pbpGapGroup.classList.remove('hidden');
-                                if (pbpWGroup) pbpWGroup.classList.remove('hidden');
-                                if (pbpSizeGroup) pbpSizeGroup.classList.remove('hidden');
-                            } else {
-                                if (pbpGapGroup) pbpGapGroup.classList.add('hidden');
-                                if (pbpWGroup) pbpWGroup.classList.add('hidden');
-                                if (pbpSizeGroup) pbpSizeGroup.classList.add('hidden');
-                            }
-
                             // Hide post options in gates mode
                             if (postHGroup) postHGroup.classList.add('hidden');
                             if (bpGroup) bpGroup.classList.add('hidden');
@@ -3821,14 +1611,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (kickPlateHGroup) kickPlateHGroup.classList.add('hidden');
                             document.getElementById('grp-kickPlateWeld')?.classList.add('hidden');
                             document.getElementById('grp-kickPlateSizeGroup')?.classList.add('hidden');
-                            document.getElementById('grp-railsgates-mesh-section')?.classList.add('hidden');
-                            document.getElementById('grp-meshFbSize')?.classList.add('hidden');
-                            document.getElementById('grp-meshSize')?.classList.add('hidden');
-                            document.getElementById('grp-railsgates-panicbar-section')?.classList.add('hidden');
-                            document.getElementById('grp-panicBarPlateGap')?.classList.add('hidden');
-                            document.getElementById('grp-panicBarPlateW')?.classList.add('hidden');
-                            document.getElementById('grp-panicBarPlateSizeGroup')?.classList.add('hidden');
-                            
                             // Show post options in rails mode
                             if (postHGroup) postHGroup.classList.remove('hidden');
                             if (bpGroup) bpGroup.classList.remove('hidden');
@@ -3850,28 +1632,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (kickPlateSelect) {
                         kickPlateSelect.addEventListener('change', () => {
-                            updateVisibility();
-                            renderCurrentCAD();
-                        });
-                    }
-                    const meshTypeSelect = document.getElementById('inp-meshType');
-                    if (meshTypeSelect) {
-                        meshTypeSelect.addEventListener('change', () => {
-                            const meshSizeInput = document.getElementById('inp-meshSize');
-                            if (meshSizeInput) {
-                                if (meshTypeSelect.value === 'mesh') {
-                                    meshSizeInput.value = "WWM2x2x0.135";
-                                } else if (meshTypeSelect.value === 'xf') {
-                                    meshSizeInput.value = "XF1/2x#16";
-                                }
-                            }
-                            updateVisibility();
-                            renderCurrentCAD();
-                        });
-                    }
-                    const panicBarSelect = document.getElementById('inp-panicBarPlate');
-                    if (panicBarSelect) {
-                        panicBarSelect.addEventListener('change', () => {
                             updateVisibility();
                             renderCurrentCAD();
                         });
@@ -3905,163 +1665,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // Bending Options toggle visibility
         const fabMethodSelect = document.getElementById('inp-fabMethod');
         const bendingOptions = document.getElementById('bending-options');
-        if (fabMethodSelect) {
-            if (bendingOptions) {
+        if (fabMethodSelect && bendingOptions) {
+            const toggleBending = () => {
                 if (fabMethodSelect.value === 'bent') {
                     bendingOptions.classList.remove('hidden');
                 } else {
                     bendingOptions.classList.add('hidden');
                 }
-            }
+            };
             fabMethodSelect.addEventListener('change', () => {
-                updateInputs();
+                toggleBending();
+                renderCurrentCAD();
             });
-        }
-
-        // Wire custom plate wizard buttons if active
-        if (cat === 'plate' && fabMethodSelect && fabMethodSelect.value === 'custom') {
-            const btnSavePoint = document.getElementById('btn-custom-save-point');
-            const btnRemoveLast = document.getElementById('btn-custom-remove-last');
-            const btnResetOutline = document.getElementById('btn-custom-reset-outline');
-            const btnAddHole = document.getElementById('btn-custom-add-hole');
-            
-            if (btnSavePoint) {
-                btnSavePoint.addEventListener('click', () => {
-                    const nextXInput = document.getElementById('inp-custom-next-x');
-                    const nextYInput = document.getElementById('inp-custom-next-y');
-                    if (nextXInput && nextYInput) {
-                        const x = parseFloat(nextXInput.value) || 0;
-                        const y = parseFloat(nextYInput.value) || 0;
-                        customPlatePoints.push([x, y]);
-                        updateInputs();
-                    }
-                });
-            }
-            if (btnRemoveLast) {
-                btnRemoveLast.addEventListener('click', () => {
-                    if (customPlatePoints.length > 1) {
-                        customPlatePoints.pop();
-                        selectedCustomLineIdx = null;
-                        updateInputs();
-                    }
-                });
-            }
-            if (btnResetOutline) {
-                btnResetOutline.addEventListener('click', () => {
-                    customPlatePoints = [[0, 0]];
-                    selectedCustomLineIdx = null;
-                    updateInputs();
-                });
-            }
-            if (btnAddHole) {
-                btnAddHole.addEventListener('click', () => {
-                    const hXInput = document.getElementById('inp-custom-hole-x');
-                    const hYInput = document.getElementById('inp-custom-hole-y');
-                    const hDInput = document.getElementById('inp-custom-hole-d');
-                    if (hXInput && hYInput && hDInput) {
-                        const x = parseFloat(hXInput.value) || 0;
-                        const y = parseFloat(hYInput.value) || 0;
-                        const d = parseFloat(hDInput.value) || 0.5;
-                        customPlateHoles.push({ x, y, d });
-                        updateInputs();
-                    }
-                });
-            }
-            
-            // Wire inline point coordinate edits
-            document.querySelectorAll('.inp-edit-custom-pt-x').forEach(inp => {
-                inp.addEventListener('input', (e) => {
-                    const idx = parseInt(inp.getAttribute('data-idx'));
-                    const val = parseFloat(inp.value) || 0;
-                    if (customPlatePoints[idx]) {
-                        customPlatePoints[idx][0] = val;
-                        renderCurrentCAD();
-                    }
-                });
-                inp.addEventListener('change', () => {
-                    updateInputs();
-                });
-            });
-            document.querySelectorAll('.inp-edit-custom-pt-y').forEach(inp => {
-                inp.addEventListener('input', (e) => {
-                    const idx = parseInt(inp.getAttribute('data-idx'));
-                    const val = parseFloat(inp.value) || 0;
-                    if (customPlatePoints[idx]) {
-                        customPlatePoints[idx][1] = val;
-                        renderCurrentCAD();
-                    }
-                });
-                inp.addEventListener('change', () => {
-                    updateInputs();
-                });
-            });
-            
-            // Wire delete button for single line segment
-            document.querySelectorAll('.btn-delete-custom-pt').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const idx = parseInt(btn.getAttribute('data-idx'));
-                    if (idx > 0 && idx < customPlatePoints.length) {
-                        customPlatePoints.splice(idx, 1);
-                        selectedCustomLineIdx = null;
-                        updateInputs();
-                    }
-                });
-            });
-            
-            // Wire sidebar row click selection
-            document.querySelectorAll('.custom-pt-row').forEach(row => {
-                row.addEventListener('click', (e) => {
-                    if (e.target.closest('.prevent-row-click')) return;
-                    const lineIdx = parseInt(row.getAttribute('data-line-idx'));
-                    if (!isNaN(lineIdx)) {
-                        selectedCustomLineIdx = (selectedCustomLineIdx === lineIdx) ? null : lineIdx;
-                        updateInputs();
-                    }
-                });
-            });
-
-            // Wire selection panel buttons
-            const btnSelectedSave = document.getElementById('btn-selected-save');
-            const btnSelectedDelete = document.getElementById('btn-selected-delete');
-            if (btnSelectedSave) {
-                btnSelectedSave.addEventListener('click', () => {
-                    const inpX = document.getElementById('inp-selected-end-x');
-                    const inpY = document.getElementById('inp-selected-end-y');
-                    if (inpX && inpY && selectedCustomLineIdx !== null) {
-                        const targetPtIdx = selectedCustomLineIdx + 1;
-                        if (targetPtIdx < customPlatePoints.length) {
-                            customPlatePoints[targetPtIdx][0] = parseFloat(inpX.value) || 0;
-                            customPlatePoints[targetPtIdx][1] = parseFloat(inpY.value) || 0;
-                            selectedCustomLineIdx = null;
-                            updateInputs();
-                        }
-                    }
-                });
-            }
-            if (btnSelectedDelete) {
-                btnSelectedDelete.addEventListener('click', () => {
-                    if (selectedCustomLineIdx !== null) {
-                        const targetPtIdx = selectedCustomLineIdx + 1;
-                        if (targetPtIdx < customPlatePoints.length) {
-                            customPlatePoints.splice(targetPtIdx, 1);
-                            selectedCustomLineIdx = null;
-                            updateInputs();
-                        }
-                    }
-                });
-            }
-            
-            // Wire remove buttons for existing holes
-            document.querySelectorAll('.btn-remove-hole').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const idx = parseInt(e.target.getAttribute('data-idx'));
-                    if (!isNaN(idx)) {
-                        customPlateHoles.splice(idx, 1);
-                        updateInputs();
-                    }
-                });
-            });
+            toggleBending();
         }
 
         renderCurrentCAD();
@@ -4083,90 +1699,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
     }
 
-    async function updatePdfPreview() {
-        if (isGeneratingZipBatch) return;
-        const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-        if (!activeSet) return;
-        
-        const activeDwg = getActiveBalconyDwgAndMark();
-        const style = (activeSet.main && activeSet.main.railStyle) ? activeSet.main.railStyle : 'classical';
-        const finishText = 'primer';
-        const needFBOM = false;
-        
-        const flatModel = CadEngine.createCombinedBalconyModel(activeSet, balconyWizardState.activePanelType, false);
-        if (!flatModel) return;
-        
-        try {
-            const result = await generateBlueprintPDF(
-                activeDwg.drawingNo, 
-                'F-202', 
-                'J-303', 
-                activeDwg.mainMark, 
-                '0', 
-                finishText, 
-                needFBOM, 
-                'QUALITY IRONWORKS PROJECT', 
-                'APEX BUILDERS', 
-                '123 STEEL WAY', 
-                'HOUSTON, TX', 
-                'ENG', 
-                'QIW', 
-                false, 
-                false, 
-                activeSet.quantity || 1, 
-                balconyWizardState.activePanelType || 'main',
-                true, // isPreviewOnly = true
-                flatModel // customModelOverride
-            );
-            
-            if (result && result.blobUrl) {
-                const iframe = document.getElementById('pdf-preview-iframe');
-                if (iframe) {
-                    if (activePdfPreviewUrl) {
-                        URL.revokeObjectURL(activePdfPreviewUrl);
-                    }
-                    activePdfPreviewUrl = result.blobUrl;
-                    iframe.src = activePdfPreviewUrl;
-                }
-            }
-        } catch (e) {
-            console.error("Failed to generate real-time PDF preview:", e);
-        }
-    }
-
-    function renderCurrentCAD(isPreview = true) {
+    function renderCurrentCAD() {
         cachedSnapPoints = [];
         const cat = shapeCategory.value;
-        const panelType = balconyWizardState.activePanelType || 'main';
         const vals = {};
         
         dynamicInputs.querySelectorAll('input').forEach(inp => {
-            const id = inp.id.replace('inp-', '');
-            vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
+            vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
         });
         dynamicInputs.querySelectorAll('select').forEach(sel => {
             vals[sel.id.replace('inp-', '')] = sel.value;
         });
 
-        if (cat === 'rail_catalog') {
-            const chk6Extra = document.getElementById('chk-6-extra');
-            vals.extra6 = chk6Extra ? chk6Extra.checked : false;
-            const chkFreeEnd4 = document.getElementById('chk-free-end-4');
-            vals.freeEnd4 = chkFreeEnd4 ? chkFreeEnd4.checked : false;
-            
-            vals.originalLength = vals.length;
-            if (vals.extra6) {
-                vals.length += (panelType === 'main' ? 12.0 : 6.0);
+        const getProfileDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.h || selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.d || 0;
+                if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
             }
-            
-            const ext = resolveFreeEndExtensions(vals, vals.railStyle || 'classical', panelType);
-            vals.deltaLeft = ext.deltaLeft;
-            vals.deltaRight = ext.deltaRight;
-            vals.length += (ext.deltaLeft + ext.deltaRight);
-        }
+            return customVal;
+        };
 
-        const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-        const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+        const getPicketDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.bf || 0;
+                if (type === 'angles') return selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
 
         const holeCfg = {
             d: vals.h_d || 0,
@@ -4276,17 +1849,184 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 dimText.textContent = `Fence: ${Math.round(vals.length/12)}ft x ${Math.round(vals.fenceHeight/12)}ft | Rail Cut Length: ${formatFraction(preciseSlopedWidth)}`;
             } else if (cat === 'rail_catalog') {
-                const activeSet = balconyWizardState.tempSet || balconyWizardState.sets[balconyWizardState.activeSetIdx];
-                const style = (activeSet.main && activeSet.main.railStyle) ? activeSet.main.railStyle : ((activeSet.leftReturn && activeSet.leftReturn.railStyle) ? activeSet.leftReturn.railStyle : ((activeSet.rightReturn && activeSet.rightReturn.railStyle) ? activeSet.rightReturn.railStyle : 'classical'));
+                const style = vals.railStyle || 'classical';
                 
-                currentModel = CadEngine.createCombinedBalconyModel(activeSet, balconyWizardState.activePanelType, isPreview);
+                // Set default presets or fetch custom values
+                let fHeight = 41.0;
+                let pHeight = 45.75;
+                let postType = 'hss_rect';
+                let postW = 1.5;
+                let postH = 1.5;
+                let postT = 0.1196; // 11GA
+                let topRailType = 'hss_rect';
+                let topRailW = 1.5;
+                let topRailH = 1.5;
+                let topRailT = 0.0598; // 16GA
+                let botRailType = 'hss_rect';
+                let botRailW = 1.5;
+                let botRailH = 1.5;
+                let botRailT = 0.0598; // 16GA
+                let midRailType = 'none';
+                let midRailW = 0;
+                let midRailH = 0;
+                let midRailT = 0;
+                let midRailGap = 12.0;
+                let picketType = 'hss_rect';
+                let picketW = 0.5;
+                let picketH = 0.5;
+                let picketT = 0.0598; // 16GA
+                let picketSpacing = 4.0;
+                let includeBasePlates = 'no';
+                let bpW = 6.0;
+                let bpL = 6.0;
+                let bpH = 0.5;
+                let bpHoleD = 0.5;
+                let bpHoleOffsetX = 0.5;
+                let bpHoleOffsetY = 0.25;
 
-                const activeDwgInfo = getActiveBalconyDwgAndMark();
+                const getProfileThickness = (type, size, customVal) => {
+                    if (type === 'none' || size === 'NONE') return 0;
+                    if (size === 'CUSTOM') return customVal;
+                    const shapes = SHAPES_DB[type] || [];
+                    const selected = shapes.find(s => s.id === size);
+                    if (selected) {
+                        return selected.t || 0.12;
+                    }
+                    return customVal;
+                };
+
+                if (style === 'classical') {
+                    fHeight = 41.0;
+                    pHeight = 45.75;
+                    postType = 'hss_rect';
+                    postW = 1.5;
+                    postH = 1.5;
+                    postT = 0.1196;
+                    topRailType = 'hss_rect';
+                    topRailW = 1.5;
+                    topRailH = 1.5;
+                    topRailT = 0.0598;
+                    botRailType = 'hss_rect';
+                    botRailW = 1.5;
+                    botRailH = 1.5;
+                    botRailT = 0.0598;
+                    midRailType = 'none';
+                    picketType = 'hss_rect';
+                    picketW = 0.5;
+                    picketH = 0.5;
+                    picketT = 0.0598;
+                    picketSpacing = 4.0;
+                    includeBasePlates = 'no';
+                } else if (style === 'executive') {
+                    fHeight = 41.0;
+                    pHeight = 45.75;
+                    postType = 'hss_rect';
+                    postW = 1.5;
+                    postH = 1.5;
+                    postT = 0.1196;
+                    topRailType = 'hss_rect';
+                    topRailW = 1.5;
+                    topRailH = 1.5;
+                    topRailT = 0.0598;
+                    botRailType = 'hss_rect';
+                    botRailW = 1.5;
+                    botRailH = 1.5;
+                    botRailT = 0.0598;
+                    midRailType = 'hss_rect';
+                    midRailW = 1.5;
+                    midRailH = 1.5;
+                    midRailT = 0.0598;
+                    midRailGap = 12.0;
+                    picketType = 'hss_rect';
+                    picketW = 0.5;
+                    picketH = 0.5;
+                    picketT = 0.0598;
+                    picketSpacing = 4.5;
+                    includeBasePlates = 'no';
+                } else {
+                    // Custom classic_custom or executive_custom
+                    fHeight = vals.fenceHeight || 36;
+                    pHeight = vals.postHeight || 36;
+                    postType = vals.postType || 'hss_rect';
+                    postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                    postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                    postT = getProfileThickness(vals.postType, vals.postSize, vals.postW || 0.12);
+                    
+                    topRailType = vals.topRailType || 'hss_rect';
+                    topRailW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                    topRailH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                    topRailT = getProfileThickness(vals.topRailType, vals.topRailSize, vals.topRailH || 0.12);
+                    
+                    botRailType = vals.botRailType || 'hss_rect';
+                    botRailW = getPicketDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                    botRailH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                    botRailT = getProfileThickness(vals.botRailType, vals.botRailSize, vals.botRailH || 0.12);
+                    
+                    midRailType = vals.midRailType || 'none';
+                    midRailW = getPicketDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                    midRailH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                    midRailT = getProfileThickness(vals.midRailType, vals.midRailSize, vals.midRailH || 0.12);
+                    midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
+
+                    picketType = vals.picketType || 'hss_rect';
+                    picketW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
+                    picketH = getProfileDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
+                    picketT = getProfileThickness(vals.picketType, vals.picketSize, vals.picketW || 0.083);
+                    picketSpacing = vals.picketSpacing || 4.0;
+                    
+                    includeBasePlates = vals.includeBasePlates || 'no';
+                    bpW = vals.basePlateW || 6.0;
+                    bpL = vals.basePlateL || 6.0;
+                    bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT || 0.5);
+                    bpHoleD = vals.basePlateHoleD !== undefined ? vals.basePlateHoleD : 0.5;
+                    bpHoleOffsetX = vals.basePlateHoleOffsetX !== undefined ? vals.basePlateHoleOffsetX : 0.5;
+                    bpHoleOffsetY = vals.basePlateHoleOffsetY !== undefined ? vals.basePlateHoleOffsetY : 0.25;
+                }
+
+                currentModel = CadEngine.createRailCatalog(
+                    vals.length,
+                    style,
+                    vals.leftPost || 'yes',
+                    vals.rightPost || 'yes',
+                    vals.midPosts || 'none',
+                    vals.midPosts === 'yes' ? (parseInt(vals.midPostCount) || 0) : 0,
+                    fHeight,
+                    pHeight,
+                    postType,
+                    postW,
+                    postH,
+                    postT,
+                    topRailType,
+                    topRailW,
+                    topRailH,
+                    topRailT,
+                    botRailType,
+                    botRailW,
+                    botRailH,
+                    botRailT,
+                    midRailType,
+                    midRailW,
+                    midRailH,
+                    midRailT,
+                    midRailGap,
+                    picketType,
+                    picketW,
+                    picketH,
+                    picketT,
+                    picketSpacing,
+                    includeBasePlates,
+                    bpW,
+                    bpL,
+                    bpH,
+                    bpHoleD,
+                    bpHoleOffsetX,
+                    bpHoleOffsetY
+                );
+
                 const styleLabel = style === 'classical' ? 'Classical Style' : 
                                    style === 'executive' ? 'Executive Style' : 
                                    style === 'classic_custom' ? 'Classic Custom' : 'Executive Custom';
-                const currentLength = activeSet[balconyWizardState.activePanelType || 'main']?.length || 120;
-                dimText.textContent = `Balcony ${getSetLetter(balconyWizardState.activeSetIdx)} (${activeDwgInfo.drawingNo}) | Mark: ${activeDwgInfo.mainMark} | Style: ${styleLabel} | Length: ${currentLength}"`;
+                dimText.textContent = `Rail: ${styleLabel} | Length: ${vals.length}" | H: ${fHeight}"`;
             } else if (cat === 'rails_gates') {
                 const isGates = vals.railsGatesType === 'gates';
                 const leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
@@ -4299,7 +2039,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bpW = vals.basePlateW || 6.0;
                 const bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT);
 
-                 currentModel = CadEngine.createRailsGates(
+                currentModel = CadEngine.createRailsGates(
                     vals.length,
                     vals.fenceHeight,
                     vals.postHeight,
@@ -4331,15 +2071,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     vals.kickPlate || 'none',
                     vals.kickPlateH !== undefined ? vals.kickPlateH : 12.0,
                     vals.kickPlateWeld || 'inner',
-                    vals.kickPlateSize || 'PL11GA',
-                    vals.railStyle || 'classical',
-                    vals.meshType || 'none',
-                    vals.meshFbSize || 'FB1x1/8',
-                    vals.meshSize || 'WWM2x2x0.135',
-                    vals.panicBarPlate || 'none',
-                    vals.panicBarPlateGap !== undefined ? vals.panicBarPlateGap : 36.0,
-                    vals.panicBarPlateW !== undefined ? vals.panicBarPlateW : 8.0,
-                    vals.panicBarPlateSize || 'PL3/16'
+                    vals.kickPlateSize || 'PL11GA'
                 );
                 
                 const isExtended = !isGates && (vals.postHeight > vals.fenceHeight);
@@ -4382,9 +2114,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (vals.fabMethod === 'bent') {
                     currentModel = CadEngine.createBentPlateMultiView(vals.leg1, vals.leg2, vals.insideRadius, vals.t || 0.25, vals.bendAngle, vals.w, null);
                     dimText.textContent = `Bent Plate: L1=${vals.leg1}" | L2=${vals.leg2}" | W=${vals.w}"`;
-                } else if (vals.fabMethod === 'custom') {
-                    currentModel = CadEngine.createCustomPlate(customPlatePoints, customPlateHoles);
-                    dimText.textContent = `Custom Plate: ${customPlatePoints.length} Vertices | ${customPlateHoles.length} Holes`;
                 } else {
                     currentModel = CadEngine.createPlate(vals.w, vals.h, vals.holeD, vals.holeOffsetX, vals.holeOffsetY);
                     dimText.textContent = `Plate: ${vals.w}" x ${vals.h}"`;
@@ -4409,37 +2138,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const svgElement = svgContainer.querySelector('svg');
             if (svgElement) {
-                // Apply solid opaque fills to cover plates so pickets behind them are hidden
-                const fillSolidPlates = (svgEl, color) => {
-                    const selectors = [
-                        '.kickPlate', '[id*="kickPlate"]', 'g[id$="kickPlate"]',
-                        '.panicBarPlate', '[id*="panicBarPlate"]', 'g[id$="panicBarPlate"]',
-                        'g[id*="FB"]', 'g[id*="fb"]', 'g[id$="meshFrame"] > g'
-                    ];
-                    selectors.forEach(sel => {
-                        svgEl.querySelectorAll(sel).forEach(g => {
-                            g.querySelectorAll('path, rect, polygon').forEach(p => {
-                                p.setAttribute('fill', color);
-                                p.setAttribute('fill-opacity', '1');
-                            });
-                        });
-                    });
-                };
-                fillSolidPlates(svgElement, '#0b132b');
-
-                // Style projection lines dashed and light color
-                svgElement.querySelectorAll('g[id*="projections"] path, g[id*="projections"] line').forEach(p => {
-                    p.setAttribute('stroke', '#888888');
-                    p.setAttribute('stroke-dasharray', '2,3');
-                    p.setAttribute('opacity', '0.6');
-                });
-                
-                // Style Top View posts filled with accent color
-                svgElement.querySelectorAll('g[id*="topView"] g[id*="post"] path, g[id*="topView"] g[id*="post"] rect').forEach(p => {
-                    p.setAttribute('fill', '#00d4ff');
-                    p.setAttribute('fill-opacity', '1');
-                });
-
                 if (currentMode !== 'draft') {
                     injectCADAnnotations(svgElement);
                 }
@@ -4451,9 +2149,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Re-apply zoom to the newly rendered SVG
             applyZoom();
             updateBOMPreview();
-            if (pdfPreviewModeActive) {
-                updatePdfPreview();
-            }
         } catch (e) {
             console.error("CAD Engine Error:", e);
             alert("Diagnostic Alert - CAD Engine Error:\n" + e.message + "\n\nStack Trace:\n" + e.stack);
@@ -4688,10 +2383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const vals = {};
         if (dynamicInputs) {
             dynamicInputs.querySelectorAll('input').forEach(inp => {
-                if (inp.id) {
-                    const id = inp.id.replace('inp-', '');
-                    vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
-                }
+                if (inp.id) vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
             });
             dynamicInputs.querySelectorAll('select').forEach(sel => {
                 if (sel.id) vals[sel.id.replace('inp-', '')] = sel.value;
@@ -4708,8 +2400,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasRails = currentModel.models && currentModel.models.rails;
         const hasBasePlates = currentModel.models && currentModel.models.basePlates && Object.keys(currentModel.models.basePlates.models || {}).length > 0;
 
-        const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-        const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+        const getProfileDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.h || selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.d || 0;
+                if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
+
+        const getPicketDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.bf || 0;
+                if (type === 'angles') return selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
 
         if (cat === 'welded_assembly') {
             const selectedSizeId = document.getElementById('shape-size')?.value || 'HSS1.5x1.5x14GA';
@@ -4802,162 +2521,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     dxfPieces.push({ mark: markCode.toUpperCase(), model: singleModel });
                 }
             });
-        } else if (cat === 'rail_catalog') {
-            const activePanelType = balconyWizardState.activePanelType || 'main';
-            const isLoose = (activePanelType === 'loosePost');
-            const style = vals.railStyle || 'classical';
-            const props = getResolvedPanelProperties(vals, style);
-            
-            const activeSet = balconyWizardState.tempSet || (balconyWizardState.sets ? balconyWizardState.sets[balconyWizardState.activeSetIdx] : null);
-            if (activeSet) {
-                const panelObj = (activePanelType === 'main' || activePanelType === 'loosePost') ? activeSet.main : (activePanelType === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
-                if (panelObj) {
-                    for (const key in panelObj) {
-                        vals[key] = panelObj[key];
-                    }
-                }
-            }
-            vals.originalLength = vals.length;
-            if (vals.extra6) {
-                vals.length += (activePanelType === 'main' ? 12.0 : ((activePanelType === 'leftReturn' || activePanelType === 'rightReturn') ? 6.0 : 0.0));
-            }
-            const ext = CadEngine.resolveFreeEndExtensions(vals, vals.railStyle || 'classical', activePanelType);
-            vals.deltaLeft = ext.deltaLeft;
-            vals.deltaRight = ext.deltaRight;
-            vals.length += (ext.deltaLeft + ext.deltaRight);
-            
-            // Helper to add centered model
-            const addPiece = (mark, modelSource) => {
-                if (!modelSource) return;
-                const singleModel = JSON.parse(JSON.stringify(modelSource));
-                singleModel.origin = [0, 0];
-                if (window.makerjs) makerjs.model.center(singleModel);
-                dxfPieces.push({ mark: mark, model: singleModel });
-            };
-
-            if (isLoose) {
-                let includeBasePlates = props ? props.includeBasePlates : 'no';
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                
-                // 1. Loose Post (aDrawingNo)
-                if (currentModel.models.posts && currentModel.models.posts.models.loosePost) {
-                    addPiece(`a${cleanDrawingNo.toUpperCase()}`, currentModel.models.posts.models.loosePost);
-                }
-                // 2. Base Plate (bDrawingNo)
-                if (includeBasePlates === 'yes' && currentModel.models.basePlates && currentModel.models.basePlates.models.bpLoose) {
-                    addPiece(`b${cleanDrawingNo.toUpperCase()}`, currentModel.models.basePlates.models.bpLoose);
-                }
-                // 3. Flat Bar Attachment (cDrawingNo)
-                if (isMeshStyle && currentModel.models.posts && currentModel.models.posts.models.flatBarAttachment) {
-                    addPiece(`c${cleanDrawingNo.toUpperCase()}`, currentModel.models.posts.models.flatBarAttachment);
-                }
-            } else {
-                let picketType = (style === 'classical' || style === 'executive') ? 'hss_rect' : ((style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom') ? 'none' : (vals.picketType || 'hss_rect'));
-                let postW = (style === 'classical' || style === 'executive') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
-                let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.0 : (vals.picketSpacing || 4.0));
-                let midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                
-                const customSpacings = [];
-                if (vals.midPosts === 'custom') {
-                    for (let i = 1; i <= midPostCount; i++) {
-                        const spKey = `midPostSpacing-${i}`;
-                        customSpacings.push(vals[spKey] !== undefined ? vals[spKey] : 48);
-                    }
-                }
-
-                const finalPicketsCount = getPicketPositions(
-                    style,
-                    vals.length,
-                    (vals.leftPost === 'yes' ? postW : 0),
-                    (vals.rightPost === 'yes' ? postW : 0),
-                    picketW,
-                    picketSpacing,
-                    midPostCount,
-                    postW,
-                    vals.midPosts,
-                    customSpacings,
-                    vals.extra6,
-                    activePanelType,
-                    vals.deltaLeft || 0,
-                    vals.deltaRight || 0
-                ).length;
-
-                let charCode = 97; // 'a'
-                let mainMarkAssigned = false;
-                const getMark = (isPresent) => {
-                    if (!isPresent) return null;
-                    if (!mainMarkAssigned) {
-                        mainMarkAssigned = true;
-                        return mainMarkUpper;
-                    }
-                    const m = String.fromCharCode(charCode) + cleanDrawingNo;
-                    charCode++;
-                    return m.toUpperCase();
-                };
-
-                const topMark = getMark(vals.topRailType !== 'none');
-                const botMark = getMark(vals.botRailType !== 'none');
-                const midMark = getMark(style === 'executive' || style === 'villa_balcony' || style === 'villa_custom' || style === 'executive_custom' || (style.includes('custom') && vals.midRailType !== 'none'));
-                const leftMark = getMark(vals.leftPost === 'yes' && vals.postType !== 'none');
-                const rightMark = (vals.rightPost === 'yes' && vals.postType !== 'none') ? (leftMark ? leftMark : getMark(true)) : null;
-                const midPostMark = getMark(vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                const picketMark = getMark(picketType !== 'none' && finalPicketsCount > 0);
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                const meshFbMark = getMark(isMeshStyle);
-                const bpMark = getMark(vals.includeBasePlates === 'yes');
-
-                // 1. Top Runner / Rail
-                if (topMark && currentModel.models.rails && currentModel.models.rails.models.topRail) {
-                    addPiece(topMark, currentModel.models.rails.models.topRail);
-                }
-                // 2. Bottom Runner / Rail
-                if (botMark && currentModel.models.rails && currentModel.models.rails.models.botRail) {
-                    addPiece(botMark, currentModel.models.rails.models.botRail);
-                }
-                // 3. Mid Runner / Rail (if present)
-                if (midMark && currentModel.models.rails && currentModel.models.rails.models.midRail) {
-                    addPiece(midMark, currentModel.models.rails.models.midRail);
-                }
-                // 4. Left Runner / Post
-                if (leftMark && currentModel.models.posts && currentModel.models.posts.models.leftPost) {
-                    addPiece(leftMark, currentModel.models.posts.models.leftPost);
-                }
-                // 5. Right Runner / Post
-                if (rightMark && currentModel.models.posts && currentModel.models.posts.models.rightPost) {
-                    addPiece(rightMark, currentModel.models.posts.models.rightPost);
-                }
-                // 6. Mid Posts (if present)
-                if (midPostMark && midPostCount > 0 && currentModel.models.posts) {
-                    const keys = Object.keys(currentModel.models.posts.models).filter(k => k.startsWith('midPost_'));
-                    if (keys.length > 0) {
-                        addPiece(midPostMark, currentModel.models.posts.models[keys[0]]);
-                    }
-                }
-                // 7. Pickets (if present)
-                if (picketMark && currentModel.models.pickets && currentModel.models.pickets.models) {
-                    const keys = Object.keys(currentModel.models.pickets.models);
-                    if (keys.length > 0) {
-                        addPiece(picketMark, currentModel.models.pickets.models[keys[0]]);
-                    }
-                }
-                // 8. Base Plates (if present)
-                if (bpMark && vals.includeBasePlates === 'yes' && currentModel.models.basePlates && currentModel.models.basePlates.models) {
-                    const keys = Object.keys(currentModel.models.basePlates.models);
-                    if (keys.length > 0) {
-                        addPiece(bpMark, currentModel.models.basePlates.models[keys[0]]);
-                    }
-                }
-                // 9. Flat Bar Frame or Mesh Panel
-                if (isMeshStyle && meshFbMark) {
-                    if (currentModel.models.meshFrame && currentModel.models.meshFrame.models) {
-                        const keys = Object.keys(currentModel.models.meshFrame.models);
-                        if (keys.length > 0) {
-                            addPiece(meshFbMark, currentModel.models.meshFrame.models[keys[0]]);
-                        }
-                    }
-                }
-            }
         } else if (cat === 'rails_gates') {
             const isGates = vals.railsGatesType === 'gates';
             const leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
@@ -4966,16 +2529,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const pickW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW);
             const midPostCount = parseInt(vals.midPostCount) || 0;
 
-            const finalPicketsCount = getPicketPositions(
-                vals.railStyle || 'classical',
-                vals.length,
-                leftPostW,
-                rightPostW,
-                pickW,
-                vals.picketSpacing,
-                midPostCount,
-                midPostW
-            ).length;
+            const clearWidth = vals.length - leftPostW - rightPostW;
+            const numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
+            let finalPicketsCount = numPickets;
+            if (midPostCount > 0 && !isGates && vals.postHeight > vals.fenceHeight) {
+                const centerDist = vals.length - leftPostW/2 - rightPostW/2;
+                const spanSpacing = centerDist / (midPostCount + 1);
+                for (let i = 0; i < numPickets; i++) {
+                    const px = leftPostW + (clearWidth - ((numPickets - 1) * vals.picketSpacing + pickW)) / 2 + i * vals.picketSpacing;
+                    for (let j = 1; j <= midPostCount; j++) {
+                        const midCx = leftPostW/2 + j * spanSpacing;
+                        if (Math.abs(px + pickW/2 - midCx) < (midPostW/2 + pickW/2 + 0.1)) {
+                            finalPicketsCount--;
+                            break;
+                        }
+                    }
+                }
+            }
 
             let charCode = 97; // 'a'
             let mainMarkAssigned = false;
@@ -5203,248 +2773,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('dxf-export-modal').classList.remove('hidden');
     }
 
-    function compileActiveExportSheets() {
-        const getResolvedPanelProperties = (panel, style) => {
-            return window.getResolvedPanelProperties(panel, style);
-        };
-
-        const getPanelSignature = (panel, style, panelType, setIdx) => {
-            const resolved = getResolvedPanelProperties(panel, style);
-            if (!resolved) return "";
-            const normalized = { ...resolved };
-            if (normalized.leftPost !== normalized.rightPost) {
-                normalized.leftPost = 'yes';
-                normalized.rightPost = 'no';
-            }
-            normalized.panelType = panelType;
-            normalized.midPostSpacings = panel.midPostSpacings || null;
-            return "panel_" + JSON.stringify(normalized);
-        };
-
-        const getLoosePostSignature = (panel, style, setIdx) => {
-            const resolved = getResolvedPanelProperties(panel, style);
-            if (!resolved) return "";
-            let pType = resolved.postType;
-            let pW = resolved.postW;
-            let pH = resolved.postH;
-            let pT = resolved.postT;
-            if (pType === 'none' || pType === 'no') {
-                pType = 'hss_rect';
-                pW = 1.5;
-                pH = 1.5;
-                pT = 0.1196;
-            }
-            const looseProps = {
-                style: style, // Add style here to prevent combining loose posts of different styles
-                pHeight: resolved.pHeight,
-                postType: pType,
-                postW: pW,
-                postH: pH,
-                postT: pT,
-                topRailH: resolved.topRailH,
-                includeBasePlates: resolved.includeBasePlates,
-                bpW: resolved.bpW,
-                bpL: resolved.bpL,
-                bpH: resolved.bpH,
-                bpHoleD: resolved.bpHoleD,
-                bpHoleOffsetX: resolved.bpHoleOffsetX,
-                bpHoleOffsetY: resolved.bpHoleOffsetY
-            };
-            return "loosepost_" + JSON.stringify(looseProps);
-        };
-
-        const allPanelItems = [];
-        balconyWizardState.sets.forEach((set, setIdx) => {
-            const baseDwg = set.drawingBase || (setIdx + 1).toString();
-            const style = (set.main && set.main.railStyle) ? set.main.railStyle : ((set.leftReturn && set.leftReturn.railStyle) ? set.leftReturn.railStyle : ((set.rightReturn && set.rightReturn.railStyle) ? set.rightReturn.railStyle : 'classical'));
-            const setQty = set.quantity || 1;
-
-            // 1. Main Balcony
-            if (set.main) {
-                allPanelItems.push({
-                    id: `set${setIdx}_main`,
-                    setIdx: setIdx,
-                    panelType: 'main',
-                    panelData: set.main,
-                    originalDrawingNo: baseDwg + ".0",
-                    originalMainMark: baseDwg + "FB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.main, style, 'main', setIdx),
-                    sheetName: `Balcony ${String.fromCharCode(65 + setIdx)} Main Rail`
-                });
-
-                // Check for loose posts
-                const postType = set.main.postType || 'hss_rect';
-                let looseQty = 0;
-                if (set.leftReturn) {
-                    if (set.leftReturn.leftPost === 'none' || set.leftReturn.leftPost === 'no') {
-                        looseQty++;
-                    }
-                    if ((set.main.leftPost === 'none' || set.main.leftPost === 'no') && 
-                        (set.leftReturn.rightPost === 'none' || set.leftReturn.rightPost === 'no')) {
-                        looseQty++;
-                    }
-                } else {
-                    if (set.main.leftPost === 'none' || set.main.leftPost === 'no') {
-                        looseQty++;
-                    }
-                }
-
-                if (set.rightReturn) {
-                    if (set.rightReturn.rightPost === 'none' || set.rightReturn.rightPost === 'no') {
-                        looseQty++;
-                    }
-                    if ((set.main.rightPost === 'none' || set.main.rightPost === 'no') && 
-                        (set.rightReturn.leftPost === 'none' || set.rightReturn.leftPost === 'no')) {
-                        looseQty++;
-                    }
-                } else {
-                    if (set.main.rightPost === 'none' || set.main.rightPost === 'no') {
-                        looseQty++;
-                    }
-                }
-
-                if (looseQty > 0) {
-                    allPanelItems.push({
-                        id: `set${setIdx}_loosePost`,
-                        setIdx: setIdx,
-                        panelType: 'loosePost',
-                        panelData: set.main,
-                        originalDrawingNo: baseDwg + ".1",
-                        originalMainMark: baseDwg + "P1",
-                        quantity: looseQty * setQty,
-                        signature: getLoosePostSignature(set.main, style, setIdx),
-                        sheetName: `Loose Corner Post`
-                    });
-                }
-            }
-
-            // 2. Left Return
-            if (set.leftReturn) {
-                allPanelItems.push({
-                    id: `set${setIdx}_leftReturn`,
-                    setIdx: setIdx,
-                    panelType: 'leftReturn',
-                    panelData: set.leftReturn,
-                    originalDrawingNo: baseDwg + ".2",
-                    originalMainMark: baseDwg + "LB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.leftReturn, style, 'leftReturn', setIdx),
-                    sheetName: `Balcony ${String.fromCharCode(65 + setIdx)} Left Return`
-                });
-            }
-
-            // 3. Right Return
-            if (set.rightReturn) {
-                const rightDwgNo = set.leftReturn ? (baseDwg + ".3") : (baseDwg + ".2");
-                allPanelItems.push({
-                    id: `set${setIdx}_rightReturn`,
-                    setIdx: setIdx,
-                    panelType: 'rightReturn',
-                    panelData: set.rightReturn,
-                    originalDrawingNo: rightDwgNo,
-                    originalMainMark: baseDwg + "RB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.rightReturn, style, 'rightReturn', setIdx),
-                    sheetName: `Balcony ${String.fromCharCode(65 + setIdx)} Right Return`
-                });
-            }
-        });
-
-        // Group panels by identical physical parameters (signature)
-        const groupsBySignature = {};
-        allPanelItems.forEach(item => {
-            if (!groupsBySignature[item.signature]) {
-                groupsBySignature[item.signature] = [];
-            }
-            groupsBySignature[item.signature].push(item);
-        });
-
-        // Assign Masters and map relations
-        Object.keys(groupsBySignature).forEach(sig => {
-            const group = groupsBySignature[sig];
-            const master = group[0];
-            const totalQty = group.reduce((sum, item) => sum + item.quantity, 0);
-
-            group.forEach(item => {
-                item.masterDrawingNo = master.originalDrawingNo;
-                item.masterMainMark = master.originalMainMark;
-                item.isMaster = (item.id === master.id);
-                item.groupTotalQty = totalQty;
-            });
-        });
-
-        return allPanelItems.filter(item => item.isMaster);
-    }
-
-    function renderSheetManagerList(sheets) {
-        const listContainer = document.getElementById('wiz-sheet-list');
-        if (!listContainer) return;
-        listContainer.innerHTML = '';
-        
-        sheets.forEach(sheet => {
-            const isExcluded = !balconyWizardState.activeExportSheets.includes(sheet.originalDrawingNo);
-            
-            const div = document.createElement('div');
-            div.className = 'sheet-item';
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.justifyContent = 'space-between';
-            div.style.padding = '8px 12px';
-            div.style.background = 'rgba(255, 255, 255, 0.03)';
-            div.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-            div.style.borderRadius = '6px';
-            div.style.fontSize = '11px';
-            div.style.marginBottom = '6px';
-            
-            const labelSpan = document.createElement('span');
-            labelSpan.style.fontWeight = '500';
-            labelSpan.innerHTML = `<strong style="color: var(--accent-primary); margin-right: 6px;">DWG ${sheet.originalDrawingNo}</strong> ${sheet.sheetName} (${sheet.groupTotalQty} REQD)`;
-            if (isExcluded) {
-                labelSpan.style.textDecoration = 'line-through';
-                labelSpan.style.opacity = '0.5';
-            }
-            
-            const actionBtn = document.createElement('button');
-            actionBtn.type = 'button';
-            if (isExcluded) {
-                actionBtn.className = 'btn success';
-                actionBtn.style.padding = '4px 10px';
-                actionBtn.style.fontSize = '10px';
-                actionBtn.style.background = '#00ff88';
-                actionBtn.style.color = '#000';
-                actionBtn.style.border = 'none';
-                actionBtn.style.borderRadius = '4px';
-                actionBtn.style.cursor = 'pointer';
-                actionBtn.style.fontWeight = 'bold';
-                actionBtn.innerHTML = 'Add';
-                actionBtn.addEventListener('click', () => {
-                    balconyWizardState.activeExportSheets.push(sheet.originalDrawingNo);
-                    renderSheetManagerList(sheets);
-                });
-            } else {
-                actionBtn.className = 'btn danger';
-                actionBtn.style.padding = '4px 10px';
-                actionBtn.style.fontSize = '10px';
-                actionBtn.style.background = '#ff4d4d';
-                actionBtn.style.color = '#fff';
-                actionBtn.style.border = 'none';
-                actionBtn.style.borderRadius = '4px';
-                actionBtn.style.cursor = 'pointer';
-                actionBtn.style.fontWeight = 'bold';
-                actionBtn.innerHTML = 'Delete';
-                actionBtn.addEventListener('click', () => {
-                    balconyWizardState.activeExportSheets = balconyWizardState.activeExportSheets.filter(no => no !== sheet.originalDrawingNo);
-                    renderSheetManagerList(sheets);
-                });
-            }
-            
-            div.appendChild(labelSpan);
-            div.appendChild(actionBtn);
-            listContainer.appendChild(div);
-        });
-    }
-
     // PDF Export Modal & Form Bindings
     const openExportModal = () => {
         if (currentMode === 'draft' && draftMembers.length === 0) {
@@ -5465,20 +2793,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainMarkInput = document.getElementById('exp-mainMark');
             if (drawingNoInput && mainMarkInput) {
                 const updateMainMark = () => {
-                    if (shapeCategory.value === 'rail_catalog') {
-                        const info = getActiveBalconyDwgAndMark();
-                        drawingNoInput.value = info.drawingNo;
-                        mainMarkInput.value = info.mainMark;
-                        return;
-                    }
                     const drawingNo = drawingNoInput.value.trim() || 'D-101';
                     const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
                     mainMarkInput.value = cleanDrawingNo + 'M1';
                 };
                 drawingNoInput.removeEventListener('input', updateMainMark);
-                if (shapeCategory.value !== 'rail_catalog') {
-                    drawingNoInput.addEventListener('input', updateMainMark);
-                }
+                drawingNoInput.addEventListener('input', updateMainMark);
                 updateMainMark();
                 mainMarkInput.readOnly = true;
             }
@@ -5499,32 +2819,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 finishSelect.removeEventListener('change', toggleFinish);
                 finishSelect.addEventListener('change', toggleFinish);
-            }
-
-            // Sheet Manager UI setup
-            const sheetManager = document.getElementById('wiz-sheet-manager-container');
-            if (sheetManager) {
-                if (shapeCategory.value === 'rail_catalog') {
-                    sheetManager.classList.remove('hidden');
-                    const sheets = compileActiveExportSheets();
-                    
-                    // Initialize the active list if not already set or if sheets changed
-                    if (!balconyWizardState.activeExportSheets) {
-                        balconyWizardState.activeExportSheets = sheets.map(s => s.originalDrawingNo);
-                    } else {
-                        const currentDwgNos = sheets.map(s => s.originalDrawingNo);
-                        balconyWizardState.activeExportSheets = balconyWizardState.activeExportSheets.filter(no => currentDwgNos.includes(no));
-                        sheets.forEach(s => {
-                            if (!balconyWizardState.activeExportSheets.includes(s.originalDrawingNo)) {
-                                balconyWizardState.activeExportSheets.push(s.originalDrawingNo);
-                            }
-                        });
-                    }
-                    
-                    renderSheetManagerList(sheets);
-                } else {
-                    sheetManager.classList.add('hidden');
-                }
             }
         }
     };
@@ -5569,1391 +2863,124 @@ document.addEventListener('DOMContentLoaded', () => {
             const modal = document.getElementById('export-modal');
             if (modal) modal.classList.add('hidden');
             
-            if (shapeCategory.value === 'rail_catalog') {
-                await generateBalconyZipBatch(fabNo, jobNo, revision, finishText, needFBOM, jobName, gc, address, cityState, drawnBy, checkedBy);
-            } else {
-                await generateBlueprintPDF(drawingNo, fabNo, jobNo, mainMark, revision, finishText, needFBOM, jobName, gc, address, cityState, drawnBy, checkedBy, false, false, 1, 'main', false, currentModel);
-            }
+            // Execute actual PDF generation
+            await generateBlueprintPDF(drawingNo, fabNo, jobNo, mainMark, revision, finishText, needFBOM, jobName, gc, address, cityState, drawnBy, checkedBy);
         });
     }
 
-    async function generateBalconyZipBatch(fabNo, jobNo, revision, finishText, needFBOM, jobName, gc, address, cityState, drawnBy, checkedBy) {
-        const overlay = document.getElementById('processing-overlay');
-        const origSetIdx = balconyWizardState.activeSetIdx;
-        const origPanelType = balconyWizardState.activePanelType;
-        const origTempSet = balconyWizardState.tempSet;
-        isGeneratingZipBatch = true;
-        
-        try {
-            if (overlay) {
-                overlay.classList.remove('hidden');
-                const statusText = overlay.querySelector('p') || overlay;
-                if (statusText) statusText.textContent = "Compiling Balcony Set Drawings & BOM...";
-            }
-
-            saveCurrentInputsToActivePanel();
-            balconyWizardState.tempSet = null;
-
-        const zip = new JSZip();
-        const masterBomRows = [];
-
-        // Helper functions for signatures and properties resolution
-        const getResolvedPanelProperties = (panel, style) => {
-            return window.getResolvedPanelProperties(panel, style);
-        };
-
-        const getPanelSignature = (panel, style, panelType, setIdx) => {
-            const resolved = getResolvedPanelProperties(panel, style);
-            if (!resolved) return "";
-            const normalized = { ...resolved };
-            if (normalized.leftPost !== normalized.rightPost) {
-                normalized.leftPost = 'yes';
-                normalized.rightPost = 'no';
-            }
-            
-            const styleLower = (style || 'classical').toLowerCase();
-            const isClassicalOrExecutive = styleLower.includes('classic') || styleLower.includes('executive');
-            
-            if (isClassicalOrExecutive && (panelType === 'leftReturn' || panelType === 'rightReturn')) {
-                normalized.panelType = 'return';
-            } else {
-                normalized.panelType = panelType;
-            }
-            
-            normalized.midPostSpacings = panel.midPostSpacings || null;
-            return "panel_" + JSON.stringify(normalized);
-        };
-
-        const getLoosePostSignature = (panel, style, setIdx) => {
-            const resolved = getResolvedPanelProperties(panel, style);
-            if (!resolved) return "";
-            let pType = resolved.postType;
-            let pW = resolved.postW;
-            let pH = resolved.postH;
-            let pT = resolved.postT;
-            if (pType === 'none' || pType === 'no') {
-                pType = 'hss_rect';
-                pW = 1.5;
-                pH = 1.5;
-                pT = 0.1196;
-            }
-            const looseProps = {
-                style: style, // Add style here to prevent combining loose posts of different styles
-                pHeight: resolved.pHeight,
-                postType: pType,
-                postW: pW,
-                postH: pH,
-                postT: pT,
-                topRailH: resolved.topRailH,
-                includeBasePlates: resolved.includeBasePlates,
-                bpW: resolved.bpW,
-                bpL: resolved.bpL,
-                bpH: resolved.bpH,
-                bpHoleD: resolved.bpHoleD,
-                bpHoleOffsetX: resolved.bpHoleOffsetX,
-                bpHoleOffsetY: resolved.bpHoleOffsetY
-            };
-            return "loosepost_" + JSON.stringify(looseProps);
-        };
-
-        // Build list of all panels to compile across all sets
-        const allPanelItems = [];
-        balconyWizardState.sets.forEach((set, setIdx) => {
-            const baseDwg = set.drawingBase || (setIdx + 1).toString();
-            const style = (set.main && set.main.railStyle) ? set.main.railStyle : ((set.leftReturn && set.leftReturn.railStyle) ? set.leftReturn.railStyle : ((set.rightReturn && set.rightReturn.railStyle) ? set.rightReturn.railStyle : 'classical'));
-            const setQty = set.quantity || 1;
-
-            // 1. Main Balcony
-            if (set.main) {
-                allPanelItems.push({
-                    id: `set${setIdx}_main`,
-                    setIdx: setIdx,
-                    panelType: 'main',
-                    panelData: set.main,
-                    originalDrawingNo: baseDwg + ".0",
-                    originalMainMark: baseDwg + "FB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.main, style, 'main', setIdx)
-                });
-
-                // Check for loose posts
-                const postType = set.main.postType || 'hss_rect';
-                let looseQty = 0;
-                if (set.leftReturn) {
-                    if (set.leftReturn.leftPost === 'none' || set.leftReturn.leftPost === 'no') {
-                        looseQty++;
-                    }
-                    if ((set.main.leftPost === 'none' || set.main.leftPost === 'no') && 
-                        (set.leftReturn.rightPost === 'none' || set.leftReturn.rightPost === 'no')) {
-                        looseQty++;
-                    }
-                } else {
-                    if (set.main.leftPost === 'none' || set.main.leftPost === 'no') {
-                        looseQty++;
-                    }
-                }
-
-                if (set.rightReturn) {
-                    if (set.rightReturn.rightPost === 'none' || set.rightReturn.rightPost === 'no') {
-                        looseQty++;
-                    }
-                    if ((set.main.rightPost === 'none' || set.main.rightPost === 'no') && 
-                        (set.rightReturn.leftPost === 'none' || set.rightReturn.leftPost === 'no')) {
-                        looseQty++;
-                    }
-                } else {
-                    if (set.main.rightPost === 'none' || set.main.rightPost === 'no') {
-                        looseQty++;
-                    }
-                }
-
-                if (looseQty > 0) {
-                    allPanelItems.push({
-                        id: `set${setIdx}_loosePost`,
-                        setIdx: setIdx,
-                        panelType: 'loosePost',
-                        panelData: set.main,
-                        originalDrawingNo: baseDwg + ".1",
-                        originalMainMark: baseDwg + "P1",
-                        quantity: looseQty * setQty,
-                        signature: getLoosePostSignature(set.main, style, setIdx)
-                    });
-                }
-            }
-
-            // 2. Left Return
-            if (set.leftReturn) {
-                allPanelItems.push({
-                    id: `set${setIdx}_leftReturn`,
-                    setIdx: setIdx,
-                    panelType: 'leftReturn',
-                    panelData: set.leftReturn,
-                    originalDrawingNo: baseDwg + ".2",
-                    originalMainMark: baseDwg + "LB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.leftReturn, style, 'leftReturn', setIdx)
-                });
-            }
-
-            // 3. Right Return
-            if (set.rightReturn) {
-                const rightDwgNo = set.leftReturn ? (baseDwg + ".3") : (baseDwg + ".2");
-                allPanelItems.push({
-                    id: `set${setIdx}_rightReturn`,
-                    setIdx: setIdx,
-                    panelType: 'rightReturn',
-                    panelData: set.rightReturn,
-                    originalDrawingNo: rightDwgNo,
-                    originalMainMark: baseDwg + "RB",
-                    quantity: setQty,
-                    signature: getPanelSignature(set.rightReturn, style, 'rightReturn', setIdx)
-                });
-            }
-        });
-
-        // Group panels by identical physical parameters (signature) on the entire list first
-        const initialGroupsBySignature = {};
-        allPanelItems.forEach(item => {
-            if (!initialGroupsBySignature[item.signature]) {
-                initialGroupsBySignature[item.signature] = [];
-            }
-            initialGroupsBySignature[item.signature].push(item);
-        });
-
-        // Assign Masters and map relations on the entire list first
-        Object.keys(initialGroupsBySignature).forEach(sig => {
-            const group = initialGroupsBySignature[sig];
-            const master = group[0];
-            const totalQty = group.reduce((sum, item) => sum + item.quantity, 0);
-
-            group.forEach(item => {
-                item.masterDrawingNo = master.originalDrawingNo;
-                item.masterMainMark = master.originalMainMark;
-                item.isMaster = (item.id === master.id);
-                item.groupTotalQty = totalQty;
-            });
-        });
-
-        // Filter out excluded sheets if selected by the user in Sheet Manager (based on master drawing number)
-        let filteredPanelItems = allPanelItems;
-        if (balconyWizardState.activeExportSheets) {
-            filteredPanelItems = allPanelItems.filter(item => balconyWizardState.activeExportSheets.includes(item.masterDrawingNo));
-        }
-
-        // Re-group filtered panels to get correct consolidated quantities for the selected set of sheets
-        const groupsBySignature = {};
-        filteredPanelItems.forEach(item => {
-            if (!groupsBySignature[item.signature]) {
-                groupsBySignature[item.signature] = [];
-            }
-            groupsBySignature[item.signature].push(item);
-        });
-
-        // Re-assign group quantities for filtered items
-        Object.keys(groupsBySignature).forEach(sig => {
-            const group = groupsBySignature[sig];
-            const master = group[0];
-            const totalQty = group.reduce((sum, item) => sum + item.quantity, 0);
-
-            group.forEach(item => {
-                item.masterDrawingNo = master.originalDrawingNo;
-                item.masterMainMark = master.originalMainMark;
-                item.isMaster = (item.id === master.id);
-                item.groupTotalQty = totalQty;
-            });
-        });
-
-        // Generate drawing PDFs for Master items only
-        const uniqueMasterItems = filteredPanelItems.filter(item => item.isMaster);
-        for (const p of uniqueMasterItems) {
-            if (p.panelType === 'loosePost') {
-                balconyWizardState.activeSetIdx = p.setIdx;
-                balconyWizardState.activePanelType = 'main'; // loose post uses main inputs
-                loadActivePanelToInputs();
-
-                const resolved = getResolvedPanelProperties(p.panelData, p.panelData.railStyle || 'classical');
-                if (resolved.postType === 'none' || resolved.postType === 'no') {
-                    resolved.postType = 'hss_rect';
-                    resolved.postW = 1.5;
-                    resolved.postH = 1.5;
-                    resolved.postT = 0.1196;
-                }
-                currentModel = CadEngine.createLoosePostModel(
-                    resolved.postW, resolved.pHeight, resolved.topRailH, resolved.postType, resolved.postT,
-                    resolved.includeBasePlates, resolved.bpW, resolved.bpL, resolved.bpH,
-                    resolved.bpHoleD, resolved.bpHoleOffsetX, resolved.bpHoleOffsetY,
-                    p.panelData.railStyle || 'classical', resolved.fHeight, resolved.botRailH, resolved.midRailType, resolved.midRailGap, resolved.midRailH
-                );
-
-                // Render manually to svgContainer
-                svgContainer.innerHTML = CadEngine.renderClean2DSVG(currentModel);
-                await new Promise(resolve => setTimeout(resolve, 150));
-            } else {
-                balconyWizardState.activeSetIdx = p.setIdx;
-                balconyWizardState.activePanelType = p.panelType;
-                loadActivePanelToInputs();
-                renderCurrentCAD(false); // Render flat 2D panel!
-
-                await new Promise(resolve => setTimeout(resolve, 150));
-            }
-
-            try {
-                const isLoose = (p.panelType === 'loosePost');
-                const result = await generateBlueprintPDF(
-                    p.originalDrawingNo, fabNo, jobNo, p.originalMainMark, revision, finishText, 
-                    false, jobName, gc, address, cityState, drawnBy, checkedBy, true, isLoose, p.groupTotalQty, p.panelType,
-                    false, currentModel
-                );
-
-                if (result && result.pdfData) {
-                    zip.file(`${p.originalDrawingNo}.pdf`, result.pdfData);
-                }
-
-                p.bomItems = result.bomItems;
-            } catch (err) {
-                console.error("Failed to generate PDF for Master: ", p.originalDrawingNo, err);
-            }
-        }
-
-        // Build master BOM rows for consolidated BOM (excel/csv)
-        Object.keys(groupsBySignature).forEach(sig => {
-            const group = groupsBySignature[sig];
-            const master = group[0];
-            const totalGroupQty = group.reduce((sum, item) => sum + item.quantity, 0);
-            const bomItems = master.bomItems || [];
-
-            bomItems.forEach(item => {
-                let shapeCol = (item.shape || '').toUpperCase();
-                if (shapeCol.includes('HSS')) shapeCol = 'HSS';
-                if (shapeCol === 'PLATE') shapeCol = 'PL';
-                if (shapeCol === 'FLAT_BAR') shapeCol = 'FB';
-
-                let dimCol = formatToArchitecturalDesc(item.size || item.desc || '').toUpperCase();
-                dimCol = dimCol
-                    .replace(/HSS/gi, '')
-                    .replace(/\bPL\b/gi, '')
-                    .replace(/\bFB\b/gi, '')
-                    .replace(/^PL\s*/i, '')
-                    .replace(/^FB\s*/i, '')
-                    .trim();
-
-                const lengthCol = item.len;
-                const gradeCol = item.grade || (item.shape.toUpperCase() === 'WWM' ? 'WELDED' : (item.shape.toLowerCase().includes('plate') ? 'A36' : 'A500'));
-                const finishCol = finishText.toUpperCase();
-                const remarkCol = ""; // Remarks are kept empty per user request
-
-                let categoryCol = "MISC";
-                let subCategoryCol = "MISC";
-                const descLower = (item.desc || '').toLowerCase();
-                const markLower = (item.mark || '').toLowerCase();
-                const shapeLower = (item.shape || '').toLowerCase();
-
-                if (item.isBent) {
-                    if (shapeLower.includes('plate') || shapeLower.includes('angle') || descLower.includes('plate') || descLower.includes('angle')) {
-                        categoryCol = "PLATE";
-                        subCategoryCol = "BENT PLATE";
-                    } else {
-                        categoryCol = "HSS";
-                        subCategoryCol = "BENT HSS";
-                    }
-                } else if (item.isWeldedPiece) {
-                    categoryCol = "WELDED";
-                    subCategoryCol = "WELDED PIECE";
-                } else if (shapeLower === 'plate' || descLower.includes('plate')) {
-                    categoryCol = "PLATE";
-                    subCategoryCol = "BASE PLATE";
-                } else if (descLower.includes('picket') || markLower.includes('picket')) {
-                    categoryCol = "PICKET";
-                    subCategoryCol = "PICKET";
-                } else if (descLower.includes('post') || markLower.includes('post')) {
-                    categoryCol = "POST";
-                    subCategoryCol = "POST";
-                } else if (descLower.includes('top rail') || descLower.includes('top runner') || (descLower.includes('rail') && (markLower.includes('top') || descLower.includes('top')))) {
-                    categoryCol = "RAIL";
-                    subCategoryCol = "TOP RAIL";
-                } else if (descLower.includes('bot rail') || descLower.includes('bottom rail') || descLower.includes('bot runner') || descLower.includes('bottom runner') || (descLower.includes('rail') && (markLower.includes('bot') || descLower.includes('bottom')))) {
-                    categoryCol = "RAIL";
-                    subCategoryCol = "BOTTOM RAIL";
-                } else if (descLower.includes('mid rail') || descLower.includes('mid runner') || (descLower.includes('rail') && (markLower.includes('mid')))) {
-                    categoryCol = "RAIL";
-                    subCategoryCol = "MID RAIL";
-                } else if (shapeLower.includes('hss')) {
-                    categoryCol = "RAIL";
-                    subCategoryCol = "RAIL";
-                }
-
-                const accumulatedQty = item.qty;
-
-                masterBomRows.push([
-                    "", // Approval Status
-                    master.originalDrawingNo, // Drawing #
-                    master.originalMainMark.toUpperCase(), // Main Mark
-                    item.mark, // Piece Mark
-                    accumulatedQty, // Consolidated Quantity
-                    shapeCol, // Shape
-                    dimCol, // Dimensions
-                    lengthCol, // Length
-                    gradeCol, // Grade
-                    finishCol, // Finish
-                    remarkCol, // Remark
-                    categoryCol, // Category
-                    subCategoryCol, // Sub-Category
-                    "", // Sequence
-                    "", // Lot #
-                    ""  // Sequence Qty
-                ]);
-            });
-        });
-
-        // Generate Consolidated BOM File inside ZIP
-        if (needFBOM && masterBomRows.length > 0) {
-            const excelHeaders = [
-                "Approval Status", "Drawing #", "Main Mark", "Piece Mark", "Quantity", 
-                "Shape", "Dimensions", "Length", "Grade", "Finish", "Remark", 
-                "Category", "Sub-Category", "Sequence", "Lot #", "Sequence Qty"
-            ];
-
-            if (window.XLSX) {
-                const wb = XLSX.utils.book_new();
-                const wsData = [excelHeaders, ...masterBomRows];
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
-                XLSX.utils.book_append_sheet(wb, ws, "FBOM");
-                const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-                zip.file(`FBOM-${jobNo}-${fabNo}.xlsx`, excelBuffer);
-            } else {
-                let csvContent = excelHeaders.map(h => `"${h}"`).join(",") + "\n";
-                masterBomRows.forEach(row => {
-                    csvContent += row.map(val => {
-                        if (typeof val === 'number') return val;
-                        return `"${(val || '').toString().replace(/"/g, '""')}"`;
-                    }).join(",") + "\n";
-                });
-                zip.file(`FBOM-${jobNo}-${fabNo}.csv`, csvContent);
-            }
-        }
-
-        // Generate Summary Report PDF and add to ZIP
+    async function generateBlueprintPDF(drawingNo, fabNo, jobNo, mainMark, revision, finishText, needFBOM, jobName = 'QUALITY IRONWORKS PROJECT', gc = 'APEX BUILDERS', address = '123 STEEL WAY', cityState = 'HOUSTON, TX', drawnBy = 'ENG', checkedBy = 'QIW') {
         const { jsPDF } = window.jspdf;
-        const summaryDoc = new jsPDF('portrait', 'mm', 'a4'); // A4: 210 x 297 mm
-        
-        // Borders
-        summaryDoc.setDrawColor(0, 0, 0);
-        summaryDoc.setLineWidth(0.5);
-        summaryDoc.rect(5, 5, 200, 287, 'S'); // Outer border
-        summaryDoc.setLineWidth(0.2);
-        summaryDoc.rect(7, 7, 196, 283, 'S'); // Inner border
+        const doc = new jsPDF('landscape', 'mm', 'a4'); // A4 landscape: 297mm x 210mm
+        const cat = shapeCategory.value;
 
-        // Title Block
-        summaryDoc.setFont('helvetica', 'bold');
-        summaryDoc.setFontSize(14);
-        summaryDoc.text("STEELDRAFT BALCONY CONFIGURATOR", 105, 18, { align: "center" });
-        summaryDoc.setFontSize(11);
-        summaryDoc.text("BATCH EXPORT DRAWINGS & BOM SUMMARY REPORT", 105, 24, { align: "center" });
-
-        // Job Information
-        summaryDoc.setFontSize(8.5);
-        summaryDoc.setFont('helvetica', 'bold');
-        summaryDoc.text("JOB INFORMATION", 15, 36);
-        summaryDoc.setFont('helvetica', 'normal');
-        summaryDoc.text(`Job Name: ${jobName.toUpperCase()}`, 15, 42);
-        summaryDoc.text(`Job Number: ${jobNo.toUpperCase()}`, 15, 47);
-        summaryDoc.text(`GC: ${gc.toUpperCase()}`, 15, 52);
-        summaryDoc.text(`Date: ${new Date().toLocaleDateString()}`, 120, 42);
-        summaryDoc.text(`Revision: ${revision}`, 120, 47);
-        summaryDoc.text(`Finish: ${finishText.toUpperCase()}`, 120, 52);
-
-        summaryDoc.line(15, 56, 195, 56);
-
-        // Optimization Narrative
-        summaryDoc.setFont('helvetica', 'bold');
-        summaryDoc.text("DRAWING SHEET OPTIMIZATION", 15, 63);
-        summaryDoc.setFont('helvetica', 'normal');
-        summaryDoc.setFontSize(8);
-        const explanation = "To optimize fabrication and reduce duplicate paperwork, identical balconies, returns, and loose posts have been grouped onto single master drawing sheets. Drawing sheets are only generated for the first occurrence of each unique design. The table below provides a full map of all components, showing their original drawing numbers, the assigned master drawing sheets, and the final accumulated quantities.";
-        summaryDoc.text(explanation, 15, 68, { maxWidth: 180 });
-
-        summaryDoc.line(15, 78, 195, 78);
-
-        // Table Header
-        summaryDoc.setFont('helvetica', 'bold');
-        summaryDoc.setFontSize(8);
-        summaryDoc.text("SET / BALCONY", 17, 83);
-        summaryDoc.text("COMPONENT", 50, 83);
-        summaryDoc.text("ORIGINAL DWG", 90, 83);
-        summaryDoc.text("ASSIGNED DWG", 125, 83);
-        summaryDoc.text("QTY", 160, 83);
-        summaryDoc.text("STATUS", 175, 83);
-
-        summaryDoc.line(15, 85, 195, 85);
-
-        // Populate Table Rows
-        let tableY = 90;
-        summaryDoc.setFont('helvetica', 'normal');
-        summaryDoc.setFontSize(7.5);
-
-        const componentOrder = { 'main': 1, 'loosePost': 2, 'leftReturn': 3, 'rightReturn': 4 };
-        const sortedItems = [...filteredPanelItems].sort((a, b) => {
-            if (a.setIdx !== b.setIdx) return a.setIdx - b.setIdx;
-            return componentOrder[a.panelType] - componentOrder[b.panelType];
-        });
-
-        sortedItems.forEach(item => {
-            if (tableY > 270) {
-                summaryDoc.addPage();
-                summaryDoc.setDrawColor(0, 0, 0);
-                summaryDoc.setLineWidth(0.5);
-                summaryDoc.rect(5, 5, 200, 287, 'S');
-                summaryDoc.setLineWidth(0.2);
-                summaryDoc.rect(7, 7, 196, 283, 'S');
-                
-                summaryDoc.setFont('helvetica', 'bold');
-                summaryDoc.setFontSize(8);
-                summaryDoc.text("SET / BALCONY", 17, 15);
-                summaryDoc.text("COMPONENT", 50, 15);
-                summaryDoc.text("ORIGINAL DWG", 90, 15);
-                summaryDoc.text("ASSIGNED DWG", 125, 15);
-                summaryDoc.text("QTY", 160, 15);
-                summaryDoc.text("STATUS", 175, 15);
-                summaryDoc.line(15, 17, 195, 17);
-                tableY = 22;
-                summaryDoc.setFont('helvetica', 'normal');
-                summaryDoc.setFontSize(7.5);
-            }
-
-            const setLetter = `Balcony ${getSetLetter(item.setIdx)}`;
-            let compLabel = "Main Balcony";
-            if (item.panelType === 'leftReturn') compLabel = "Left Return";
-            else if (item.panelType === 'rightReturn') compLabel = "Right Return";
-            else if (item.panelType === 'loosePost') compLabel = "Loose Corner Post";
-
-            const origDwg = `${item.originalDrawingNo} (${item.originalMainMark})`;
-            const assignedDwg = `${item.masterDrawingNo} (${item.masterMainMark})`;
-            const qtyStr = item.quantity.toString();
-            const statusStr = item.isMaster ? "MASTER (Sheet Generated)" : `Shared with ${item.masterDrawingNo}`;
-
-            summaryDoc.text(setLetter, 17, tableY);
-            summaryDoc.text(compLabel, 50, tableY);
-            summaryDoc.text(origDwg, 90, tableY);
-            if (item.isMaster) {
-                summaryDoc.setFont('helvetica', 'bold');
-            }
-            summaryDoc.text(assignedDwg, 125, tableY);
-            summaryDoc.text(qtyStr, 162, tableY, { align: "center" });
-            summaryDoc.text(statusStr, 175, tableY);
-            summaryDoc.setFont('helvetica', 'normal');
-
-            summaryDoc.line(15, tableY + 2, 195, tableY + 2, 'S');
-            tableY += 6;
-        });
-
-        const summaryPdfData = summaryDoc.output('arraybuffer');
-        zip.file("Summary_Report.pdf", summaryPdfData);
-
-        // Restore original panel view
-        balconyWizardState.tempSet = origTempSet;
-        balconyWizardState.activeSetIdx = origSetIdx;
-        balconyWizardState.activePanelType = origPanelType;
-        loadActivePanelToInputs();
-        renderCurrentCAD(true); // Restore original screen view (with interactive 3D preview)
-
-        // Download ZIP file
-        const zipContent = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipContent);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${jobName}-${fabNo}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        // Show Success Notification Toast
-        const toast = document.createElement('div');
-        toast.className = 'ai-success-toast';
-        toast.innerHTML = `<i data-lucide="check-circle" style="color:#000; vertical-align:middle; margin-right:4px;"></i> ZIP Package Export Completed!`;
-        document.body.appendChild(toast);
-        if (window.lucide) lucide.createIcons();
-        
-        setTimeout(() => {
-            toast.style.animation = 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) reverse';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    } catch (e) {
-        console.error("ZIP package generation failed: ", e);
-        alert("Failed to build ZIP package. Error: " + e.message);
-    } finally {
-        isGeneratingZipBatch = false;
-        balconyWizardState.tempSet = origTempSet;
-        if (overlay) {
-            overlay.classList.add('hidden');
-            const statusText = overlay.querySelector('p');
-            if (statusText) statusText.textContent = "Processing Engineering Geometry...";
+        if (!currentModel) {
+            alert("No active CAD model found. Please draw or select a design first.");
+            return;
         }
-    }
-    }    function generateBlueprintPDF(drawingNo, fabNo, jobNo, mainMark, revision, finishText, needFBOM, jobName = 'QUALITY IRONWORKS PROJECT', gc = 'APEX BUILDERS', address = '123 STEEL WAY', cityState = 'HOUSTON, TX', drawnBy = 'ENG', checkedBy = 'QIW', isZipBatch = false, isLoosePost = false, assemblyQty = 1, activePanelType = 'main', isPreviewOnly = false, customModelOverride = null) {
-        return new Promise((resolve, reject) => {
-            const { jsPDF } = window.jspdf;
-            const modelToDraw = customModelOverride || currentModel;
-            const doc = new jsPDF('landscape', 'mm', 'a4'); // A4 landscape: 297mm x 210mm
-            const cat = shapeCategory.value;
-            let desc = cat ? cat.toUpperCase() : "Drawing";
-            let sectionCutPdfX = null;
-            let sectionCutDir = 1;
-            const extensionLinesPDF = [];
-            const bayCentersPDF = [];
 
-            // Fetch inputs at the start of the function
-            const vals = {};
-            dynamicInputs.querySelectorAll('input').forEach(inp => {
-                const id = inp.id.replace('inp-', '');
-                vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
-            });
-            dynamicInputs.querySelectorAll('select').forEach(sel => {
-                vals[sel.id.replace('inp-', '')] = sel.value;
-            });
+        const svgElement = svgContainer.querySelector('svg');
+        if (!svgElement) return;
 
-            if (cat === 'rail_catalog') {
-                const activeSet = balconyWizardState.tempSet || (balconyWizardState.sets ? balconyWizardState.sets[balconyWizardState.activeSetIdx] : null);
-                if (activeSet) {
-                    const panelObj = (activePanelType === 'main' || activePanelType === 'loosePost') ? activeSet.main : (activePanelType === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
-                    if (panelObj) {
-                        for (const key in panelObj) {
-                            vals[key] = panelObj[key];
-                        }
-                    }
-                }
-                vals.originalLength = vals.length;
-                if (vals.extra6) {
-                    vals.length += (activePanelType === 'main' ? 12.0 : ((activePanelType === 'leftReturn' || activePanelType === 'rightReturn') ? 6.0 : 0.0));
-                }
-                const ext = CadEngine.resolveFreeEndExtensions(vals, vals.railStyle || 'classical', activePanelType);
-                vals.deltaLeft = ext.deltaLeft;
-                vals.deltaRight = ext.deltaRight;
-                vals.length += (ext.deltaLeft + ext.deltaRight);
-            }
+        // Generate a clean 2D SVG directly from the model (removes all nested centerlines and thickness lines)
+        const cleanSvgString = CadEngine.renderClean2DSVG(currentModel);
+        
+        // Parse the clean SVG string into a DOM element so we can modify it for print layout (high-contrast black lines)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cleanSvgString;
+        const svgClone = tempDiv.querySelector('svg');
+        if (!svgClone) return;
+        
+        // Remove draft guidance overlay if it exists
+        const gGuide = svgClone.querySelector('.draft-guidance-overlay');
+        if (gGuide) gGuide.remove();
 
-            if (isLoosePost) {
-                if (vals.postType === 'none' || vals.postType === 'no') {
-                    vals.postType = 'hss_rect';
-                    vals.postSize = 'HSS 1.5x1.5x11GA';
-                    vals.postW = 1.5;
-                    vals.postH = 1.5;
-                    vals.postT = 0.1196;
-                }
-            }
-
-            const style = vals.railStyle || 'classical';
-            const customSpacings = [];
-            const tempMidPostsVal = vals.midPosts || 'default';
-            const tempMidPostCount = parseInt(vals.midPostCount) || 0;
-            if (tempMidPostsVal === 'custom') {
-                for (let i = 1; i <= tempMidPostCount; i++) {
-                    const spKey = `midPostSpacing-${i}`;
-                    customSpacings.push(vals[spKey] !== undefined ? vals[spKey] : 48);
-                }
-            }
-
-            const hasBasePlates = (vals.includeBasePlates === 'yes');
-            const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-            const hasTopDetails = !isLoosePost && (vals.includeBasePlates === 'yes');
-
-            let unpaddedMinX, unpaddedMaxX, unpaddedMinY, unpaddedMaxY;
-            let cadMinX, cadMaxX, cadMinY, cadMaxY;
-            let actualWidthInches, actualHeightInches;
-            
-            if (window.makerjs && modelToDraw) {
-                const extents = makerjs.measure.modelExtents(modelToDraw);
-                if (extents) {
-                    unpaddedMinX = extents.low[0];
-                    unpaddedMaxX = extents.high[0];
-                    unpaddedMinY = extents.low[1];
-                    unpaddedMaxY = extents.high[1];
-
-                    cadMinX = unpaddedMinX;
-                    cadMaxX = unpaddedMaxX;
-                    cadMinY = unpaddedMinY;
-                    cadMaxY = unpaddedMaxY;
-                    
-                    // Use a clean 0.8 inch padding to maximize drawing scale
-                    const padX = 0.8;
-                    const padY = 0.8;
-                    cadMinX -= padX;
-                    cadMaxX += padX;
-                    cadMinY -= padY;
-                    cadMaxY += padY;
-                    
-                    actualWidthInches = cadMaxX - cadMinX;
-                    actualHeightInches = cadMaxY - cadMinY;
-                }
-            }
-
-            if (!modelToDraw) {
-                alert("No active CAD model found. Please draw or select a design first.");
-                reject("No active CAD model");
-                return;
-            }
-
-            const svgElement = svgContainer.querySelector('svg');
-            if (!svgElement) {
-                reject("No SVG element found");
-                return;
-            }
-
-            // Generate a clean 2D SVG directly from the model (removes all nested centerlines and thickness lines) with black stroke
-            let cleanSvgString = CadEngine.renderClean2DSVG(modelToDraw, { stroke: '#000000' });
-            if (!cleanSvgString.includes('xmlns=')) {
-                cleanSvgString = cleanSvgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-            }
-            
-            // Parse the clean SVG string into a DOM element in the SVG namespace
-            const parser = new DOMParser();
-            const docParsed = parser.parseFromString(cleanSvgString, 'image/svg+xml');
-            const svgClone = docParsed.querySelector('svg');
-            if (!svgClone) {
-                reject("Failed to parse clean SVG");
-                return;
-            }
-
-            if (!svgClone.getAttribute('xmlns')) {
-                svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-            }
-            
-            // Remove draft guidance overlay if it exists
-            const gGuide = svgClone.querySelector('.draft-guidance-overlay');
-            if (gGuide) gGuide.remove();
-
-            // Strip double lines (inner HSS wall thickness lines and centerlines) for outer-only 2D representation
-            const innerSelector = [
-                '.hss-inner-line', '.inner', '[class*="inner"]', '[id*="inner"]',
-                '.center', '[class*="center"]', '[id*="center"]',
-                '.topWall', '[class*="topWall"]', '[id*="topWall"]',
-                '.botWall', '[class*="botWall"]', '[id*="botWall"]',
-                '.legLine', '[class*="legLine"]', '[id*="legLine"]',
-                '.topFlange', '[class*="topFlange"]', '[id*="topFlange"]',
-                '.botFlange', '[class*="botFlange"]', '[id*="botFlange"]',
-                '[class*="wall"]', '[id*="wall"]'
-            ].join(', ');
-            svgClone.querySelectorAll(innerSelector).forEach(el => el.remove());
-
-            // Parse viewBox dimensions to calculate proportional stroke-width
-            let viewBoxAttr = svgClone.getAttribute('viewBox') || svgElement.getAttribute('viewBox');
-            let vb = viewBoxAttr ? viewBoxAttr.split(/[\s,]+/).map(Number) : (modelToDraw === 'draft' ? [-600, -400, 1200, 800] : [0, 0, 2000, 1500]);
-            const origMinX = vb[0] !== undefined ? vb[0] : 0;
-            const origMinY = vb[1] !== undefined ? vb[1] : 0;
-            const origW = vb[2] || (modelToDraw === 'draft' ? 1200 : 2000);
-            const origH = vb[3] || (modelToDraw === 'draft' ? 800 : 1500);
-
-            let vbMinX = origMinX;
-            let vbMinY = origMinY;
-            let vbWidth = origW;
-            let vbHeight = origH;
-
-            // Calculate the padded viewBox dimensions matching the CAD coordinate mapping transformation
-            if (unpaddedMinX !== undefined && unpaddedMaxX !== undefined && unpaddedMinY !== undefined && unpaddedMaxY !== undefined) {
-                const unpaddedW = unpaddedMaxX - unpaddedMinX;
-                const unpaddedH = unpaddedMaxY - unpaddedMinY;
-                
-                if (unpaddedW > 0.001 && unpaddedH > 0.001) {
-                    const scaleX = origW / unpaddedW;
-                    const scaleY = origH / unpaddedH;
-                    
-                    const padX = 0.8;
-                    const padY = 0.8;
-                    
-                    const padX_svg = padX * scaleX;
-                    const padY_svg = padY * scaleY;
-                    
-                    vbMinX = origMinX - padX_svg;
-                    vbMinY = origMinY - padY_svg;
-                    vbWidth = origW + 2 * padX_svg;
-                    vbHeight = origH + 2 * padY_svg;
-                }
-            }
-            
-            let svgRatio = 1.33;
-            if (cadMinX !== undefined && cadMinY !== undefined) {
-                const w = cadMaxX - cadMinX;
-                const h = cadMaxY - cadMinY;
-                if (h > 0.001) {
-                    svgRatio = w / h;
-                }
-            } else {
-                svgRatio = vbWidth / vbHeight;
-            }
-            // Margins for dimensions & leaders
-            let marginLeft = 22;
-            let marginRight = 12;
-            let marginTop = 22;
-            let marginBottom = 22;
-
-            // Page boundaries
-            const pageXMin = 7;
-            const pageXMax = 199;
-            const pageYMin = 7;
-            const pageYMax = 175;
-
-            // Max allowed drawing viewport width and height to prevent clashing with BOM (starts at 199)
-            // Left margin of 22mm, Right margin of 12mm. Center of Left Area is 103mm.
-            // Drawing is centered inside X: [29, 171], so max width is 142mm.
-            let availW = 142;
-            let availH;
-
-            if (hasTopDetails) {
-                // Top detail box ends at Y = 58. Available Y space is Y: [58, 175] (height = 117mm).
-                const detailMarginTop = 12;
-                const detailMarginBottom = 16;
-                availH = (pageYMax - 58) - (detailMarginTop + detailMarginBottom); // 117 - 28 = 89mm
-                marginTop = detailMarginTop;
-                marginBottom = detailMarginBottom;
-            } else {
-                availH = (pageYMax - pageYMin) - (marginTop + marginBottom); // 168 - 44 = 124mm
-            }
-
-            if (isLoosePost) {
-                availW = 40;
-                availH = 110;
-            }
-
-            // Calculate standard architectural scale dynamically
-            const cadWidth = cadMaxX - cadMinX;
-            const cadHeight = cadMaxY - cadMinY;
-
-            const standardScales = [
-                { name: '1 1/2" = 1\'-0"', ratio: 1.5 / 12 },
-                { name: '1" = 1\'-0"', ratio: 1.0 / 12 },
-                { name: '3/4" = 1\'-0"', ratio: 0.75 / 12 },
-                { name: '1/2" = 1\'-0"', ratio: 0.50 / 12 },
-                { name: '3/8" = 1\'-0"', ratio: 0.375 / 12 },
-                { name: '1/4" = 1\'-0"', ratio: 0.25 / 12 },
-                { name: '3/16" = 1\'-0"', ratio: 0.1875 / 12 },
-                { name: '1/8" = 1\'-0"', ratio: 0.125 / 12 },
-                { name: '3/32" = 1\'-0"', ratio: 0.09375 / 12 },
-                { name: '1/16" = 1\'-0"', ratio: 0.0625 / 12 }
-            ];
-
-            // Predict BOM count and compute dynamic vertical boundaries
-            let predictedBomCount = 0;
-            
-            const midPostCountLocal = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.length || 120) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-            const noPosts = (vals.leftPost !== 'yes') && (vals.rightPost !== 'yes') && (vals.midPosts === 'none' || midPostCountLocal <= 0);
-            
-            // Resolve component types for prediction exactly like the actual BOM builder
-            let topRailType_pred = 'none';
-            let botRailType_pred = 'none';
-            let midRailType_pred = 'none';
-            let picketType_pred = 'none';
-            let postType_pred = 'none';
-
-            if (style === 'classical') {
-                topRailType_pred = 'hss_rect';
-                botRailType_pred = 'hss_rect';
-                midRailType_pred = 'none';
-                picketType_pred = 'hss_rect';
-                postType_pred = 'hss_rect';
-            } else if (style === 'executive') {
-                topRailType_pred = 'hss_rect';
-                botRailType_pred = 'hss_rect';
-                midRailType_pred = 'hss_rect';
-                picketType_pred = 'hss_rect';
-                postType_pred = 'hss_rect';
-            } else if (style === 'urban_balcony') {
-                topRailType_pred = 'hss_rect';
-                botRailType_pred = 'hss_rect';
-                midRailType_pred = 'none';
-                picketType_pred = 'none';
-                postType_pred = 'hss_rect';
-            } else if (style === 'villa_balcony') {
-                topRailType_pred = 'hss_rect';
-                botRailType_pred = 'hss_rect';
-                midRailType_pred = 'hss_rect';
-                picketType_pred = 'none';
-                postType_pred = 'hss_rect';
-            } else if (style === 'urban_custom' || style === 'villa_custom') {
-                topRailType_pred = vals.topRailType || 'hss_rect';
-                botRailType_pred = vals.botRailType || 'hss_rect';
-                midRailType_pred = (style === 'villa_custom') ? (vals.midRailType || 'hss_rect') : 'none';
-                picketType_pred = 'none';
-                postType_pred = vals.postType || 'hss_rect';
-            } else {
-                // Executive custom or classical custom
-                topRailType_pred = vals.topRailType || 'hss_rect';
-                botRailType_pred = vals.botRailType || 'hss_rect';
-                midRailType_pred = vals.midRailType || 'none';
-                picketType_pred = vals.picketType || 'none';
-                postType_pred = vals.postType || 'hss_rect';
-            }
-
-            const postW_pred = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony')
-                ? 1.5
-                : getPicketDimension(postType_pred, vals.postSize, vals.postW || 1.5);
-
-            const railSpans_pred = resolveRailMarksAndSpans(vals, drawingNo, cat, style, postW_pred);
-
-            if (cat === 'rail_catalog') {
-                if (isLoosePost) {
-                    let count = 1; // Loose post
-                    const props = getResolvedPanelProperties(vals, style);
-                    const includeBasePlates = props ? props.includeBasePlates : 'no';
-                    if (includeBasePlates === 'yes') count++;
-                    if (isMeshStyle) {
-                        count++; // Attached FB
-                    }
-                    predictedBomCount = count;
-                } else {
-                    let count = 0;
-                    
-                    // Top Runner
-                    if (topRailType_pred !== 'none') {
-                        count++;
-                    }
-                    
-                    // Bottom Runner
-                    if (botRailType_pred !== 'none') {
-                        if (railSpans_pred && railSpans_pred.bottomSegments) {
-                            const botGroups_pred = {};
-                            railSpans_pred.bottomSegments.forEach(seg => {
-                                botGroups_pred[seg.mark] = true;
-                            });
-                            count += Object.keys(botGroups_pred).length;
-                        } else {
-                            count++;
-                        }
-                    }
-                    
-                    // Mid Runner
-                    if (midRailType_pred !== 'none') {
-                        if (railSpans_pred && railSpans_pred.midSegments) {
-                            const midGroups_pred = {};
-                            railSpans_pred.midSegments.forEach(seg => {
-                                midGroups_pred[seg.mark] = true;
-                            });
-                            count += Object.keys(midGroups_pred).length;
-                        } else {
-                            count++;
-                        }
-                    }
-                    
-                    // Left Post
-                    if (vals.leftPost === 'yes' && postType_pred !== 'none') {
-                        count++;
-                    }
-                    
-                    // Right Post
-                    if (vals.rightPost === 'yes' && postType_pred !== 'none') {
-                        count++;
-                    }
-                    
-                    // Mid Post
-                    if (vals.midPosts !== 'none' && midPostCountLocal > 0 && postType_pred !== 'none') {
-                        count++;
-                    }
-                    
-                    // Picket
-                    if (picketType_pred !== 'none') {
-                        count++;
-                    }
-                    
-                    // Mesh Panel elements
-                    if (isMeshStyle) {
-                        const meshGroups_pred = {};
-                        if (railSpans_pred && railSpans_pred.bottomSegments) {
-                            railSpans_pred.bottomSegments.forEach(seg => {
-                                const baseMark = "a" + drawingNo;
-                                const suffix = seg.mark.substring(baseMark.length);
-                                meshGroups_pred[suffix] = true;
-                            });
-                        }
-                        const numUniqueSegments = Object.keys(meshGroups_pred).length;
-                        const leftOmitted = (vals.leftPost === 'yes') ? 0 : 1;
-                        const rightOmitted = (vals.rightPost === 'yes') ? 0 : 1;
-                        const fbVertQty = (2 * (midPostCountLocal + 1) - leftOmitted - rightOmitted);
-                        
-                        // Horizontal Flat Bars
-                        count += numUniqueSegments;
-                        
-                        // Vertical Flat Bars
-                        if (fbVertQty > 0) {
-                            count++;
-                        }
-                        
-                        // Wire Mesh Panels
-                        count += numUniqueSegments;
-                    }
-                    
-                    // Extra corner FB
-                    if (vals.extraFlatBar === 'yes' && (activePanelType === 'leftReturn' || activePanelType === 'rightReturn') && vals.leftPost === 'yes') {
-                        count++;
-                    }
-                    
-                    // Base Plates
-                    if (vals.includeBasePlates === 'yes') {
-                        const totalPostsCount = (vals.leftPost === 'yes' ? 1 : 0) + (vals.rightPost === 'yes' ? 1 : 0) + midPostCountLocal;
-                        if (totalPostsCount > 0) {
-                            count++;
-                        }
-                    }
-                    
-                    predictedBomCount = count;
-                }
-            } else if (cat === 'rails_gates') {
-                let count = 0;
-                const isGates = vals.railsGatesType === 'gates';
-                
-                if (topRailType_pred !== 'none') count++;
-                if (botRailType_pred !== 'none') count++;
-                if (midRailType_pred !== 'none') count++;
-                if (vals.leftPostType !== 'none') count++;
-                if (vals.rightPostType !== 'none') count++;
-                if (!isGates && midPostCountLocal > 0 && vals.midPostType !== 'none') count++;
-                if (picketType_pred !== 'none') count++;
-                if (isGates && vals.kickPlate && vals.kickPlate !== 'none') count++;
-                if (!isGates && vals.includeBasePlates === 'yes') count++;
-                if (isGates && vals.meshType && vals.meshType !== 'none') {
-                    count += 3; // Horizontal FB, Vertical FB, Wire Mesh Panel
-                }
-                if (isGates && vals.panicBarPlate === 'yes') count++;
-                
-                predictedBomCount = count;
-            } else if (cat === 'fence') {
-                let count = 0;
-                const noPosts_fence = (vals.postType === 'none' || vals.postHeight === 0 || vals.postSpacing === 0);
-                if (vals.topRailType !== 'none') count++;
-                if (!noPosts_fence && vals.postType !== 'none') count++;
-                if (vals.botRailType !== 'none') count++;
-                if (vals.midRailType !== 'none') count++;
-                if (vals.picketType !== 'none') count++;
-                if (vals.includeBasePlates === 'yes' && !noPosts_fence) count++;
-                
-                predictedBomCount = count;
-            }
-            
-            predictedBomCount = Math.max(3, predictedBomCount);
-
-            const bottomDetails = [];
-            if (isMeshStyle && !isLoosePost) {
-                bottomDetails.push('wire_mesh');
-            }
-            if (isMeshStyle && !isLoosePost && (activePanelType === 'leftReturn' || activePanelType === 'rightReturn') && vals.extraFlatBar === 'yes' && vals.leftPost === 'yes') {
-                bottomDetails.push('extra_flat_bar');
-            }
-
-            const boxH = 30; // Shrunk detail box height
-            const bomTableHeight = 11 + predictedBomCount * 4.5;
-            const bomBottomY = 18 + predictedBomCount * 4.5; // with 2mm safety buffer
-            const detailsBottomY = bomBottomY;
-            const upperBoundaryY = Math.max(25, detailsBottomY + 4);
-
-            let selectedScale = standardScales[standardScales.length - 1]; // Default to smallest
-            let layoutMode = 'leftArea'; // Default layout mode
-            let useCompressedDims = false;
-
-            let dimOffset1 = -12;
-            let dimOffset2 = -20;
-            let dimOffset3 = -28;
-            let dimOffsetBottom = 16;
-
-            let selectedScaleOverride = null;
-            if (vals.customScaleOverride && vals.customScaleOverride !== 'auto') {
-                selectedScaleOverride = standardScales.find(s => s.name === vals.customScaleOverride);
-            }
-
-            if (!isLoosePost) {
-                let found = false;
-                for (let i = 0; i < standardScales.length; i++) {
-                    const s = standardScales[i];
-                    if (selectedScaleOverride && s.name !== selectedScaleOverride.name) {
-                        continue;
-                    }
-                    const w_mm = s.ratio * cadWidth * 25.4;
-                    const h_mm = s.ratio * cadHeight * 25.4;
-
-                    // 1. Check if it fits in Left-Area-Only layout (vertical padding: 59mm, horizontal: 50mm)
-                    const leftAvailW = 142;
-                    const leftAvailH = hasTopDetails ? ((175 - 58) - 59) : ((175 - 7) - 59);
-                    const allowLeftArea = true; // Always allowed to maximize space
-
-                    if (allowLeftArea && w_mm <= leftAvailW && h_mm <= leftAvailH) {
-                        selectedScale = s;
-                        layoutMode = 'leftArea';
-                        useCompressedDims = false;
-                        found = true;
-                        break;
-                    }
-
-                    // 2. Check if it fits in Full-Width layout with standard dimensions (vertical padding: 59mm)
-                    const fullAvailW = 233;
-                    const fullAvailH_std = (175 - upperBoundaryY) - 59;
-
-                    if (w_mm <= fullAvailW && h_mm <= fullAvailH_std) {
-                        selectedScale = s;
-                        layoutMode = 'fullWidth';
-                        useCompressedDims = false;
-                        found = true;
-                        break;
-                    }
-
-                    // 3. Check if it fits in Full-Width layout with compressed dimensions (vertical padding: 40mm)
-                    const fullAvailH_comp = (175 - upperBoundaryY) - 40;
-
-                    if (w_mm <= fullAvailW && h_mm <= fullAvailH_comp) {
-                        selectedScale = s;
-                        layoutMode = 'fullWidth';
-                        useCompressedDims = true;
-                        found = true;
-                        break;
-                    }
-
-                    // 4. Check if it fits to the left of the BOM (leftAligned layout)
-                    const isReturn = (activePanelType === 'leftReturn' || activePanelType === 'rightReturn');
-                    const leftExt = 7 + (isReturn ? 28 : 5);
-                    const rightExt = 196 - (isReturn ? 5 : 24);
-                    const availW_left = rightExt - leftExt;
-                    const eff_upperBoundaryY = hasTopDetails ? 58 : 7;
-                    
-                    const availH_left_std = (175 - eff_upperBoundaryY) - 59;
-                    if (w_mm <= availW_left && h_mm <= availH_left_std) {
-                        selectedScale = s;
-                        layoutMode = 'leftAligned';
-                        useCompressedDims = false;
-                        found = true;
-                        break;
-                    }
-
-                    const availH_left_comp = (175 - eff_upperBoundaryY) - 40;
-                    if (w_mm <= availW_left && h_mm <= availH_left_comp) {
-                        selectedScale = s;
-                        layoutMode = 'leftAligned';
-                        useCompressedDims = true;
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    if (selectedScaleOverride) {
-                        selectedScale = selectedScaleOverride;
-                    } else {
-                        selectedScale = standardScales[standardScales.length - 1]; // fallback
-                    }
-                    layoutMode = 'fullWidth';
-                    useCompressedDims = true;
-                }
-            }
-
-            // Recalculate dimensions dynamically if they exceed Y space, pushing bottom dimension line too close to the main mark label.
-            if (!isLoosePost) {
-                let scaleIndex = standardScales.findIndex(s => s.name === selectedScale.name);
-                while (scaleIndex < standardScales.length - 1) {
-                    const tempScale = standardScales[scaleIndex];
-                    const tempDrawH = tempScale.ratio * cadHeight * 25.4;
-
-                    // Margins and offsets for this scale
-                    let tempDimOffsetBottom = 16;
-                    let tempMarginBottom = 16;
-                    let tempMarginTop = 12;
-                    
-                    if (layoutMode === 'fullWidth' || layoutMode === 'leftAligned') {
-                        if (useCompressedDims) {
-                            tempDimOffsetBottom = 11;
-                            tempMarginBottom = 19;
-                            tempMarginTop = 21;
-                        } else {
-                            tempDimOffsetBottom = 16;
-                            tempMarginBottom = 26;
-                            tempMarginTop = 33;
-                        }
-                    } else {
-                        if (hasTopDetails) {
-                            tempMarginTop = 12;
-                            tempMarginBottom = 16;
-                        } else {
-                            tempMarginTop = 33;
-                            tempMarginBottom = 26;
-                        }
-                    }
-
-                    const styleLower = style.toLowerCase();
-                    const isClassicOrExec = styleLower.includes('classic') || styleLower.includes('executive');
-                    if (isClassicOrExec) {
-                        tempDimOffsetBottom = useCompressedDims ? 16 : 22;
-                    }
-
-                    // Calculate temp pdfY
-                    let tempPdfY;
-                    if (layoutMode === 'fullWidth') {
-                        const remainingYSpace = (175 - upperBoundaryY) - (tempDrawH + tempMarginTop + tempMarginBottom);
-                        const extraSpace = Math.max(0, remainingYSpace / 2);
-                        tempPdfY = upperBoundaryY + tempMarginTop + extraSpace;
-                    } else if (layoutMode === 'leftAligned') {
-                        const eff_upperBoundaryY = hasTopDetails ? 58 : 7;
-                        const remainingYSpace = (175 - eff_upperBoundaryY) - (tempDrawH + tempMarginTop + tempMarginBottom);
-                        const extraSpace = Math.max(0, remainingYSpace / 2);
-                        tempPdfY = eff_upperBoundaryY + tempMarginTop + extraSpace;
-                    } else {
-                        const eff_upperBoundaryY = hasTopDetails ? 58 : 7;
-                        const remainingYSpace = (175 - eff_upperBoundaryY) - (tempDrawH + tempMarginTop + tempMarginBottom);
-                        const extraSpace = Math.max(0, remainingYSpace / 2);
-                        tempPdfY = eff_upperBoundaryY + tempMarginTop + extraSpace;
-                    }
-
-                    const tempDimLineY = tempPdfY + tempDrawH + tempDimOffsetBottom;
-                    
-                    // If bottom dimension line is safely clear of Y = 171.5 label text, break.
-                    // We allow Y up to 164.5 so there is at least a 7.0mm gap.
-                    if (tempDimLineY <= 164.5) {
-                        break;
-                    }
-
-                    // Otherwise, try next smaller scale and force compressed dimensions
-                    scaleIndex++;
-                    selectedScale = standardScales[scaleIndex];
-                    useCompressedDims = true;
-                }
-            }
-
-            let drawW = selectedScale.ratio * cadWidth * 25.4;
-            let drawH = selectedScale.ratio * cadHeight * 25.4;
-            let scaleLabelText = `SCALE ${selectedScale.name}`;
-
-            if (isLoosePost) {
-                const fitW = availH * svgRatio;
-                if (fitW <= availW) {
-                    drawW = fitW;
-                    drawH = availH;
-                } else {
-                    drawW = availW;
-                    drawH = availW / svgRatio;
-                }
-                scaleLabelText = 'SCALE TO FIT';
-            }
-
-            // Margins and horizontal/vertical centering based on layoutMode
-            if (layoutMode === 'fullWidth' || layoutMode === 'leftAligned') {
-                if (useCompressedDims) {
-                    dimOffset1 = -7;
-                    dimOffset2 = -12;
-                    dimOffset3 = -17;
-                    dimOffsetBottom = 11;
-                    marginTop = 21;
-                    marginBottom = 19;
-                } else {
-                    dimOffset1 = -12;
-                    dimOffset2 = -20;
-                    dimOffset3 = -28;
-                    dimOffsetBottom = 16;
-                    marginTop = 33;
-                    marginBottom = 26;
-                }
-                marginLeft = 25;
-                marginRight = 32;
-            } else {
-                dimOffset1 = -12;
-                dimOffset2 = -20;
-                dimOffset3 = -28;
-                dimOffsetBottom = 16;
-                if (hasTopDetails) {
-                    marginTop = 12;
-                    marginBottom = 16;
-                } else {
-                    marginTop = 33;
-                    marginBottom = 26;
-                }
-                marginLeft = 22;
-                marginRight = 12;
-            }
-
-            const styleLower = style.toLowerCase();
-            const isClassicOrExec = styleLower.includes('classic') || styleLower.includes('executive');
-            if (isClassicOrExec) {
-                dimOffsetBottom = useCompressedDims ? 16 : 22;
-            }
-
-            let pdfX;
-            if (layoutMode === 'fullWidth') {
-                pdfX = 148.5 - drawW / 2;
-            } else if (layoutMode === 'leftAligned') {
-                const isReturn = (activePanelType === 'leftReturn' || activePanelType === 'rightReturn');
-                const leftExt = 7 + (isReturn ? 28 : 5);
-                const rightExt = 196 - (isReturn ? 5 : 24);
-                const leftCenter = (leftExt + rightExt) / 2;
-                pdfX = leftCenter - drawW / 2;
-            } else {
-                pdfX = 103.0 - drawW / 2;
-            }
-            if (activePanelType === 'leftReturn' || activePanelType === 'rightReturn') {
-                pdfX = Math.max(36.0, pdfX);
-            }
-
-            let pdfY;
-            if (layoutMode === 'fullWidth') {
-                const remainingYSpace = (175 - upperBoundaryY) - (drawH + marginTop + marginBottom);
-                const extraSpace = Math.max(0, remainingYSpace / 2);
-                pdfY = upperBoundaryY + marginTop + extraSpace;
-            } else if (layoutMode === 'leftAligned') {
-                const eff_upperBoundaryY = hasTopDetails ? 58 : 7;
-                const remainingYSpace = (175 - eff_upperBoundaryY) - (drawH + marginTop + marginBottom);
-                const extraSpace = Math.max(0, remainingYSpace / 2);
-                pdfY = eff_upperBoundaryY + marginTop + extraSpace;
-            } else {
-                if (hasTopDetails) {
-                    const remainingYSpace = (175 - 58) - (drawH + marginTop + marginBottom);
-                    const extraSpace = Math.max(0, remainingYSpace / 2);
-                    pdfY = 58 + marginTop + extraSpace;
-                } else {
-                    const remainingYSpace = (175 - 7) - (drawH + marginTop + marginBottom);
-                    const extraSpace = Math.max(0, remainingYSpace / 2);
-                    pdfY = 7 + marginTop + extraSpace;
-                }
-            }
-
-            // 0.28mm line thickness on the PDF page translates to viewBox units as follows:
-            const targetThicknessPdf = 0.28; 
-            const lineThickness = targetThicknessPdf * (vbWidth / drawW);
+        // Strip double lines (inner HSS wall thickness lines and centerlines) for outer-only 2D representation
+        const innerSelector = [
+            '.hss-inner-line', '.inner', '[class*="inner"]', '[id*="inner"]',
+            '.center', '[class*="center"]', '[id*="center"]',
+            '.topWall', '[class*="topWall"]', '[id*="topWall"]',
+            '.botWall', '[class*="botWall"]', '[id*="botWall"]',
+            '.legLine', '[class*="legLine"]', '[id*="legLine"]',
+            '.topFlange', '[class*="topFlange"]', '[id*="topFlange"]',
+            '.botFlange', '[class*="botFlange"]', '[id*="botFlange"]',
+            '[class*="wall"]', '[id*="wall"]'
+        ].join(', ');
+        svgClone.querySelectorAll(innerSelector).forEach(el => el.remove());
 
         // Ensure absolutely high-contrast black lines and white backgrounds (remove all blue and cyan colors)
         svgClone.querySelectorAll('*').forEach(el => {
-            if (!el) return;
-            // Force stroke to black and fill to none for shape elements
-            const tag = el.tagName ? el.tagName.toLowerCase() : '';
-            if (['path', 'rect', 'circle', 'line', 'polygon'].includes(tag)) {
+            // Remove color properties and force pure black strokes
+            if (el.getAttribute('stroke') && el.getAttribute('stroke') !== 'none' && el.getAttribute('stroke') !== 'inherit') {
                 el.setAttribute('stroke', '#000000');
-                const isSolidPlate = el.closest && (
-                    el.closest('.kickPlate') || el.closest('[id*="kickPlate"]') || el.closest('g[id$="kickPlate"]') ||
-                    el.closest('.panicBarPlate') || el.closest('[id*="panicBarPlate"]') || el.closest('g[id$="panicBarPlate"]') ||
-                    el.closest('[id*="FB"]') || el.closest('[id*="fb"]') || el.closest('g[id$="meshFrame"]')
-                );
-                const fillVal = isSolidPlate ? '#ffffff' : 'none';
-                el.setAttribute('fill', fillVal);
-                if (isSolidPlate) el.setAttribute('fill-opacity', '1');
-                if (el.style) {
-                    el.style.stroke = '#000000';
-                    el.style.fill = fillVal;
-                    if (isSolidPlate) el.style.fillOpacity = '1';
-                }
-            } else if (tag === 'text') {
+            }
+            if (el.style.stroke && el.style.stroke !== 'none') {
+                el.style.stroke = '#000000';
+            }
+            
+            // Handle fill colors (force black or white/none)
+            if (el.getAttribute('fill') && el.getAttribute('fill') !== 'none' && el.getAttribute('fill') !== 'white' && el.getAttribute('fill') !== '#ffffff' && el.getAttribute('fill') !== 'inherit') {
                 el.setAttribute('fill', '#000000');
-                el.setAttribute('stroke', 'none');
-                if (el.style) {
-                    el.style.fill = '#000000';
-                    el.style.stroke = 'none';
-                }
+            }
+            if (el.style.fill && el.style.fill !== 'none' && el.style.fill !== 'white' && el.style.fill !== 'rgb(255, 255, 255)' && el.style.fill !== '#ffffff') {
+                el.style.fill = '#000000';
             }
         });
 
-        // Set the calculated thickness on all drawing paths to ensure clean, readable prints.
-        // Pickets are drawn slightly thinner (0.22mm on PDF page) for visual contrast as requested by the user.
-        svgClone.querySelectorAll('path, rect, circle, line, polygon').forEach(el => {
-            if (!el) return;
-            const id = el.getAttribute('id') || '';
-            const className = el.getAttribute('class') || '';
-            
-            let thickness = lineThickness;
-            const idLower = id.toLowerCase();
-            const classLower = className.toLowerCase();
-            const isInnerDetail = idLower.includes('picket') || classLower.includes('picket') ||
-                                  idLower.includes('meshpanel') || classLower.includes('meshpanel') ||
-                                  idLower.includes('mesh_panel') || classLower.includes('mesh_panel') ||
-                                  idLower.includes('wwm') || classLower.includes('wwm') ||
-                                  idLower.includes('wave') || classLower.includes('wave');
-            
-            if (isInnerDetail) {
-                thickness = lineThickness * 0.55; // 0.22mm / 0.40mm = 0.55
-            }
-            
-            if (el.setAttribute) {
-                el.setAttribute('stroke-width', thickness.toString());
-            }
-            if (el.style) {
-                el.style.strokeWidth = thickness.toString();
-            }
+        svgClone.querySelectorAll('path, rect, circle, line').forEach(el => {
+            const currWidth = parseFloat(el.getAttribute('stroke-width')) || 2.0;
+            el.setAttribute('stroke-width', Math.max(5.0, currWidth * 3.5).toString());
         });
         
         svgClone.querySelectorAll('text').forEach(t => {
-            if (!t) return;
-            if (t.setAttribute) {
-                t.setAttribute('fill', '#000000');
-                t.setAttribute('font-weight', 'normal');
-            }
-            if (t.style) {
-                t.style.fill = '#000000';
-            }
+            t.setAttribute('fill', '#000000');
+            t.setAttribute('font-weight', '700');
+            t.style.fill = '#000000';
         });
-
-        // Set the calculated padded viewBox on the SVG clone to match coordinate scaling
-        svgClone.setAttribute('viewBox', `${vbMinX} ${vbMinY} ${vbWidth} ${vbHeight}`);
-        svgRatio = vbWidth / vbHeight;
-
-        // Set the width and height of the SVG clone to match its intrinsic dimensions.
-        svgClone.setAttribute('width', vbWidth.toFixed(2) + 'px');
-        svgClone.setAttribute('height', vbHeight.toFixed(2) + 'px');
 
         const svgData = new XMLSerializer().serializeToString(svgClone);
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
+        
+        const viewBoxAttr = svgElement.getAttribute('viewBox');
+        const vb = viewBoxAttr ? viewBoxAttr.split(/[\s,]+/).map(Number) : (currentMode === 'draft' ? [-600, -400, 1200, 800] : [0, 0, 2000, 1500]);
+        const vbWidth = vb[2] || (currentMode === 'draft' ? 1200 : 2000);
+        const vbHeight = vb[3] || (currentMode === 'draft' ? 800 : 1500);
+        const svgRatio = vbWidth / vbHeight;
 
-        // Set canvas dimensions at a high resolution with matching aspect ratio, ensuring browser canvas size limits are not exceeded
-        if (svgRatio >= 1.0) {
-            canvas.width = 2000;
-            canvas.height = Math.round(2000 / svgRatio);
-        } else {
-            canvas.height = 2000;
-            canvas.width = Math.round(2000 * svgRatio);
-        }
+        // Set canvas dimensions at a high resolution with matching aspect ratio
+        canvas.width = 2000;
+        canvas.height = 2000 / svgRatio;
 
-        // Bypassing chrome incognito / sandboxing restrictions on blob URLs via Base64 data URI
-        const base64Svg = btoa(unescape(encodeURIComponent(svgData)));
-        const url = 'data:image/svg+xml;base64,' + base64Svg;
+        const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
 
         img.onload = function() {
-            // Introduce a short delay to guarantee that the browser has fully rasterized the SVG vectors before drawing to the canvas
-            setTimeout(function() {
-                try {
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-                    const pngData = canvas.toDataURL('image/png');
-                    
-                    doc.addImage(pngData, 'PNG', pdfX, pdfY, drawW, drawH);
+            const pngData = canvas.toDataURL('image/png');
+            
+            // Available space in A4 Landscape is X = 7 to 180 (width 173), Y = 7 to 175 (height 168)
+            // Target box centered inside X=7 to 180, Y=7 to 175
+            const targetW = 110;
+            const targetH = 80;
+            const targetRatio = targetW / targetH;
+
+            let drawW, drawH;
+            if (svgRatio > targetRatio) {
+                drawW = targetW;
+                drawH = targetW / svgRatio;
+            } else {
+                drawH = targetH;
+                drawW = targetH * svgRatio;
+            }
+
+            const pdfX = 93.5 - drawW / 2;
+            const pdfY = 110 - drawH / 2;
+
+            doc.addImage(pngData, 'PNG', pdfX, pdfY, drawW, drawH);
             
             // --- DRAW BORDERS ---
             doc.setDrawColor(0, 0, 0);
@@ -6962,18 +2989,52 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setLineWidth(0.2);
             doc.rect(7, 7, 283, 196, 'S'); // Inner border
 
-            // Input values are already resolved at the start of the function
+            // Fetch inputs and define unified marks at the start of drawing/BOM
+            const vals = {};
+            dynamicInputs.querySelectorAll('input').forEach(inp => {
+                vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
+            });
+            dynamicInputs.querySelectorAll('select').forEach(sel => {
+                vals[sel.id.replace('inp-', '')] = sel.value;
+            });
 
             const scale = CadEngine.isLibReady() ? 25.4 : 10;
             const isGates = vals.railsGatesType === 'gates';
             const mainMarkUpper = mainMark.toUpperCase();
 
             // Helpers for profiles
-            const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-            const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+            const getProfileDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.h || selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.d || 0;
+                    if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
+
+            const getPicketDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.bf || 0;
+                    if (type === 'angles') return selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
 
             const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const mainMarkCode = (cat === 'rail_catalog') ? mainMark.toUpperCase() : cleanDrawingNo + 'M1';
+            const mainMarkCode = cleanDrawingNo + 'M1';
             
             let charCode = 97; // 'a'
             let mainMarkAssigned = false;
@@ -6983,15 +3044,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     mainMarkAssigned = true;
                     return mainMarkCode;
                 }
-                const m = String.fromCharCode(charCode) + (cat === 'rail_catalog' ? drawingNo : cleanDrawingNo);
+                const m = String.fromCharCode(charCode) + cleanDrawingNo;
                 charCode++;
                 return m;
             };
 
             let topMark = null, botMark = null, midMark = null, leftMark = null, rightMark = null;
-            let countLeftPost = 0, countRightPost = 0;
             let midPostMark = null, picketMark = null, kpMark = null, bpMark = null;
-            let meshFbMark = null, meshPanelMark = null, pbpMark = null;
             let leftPostW = 0, rightPostW = 0, midPostW = 0, topH = 0, botH = 0, midH = 0, pickW = 0;
             let midRailGap = 12.0, kickPlateH = 12.0, midPostCount = 0;
             let noPosts = false, numSpans = 1, numPosts = 0, actualPostSpacing = 0, clearWidth = 0, numPickets = 0, finalPicketsCount = 0, totalPickets = 0;
@@ -7024,7 +3083,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 let picketSpacing = 4.0;
                 let includeBasePlates = 'no';
 
-                const getProfileThickness = (type, size, customVal) => window.getProfileThickness(type, size, customVal);
+                const getProfileThickness = (type, size, customVal) => {
+                    if (type === 'none' || size === 'NONE') return 0;
+                    if (size === 'CUSTOM') return customVal;
+                    const shapes = SHAPES_DB[type] || [];
+                    const selected = shapes.find(s => s.id === size);
+                    if (selected) {
+                        return selected.t || 0.12;
+                    }
+                    return customVal;
+                };
 
                 if (style === 'classical') {
                     fHeight = 41.0;
@@ -7067,90 +3135,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     midRailW = 1.5;
                     midRailH = 1.5;
                     midRailT = 0.0598;
-                    midRailGap = 3.0;
+                    midRailGap = 12.0;
                     picketType = 'hss_rect';
                     picketW = 0.5;
                     picketH = 0.5;
                     picketT = 0.0598;
-                    picketSpacing = 4.0;
-                    includeBasePlates = vals.includeBasePlates || 'no';
-                } else if (style === 'urban_balcony') {
-                    fHeight = 41.0;
-                    pHeight = 45.75;
-                    postType = 'hss_rect';
-                    postW = 1.5;
-                    postH = 1.5;
-                    postT = 0.1196;
-                    topRailType = 'hss_rect';
-                    topRailW = 1.5;
-                    topRailH = 1.5;
-                    topRailT = 0.0598;
-                    botRailType = 'hss_rect';
-                    botRailW = 1.5;
-                    botRailH = 1.5;
-                    botRailT = 0.0598;
-                    midRailType = 'none';
-                    picketType = 'none';
-                    picketW = 0;
-                    picketH = 0;
-                    picketT = 0;
-                    picketSpacing = 0;
+                    picketSpacing = 4.5;
                     includeBasePlates = 'no';
-                } else if (style === 'villa_balcony') {
-                    fHeight = 41.0;
-                    pHeight = 45.75;
-                    postType = 'hss_rect';
-                    postW = 1.5;
-                    postH = 1.5;
-                    postT = 0.1196;
-                    topRailType = 'hss_rect';
-                    topRailW = 1.5;
-                    topRailH = 1.5;
-                    topRailT = 0.0598;
-                    botRailType = 'hss_rect';
-                    botRailW = 1.5;
-                    botRailH = 1.5;
-                    botRailT = 0.0598;
-                    midRailType = 'hss_rect';
-                    midRailW = 1.5;
-                    midRailH = 1.5;
-                    midRailT = 0.0598;
-                    midRailGap = 3.0;
-                    picketType = 'none';
-                    picketW = 0;
-                    picketH = 0;
-                    picketT = 0;
-                    picketSpacing = 0;
-                    includeBasePlates = 'no';
-                } else if (style === 'urban_custom' || style === 'villa_custom') {
-                    fHeight = vals.fenceHeight || 36;
-                    pHeight = vals.postHeight || 36;
-                    postType = vals.postType || 'hss_rect';
-                    postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                    postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                    postT = getProfileThickness(vals.postType, vals.postSize, vals.postW || 0.12);
-                    topRailType = vals.topRailType || 'hss_rect';
-                    topRailW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                    topRailH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                    topRailT = getProfileThickness(vals.topRailType, vals.topRailSize, vals.topRailH || 0.12);
-                    botRailType = vals.botRailType || 'hss_rect';
-                    botRailW = getPicketDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                    botRailH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                    botRailT = getProfileThickness(vals.botRailType, vals.botRailSize, vals.botRailH || 0.12);
-                    midRailType = (style === 'villa_custom') ? (vals.midRailType || 'hss_rect') : 'none';
-                    midRailW = getPicketDimension(midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                    midRailH = getProfileDimension(midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                    midRailT = getProfileThickness(midRailType, vals.midRailSize, vals.midRailH || 0.12);
-                    midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
-                    picketType = 'none';
-                    picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-                    includeBasePlates = vals.includeBasePlates || 'no';
-                    bpW = vals.basePlateW || 6.0;
-                    bpL = vals.basePlateL || 6.0;
-                    bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT || 0.5);
-                    bpHoleD = vals.basePlateHoleD || 0.5;
-                    bpHoleOffsetX = vals.basePlateHoleOffsetX || 0.5;
-                    bpHoleOffsetY = vals.basePlateHoleOffsetY || 0.25;
                 } else {
                     fHeight = vals.fenceHeight || 36;
                     pHeight = vals.postHeight || 36;
@@ -7190,8 +3181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 botH = botRailH;
                 midH = midRailH;
                 pickW = picketW;
-                midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                noPosts = (vals.leftPost !== 'yes') && (vals.rightPost !== 'yes') && (vals.midPosts === 'none' || midPostCount <= 0);
+                midPostCount = (vals.midPosts === 'yes') ? (parseInt(vals.midPostCount) || 0) : 0;
 
                 // Count how many pickets are generated in this model
                 let totalPicketCount = 0;
@@ -7199,11 +3189,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 let currentL = (vals.leftPost === 'yes') ? postW : 0;
                 
                 const mpList = [];
-                if (vals.midPosts !== 'none' && midPostCount > 0) {
-                    const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                    resolvedCenters.forEach(midCx => {
+                if (vals.midPosts === 'yes' && midPostCount > 0) {
+                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                    const centerDist = endXBound - startXBound;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    for (let i = 1; i <= midPostCount; i++) {
+                        const midCx = startXBound + i * spanSpacing;
                         mpList.push({ startX: midCx - postW/2, endX: midCx + postW/2 });
-                    });
+                    }
                 }
 
                 mpList.forEach(mp => {
@@ -7233,22 +3227,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 finalPicketsCount = totalPicketCount;
 
-                const hasLeft = (vals.leftPost === 'yes');
-                const hasRight = (vals.rightPost === 'yes');
-
-                countLeftPost = hasLeft ? 1 : 0;
-                countRightPost = hasRight ? 1 : 0;
-
                 topMark = getMark(topRailType !== 'none');
                 botMark = getMark(botRailType !== 'none');
                 midMark = getMark(midRailType !== 'none');
-                leftMark = getMark(countLeftPost > 0 && postType !== 'none');
-                rightMark = (countRightPost > 0 && postType !== 'none') ? (leftMark ? leftMark : getMark(true)) : null;
-                midPostMark = getMark(vals.midPosts !== 'none' && midPostCount > 0 && postType !== 'none');
+                leftMark = getMark(vals.leftPost === 'yes');
+                rightMark = getMark(vals.rightPost === 'yes');
+                midPostMark = getMark(vals.midPosts === 'yes' && midPostCount > 0);
                 picketMark = getMark(picketType !== 'none' && finalPicketsCount > 0);
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                meshFbMark = getMark(isMeshStyle);
-                meshPanelMark = getMark(isMeshStyle);
                 bpMark = getMark(includeBasePlates === 'yes');
             } else if (cat === 'rails_gates') {
                 leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
@@ -7262,20 +3247,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 kickPlateH = vals.kickPlateH || 12.0;
                 midPostCount = parseInt(vals.midPostCount) || 0;
 
-                const picketPositions = getPicketPositions(
-                    vals.railStyle || 'classical',
-                    vals.length,
-                    leftPostW,
-                    rightPostW,
-                    pickW,
-                    vals.picketSpacing,
-                    midPostCount,
-                    midPostW,
-                    vals.midPosts,
-                    customSpacings
-                );
-                numPickets = picketPositions.length;
+                clearWidth = vals.length - leftPostW - rightPostW;
+                numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
                 finalPicketsCount = numPickets;
+                if (midPostCount > 0 && !isGates && vals.postHeight > vals.fenceHeight) {
+                    const centerDist = vals.length - leftPostW/2 - rightPostW/2;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    for (let i = 0; i < numPickets; i++) {
+                        const px = leftPostW + (clearWidth - ((numPickets - 1) * vals.picketSpacing + pickW)) / 2 + i * vals.picketSpacing;
+                        for (let j = 1; j <= midPostCount; j++) {
+                            const midCx = leftPostW/2 + j * spanSpacing;
+                            if (Math.abs(px + pickW/2 - midCx) < (midPostW/2 + pickW/2 + 0.1)) {
+                                finalPicketsCount--;
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 topMark = getMark(vals.topRailType !== 'none');
                 botMark = getMark(vals.botRailType !== 'none');
@@ -7286,9 +3274,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 picketMark = getMark(vals.picketType !== 'none' && finalPicketsCount > 0);
                 kpMark = getMark(isGates && vals.kickPlate && vals.kickPlate !== 'none');
                 bpMark = getMark(!isGates && vals.includeBasePlates === 'yes');
-                meshFbMark = getMark(isGates && vals.meshType && vals.meshType !== 'none');
-                meshPanelMark = getMark(isGates && vals.meshType && vals.meshType !== 'none');
-                pbpMark = getMark(isGates && vals.panicBarPlate === 'yes');
             } else if (cat === 'fence') {
                 postW = getPicketDimension(vals.postType, vals.postSize, vals.postW);
                 topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
@@ -7322,134 +3307,118 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxX = minX + widthVal;
             const maxY = minY + heightVal;
 
+            let cadMinX, cadMaxX, cadMinY, cadMaxY;
+            let actualWidthInches, actualHeightInches;
+            
+            if (window.makerjs && currentModel) {
+                const extents = makerjs.measure.modelExtents(currentModel);
+                if (extents) {
+                    cadMinX = extents.low[0];
+                    cadMaxX = extents.high[0];
+                    cadMinY = extents.low[1];
+                    cadMaxY = extents.high[1];
+                    actualWidthInches = extents.high[0] - extents.low[0];
+                    actualHeightInches = extents.high[1] - extents.low[1];
+                }
+            }
+            
+            if (cadMinX === undefined) {
+                cadMinX = minX / scale;
+                cadMaxX = maxX / scale;
+                cadMinY = minY / scale;
+                cadMaxY = maxY / scale;
+                actualWidthInches = widthVal / scale;
+                actualHeightInches = heightVal / scale;
+            }
 
-
-            const pdfScale = (cadMaxX - cadMinX) > 0.001 ? (drawW / (cadMaxX - cadMinX)) : 1.0;
-            const placedPdfLeaders = [];
-
-            if (cat === 'rail_catalog' && !isLoosePost) {
+            if (cat === 'rail_catalog') {
                 const style = vals.railStyle || 'classical';
-                let picketType = (style === 'classical' || style === 'executive') ? 'hss_rect' : ((style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom') ? 'none' : (vals.picketType || 'hss_rect'));
                 
-                let pHeight = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 45.75 : (vals.postHeight || 42.0);
-                let fHeight = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 41.0 : (vals.fenceHeight || 36.0);
-                let topH = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                let botH = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                let postW = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                let pHeight = (style === 'classical') ? 45.75 : (style === 'executive' ? 45.75 : (vals.postHeight || 36));
+                let fHeight = (style === 'classical') ? 41.0 : (style === 'executive' ? 41.0 : (vals.fenceHeight || 36));
+                let topH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                let botH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                let postW = (style === 'classical' || style === 'executive') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
                 let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
-                let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.0 : (vals.picketSpacing || 4.0));
-                midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                 let botY = pHeight - fHeight;
-                 let midRailGap = (style === 'classical') ? 0 : ((style === 'executive' || style === 'villa_balcony') ? 3.0 : (vals.midRailGap !== undefined ? vals.midRailGap : 12.0));
-                 let midH = (style === 'classical') ? 0 : ((style === 'executive' || style === 'villa_balcony') ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
-                   // --- HORIZONTAL DIMENSIONS (TOP) ---
-                  // Tier 1 (Overall Length)
-                  drawCadDimension(0, pHeight, vals.length, pHeight, dimOffset3, formatFraction(vals.length), "middle", "dim-width");
-  
-                  // Post Centers List
-                  const postCenters = [];
-                  postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-                  if (vals.midPosts !== 'none' && midPostCount > 0) {
-                      const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                      resolvedCenters.forEach(midCx => {
-                          postCenters.push(midCx);
-                      });
-                  }
-                 postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
- 
-                 // Tier 2 (Spans)
-                 for (let i = 0; i < postCenters.length - 1; i++) {
-                     const c1 = postCenters[i];
-                     const c2 = postCenters[i+1];
-                     drawCadDimension(c1, pHeight, c2, pHeight, dimOffset2, formatFraction(c2 - c1), "middle", `dim-span-${i}`);
-                 }
- 
-                 // Tier 3 (Picket Patterns)
-                  if (picketType !== 'none') {
-                      const pPositions = getPicketPositions(
-                          style,
-                          vals.length,
-                          leftPostW,
-                          rightPostW,
-                          pickW,
-                          vals.picketSpacing,
-                          midPostCount,
-                          postW,
-                          vals.midPosts,
-                          customSpacings,
-                          vals.extra6,
-                          activePanelType,
-                          vals.deltaLeft || 0,
-                          vals.deltaRight || 0
-                      );
+                let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.5 : (vals.picketSpacing || 4.0));
+                let midPostCount = (vals.midPosts === 'yes') ? (parseInt(vals.midPostCount) || 0) : 0;
+                let botY = pHeight - fHeight;
 
-                      for (let i = 0; i < postCenters.length - 1; i++) {
-                          const c1 = postCenters[i];
-                          const c2 = postCenters[i+1];
-                          const bayPickets = pPositions.filter(px => px + pickW/2 > c1 + 0.01 && px + pickW/2 < c2 - 0.01);
-                          
-                          if (bayPickets.length >= 1) {
-                              const p1 = bayPickets[0] + pickW / 2;
-                              const p2 = bayPickets[bayPickets.length - 1] + pickW / 2;
-                              const startGap = p1 - c1;
-                              const endGap = c2 - p2;
+                // --- HORIZONTAL DIMENSIONS (TOP) ---
+                // Tier 1 (Overall Length)
+                drawCadDimension(0, pHeight, vals.length, pHeight, -28, formatFraction(vals.length));
 
-                              const mergeStart = false;
-                              const mergeEnd = false;
+                // Post Centers List
+                const postCenters = [];
+                postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
+                if (vals.midPosts === 'yes' && midPostCount > 0) {
+                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                    const centerDist = endXBound - startXBound;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    for (let i = 1; i <= midPostCount; i++) {
+                        postCenters.push(startXBound + i * spanSpacing);
+                    }
+                }
+                postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
 
-                              const dimStart = mergeStart ? c1 : p1;
-                              const dimEnd = mergeEnd ? c2 : p2;
+                // Tier 2 (Spans)
+                for (let i = 0; i < postCenters.length - 1; i++) {
+                    const c1 = postCenters[i];
+                    const c2 = postCenters[i+1];
+                    drawCadDimension(c1, pHeight, c2, pHeight, -20, formatFraction(c2 - c1));
+                }
 
-                              if (dimEnd > dimStart + 0.01) {
-                                  const baseSpaces = bayPickets.length - 1;
-                                  const totalSpaces = baseSpaces + (mergeStart ? 1 : 0) + (mergeEnd ? 1 : 0);
-                                  const labelText = `${totalSpaces} EQ SPA @ ${formatFraction(picketSpacing)}`;
-                                  
-                                  drawCadDimension(dimStart, pHeight, dimEnd, pHeight, dimOffset1, formatFraction(dimEnd - dimStart), "middle", `dim-picket-center-${i}`);
+                // Tier 3 (Picket Patterns)
+                for (let i = 0; i < postCenters.length - 1; i++) {
+                    const c1 = postCenters[i];
+                    const c2 = postCenters[i+1];
+                    const spanDist = c2 - c1;
+                    const numP = Math.max(0, Math.floor(spanDist / picketSpacing - 0.001));
 
-                                  const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                                  const cosS = Math.cos(slopeRad);
-                                  const sinS = Math.sin(slopeRad);
-                                  const cx = (dimStart + dimEnd) / 2;
-                                  const cy = pHeight;
-                                  const rx = cx * cosS - cy * sinS;
-                                  const ry = cx * sinS + cy * cosS;
-                                  const midPdf = cadToPdf(rx, ry);
-                                  const labelDeltaY = annotationOffsets[`dim-picket-text-${i}`] !== undefined ? annotationOffsets[`dim-picket-text-${i}`] : 0;
-                                  const labelY = midPdf[1] + (dimOffset1 * 0.40) + labelDeltaY * pdfScale;
-                                  
-                                  doc.setFont('helvetica', 'normal');
-                                  doc.setFontSize(Math.min(2.8, 2.8 * (customDimFontSize / 12.0)));
-                                  doc.text(labelText, midPdf[0], labelY, { align: "center" });
-                              }
+                    if (numP >= 2) {
+                        const p1 = c1 + picketSpacing;
+                        const p2 = c1 + numP * picketSpacing;
+                        const looseEndSpacing = c2 - p2;
+                        
+                        drawCadDimension(c1, pHeight, p1, pHeight, -12, formatFraction(picketSpacing));
+                        drawCadDimension(p1, pHeight, p2, pHeight, -12, formatFraction(p2 - p1));
+                        drawCadDimension(p2, pHeight, c2, pHeight, -12, formatFraction(looseEndSpacing));
 
-                              if (!mergeStart && startGap > 0.05) {
-                                  drawCadDimension(c1, pHeight, p1, pHeight, dimOffset1, formatFraction(startGap), "middle", `dim-picket-start-${i}`);
-                              }
-                              if (!mergeEnd && endGap > 0.05) {
-                                  drawCadDimension(p2, pHeight, c2, pHeight, dimOffset1, formatFraction(endGap), "middle", `dim-picket-end-${i}`);
-                              }
-                          } else {
-                              const spanDist = c2 - c1;
-                              drawCadDimension(c1, pHeight, c2, pHeight, dimOffset1, formatFraction(spanDist), "middle", `dim-picket-none-${i}`);
-                          }
-                      }
-                  }
+                        const midPdf = cadToPdf((p1 + p2) / 2, pHeight);
+                        const labelY = midPdf[1] - 12 + 3.2;
+                        const labelText = `(${numP - 1}) SPACES @ ${formatFraction(picketSpacing)} O/C`;
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(4.5 * (customDimFontSize / 12.0));
+                        doc.text(labelText, midPdf[0], labelY, { align: "center" });
+                    } else if (numP === 1) {
+                        const pCenter = c1 + picketSpacing;
+                        const looseEndSpacing = c2 - pCenter;
+                        drawCadDimension(c1, pHeight, pCenter, pHeight, -12, formatFraction(picketSpacing));
+                        drawCadDimension(pCenter, pHeight, c2, pHeight, -12, formatFraction(looseEndSpacing));
+                    } else {
+                        drawCadDimension(c1, pHeight, c2, pHeight, -12, formatFraction(spanDist));
+                    }
+                }
 
-                  // --- HORIZONTAL DIMENSIONS (BOTTOM - CLEAR OPENINGS) ---
-                 const clearSpans = [];
-                 let lastX = 0;
-                 
-                 const allPosts = [];
-                 if (vals.leftPost === 'yes') {
-                     allPosts.push({ startX: 0, endX: postW });
-                 }
-                 if (vals.midPosts !== 'none' && midPostCount > 0) {
-                     const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                     resolvedCenters.forEach(midCx => {
-                         allPosts.push({ startX: midCx - postW/2, endX: midCx + postW/2 });
-                     });
-                 }
+                // --- HORIZONTAL DIMENSIONS (BOTTOM - CLEAR OPENINGS) ---
+                const clearSpans = [];
+                let lastX = 0;
+                
+                const allPosts = [];
+                if (vals.leftPost === 'yes') {
+                    allPosts.push({ startX: 0, endX: postW });
+                }
+                if (vals.midPosts === 'yes' && midPostCount > 0) {
+                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                    const centerDist = endXBound - startXBound;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    for (let i = 1; i <= midPostCount; i++) {
+                        const midCx = startXBound + i * spanSpacing;
+                        allPosts.push({ startX: midCx - postW/2, endX: midCx + postW/2 });
+                    }
+                }
                 if (vals.rightPost === 'yes') {
                     allPosts.push({ startX: vals.length - postW, endX: vals.length });
                 }
@@ -7465,953 +3434,152 @@ document.addEventListener('DOMContentLoaded', () => {
                     clearSpans.push({ start: lastX, end: vals.length });
                 }
 
-                clearSpans.forEach((span, idx) => {
-                    drawCadDimension(span.start, 0, span.end, 0, dimOffsetBottom, formatFraction(span.end - span.start), "middle", `dim-clear-${idx}`);
+                clearSpans.forEach(span => {
+                    drawCadDimension(span.start, 0, span.end, 0, 12, formatFraction(span.end - span.start));
                 });
 
-                // --- VERTICAL DIMENSIONS (LEFT for Left Return, RIGHT for Main/Right Return) ---
-                // Vertical dimension for the top gap on the right side
-                const hasMid = (style === 'executive' || style === 'villa_balcony' || style === 'villa_custom' || style === 'executive_custom' || (style.includes('custom') && vals.midRailType !== 'none'));
-                const isMesh = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                if (hasMid) {
-                    const yStart = pHeight - topH - midRailGap;
-                    const yEnd = pHeight - topH;
-                    drawCadDimension(vals.length, yStart, vals.length, yEnd, 8, formatFraction(midRailGap), "middle", "dim-vert-right-top-gap");
-
-                    // Picket/Mesh Height
-                    const yStart_picket = botY + botH;
-                    const yEnd_picket = pHeight - topH - midRailGap - midH;
-                    const picketH = yEnd_picket - yStart_picket;
-                    const dimId = isMesh ? "dim-vert-right-mesh-height" : "dim-vert-right-picket-height";
-                    drawCadDimension(vals.length, yStart_picket, vals.length, yEnd_picket, 8, formatFraction(picketH), "middle", dimId);
-
-                    // Fence Height (Column 2)
-                    drawCadDimension(vals.length, botY, vals.length, pHeight, 16, formatFraction(fHeight), "middle", "dim-vert-right-fence-height");
-                } else {
-                    // Picket/Mesh Height (Column 1 when no mid rail)
-                    const yStart_picket = botY + botH;
-                    const yEnd_picket = pHeight - topH;
-                    const picketH = yEnd_picket - yStart_picket;
-                    const dimId = isMesh ? "dim-vert-right-mesh-height" : "dim-vert-right-picket-height";
-                    drawCadDimension(vals.length, yStart_picket, vals.length, yEnd_picket, 8, formatFraction(picketH), "middle", dimId);
-
-                    // Fence Height (Column 2)
-                    drawCadDimension(vals.length, botY, vals.length, pHeight, 16, formatFraction(fHeight), "middle", "dim-vert-right-fence-height");
-                }
-
-                // Column 2: Bottom Gap (bottom of runner to bottom of post) in all styles
-                if (botY > 0.01) {
-                    drawCadDimension(vals.length, 0, vals.length, botY, 16, formatFraction(botY), "middle", "dim-vert-right-bot-gap");
-                }
-
-                // Column 3: Overall Post Height (bottom of post to top of top runner) in all styles
-                drawCadDimension(vals.length, 0, vals.length, pHeight, 24, formatFraction(pHeight), "middle", "dim-vert-right-overall-height");
+                // --- VERTICAL DIMENSIONS (RIGHT) ---
+                // Stagger text on left and right to prevent overlapping clumsiness
+                drawCadDimension(vals.length, pHeight - topH, vals.length, pHeight, 8, formatFraction(topH), "left");
+                drawCadDimension(vals.length, botY + botH, vals.length, pHeight - topH, 8, formatFraction(pHeight - topH - (botY + botH)));
+                drawCadDimension(vals.length, botY, vals.length, botY + botH, 8, formatFraction(botH), "left");
+                drawCadDimension(vals.length, 0, vals.length, botY, 8, formatFraction(botY));
+                
+                drawCadDimension(vals.length, botY, vals.length, pHeight, 16, formatFraction(fHeight));
+                drawCadDimension(vals.length, 0, vals.length, pHeight, 24, formatFraction(pHeight));
 
                 // --- VERTICAL DIMENSIONS (LEFT) ---
                 if (midPostCount > 0) {
                     const firstMidPostCx = postCenters[1];
-                    const mpH_dim = (style === 'executive') ? 44.25 : (pHeight - topH);
-                    // 3'-8 1/4" dimension removed per user request
-                    // drawCadDimension(0, 0, 0, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
+                    drawCadDimension(firstMidPostCx, 0, firstMidPostCx, pHeight - topH, -8, formatFraction(pHeight - topH));
                 }
-            } else if (isLoosePost) {
-                const style = vals.railStyle || 'classical';
-                const props = getResolvedPanelProperties(vals, style);
-                const pHeight = props ? props.pHeight : 45.75;
-                const postW = props ? props.postW : 1.5;
-                const includeBasePlates = props ? props.includeBasePlates : 'no';
-                const bpW = props ? props.basePlateW : 6.0;
-                const bpH = props ? props.basePlateT : 0.5;
-
-                const distToTopMargin = ((cadMaxY - pHeight) / (cadMaxY - cadMinY)) * drawH;
-                const distToRightMargin = ((cadMaxX - postW) / (cadMaxX - cadMinX)) * drawW;
-
-                // Vertical Stacked Dimensions (Right side of postW)
-                const overallH = pHeight + (includeBasePlates === 'yes' ? bpH : 0);
-                if (includeBasePlates === 'yes') {
-                    drawCadDimension(postW, -bpH, postW, pHeight, distToRightMargin + 32, formatFeetInches(overallH), "middle", "dim-height-overall");
-                    drawCadDimension(postW, 0, postW, pHeight, distToRightMargin + 24, formatFeetInches(pHeight), "middle", "dim-height-post");
-                    drawCadDimension(postW, -bpH, postW, 0, distToRightMargin + 24, formatFraction(bpH), "middle", "dim-height-bp");
-                } else {
-                    drawCadDimension(postW, 0, postW, pHeight, distToRightMargin + 24, formatFeetInches(pHeight), "middle", "dim-height-post");
-                }
-                
-                // Horizontal Stacked Dimensions (Top)
-                if (includeBasePlates === 'yes') {
-                    drawCadDimension(postW / 2 - bpW / 2, pHeight, postW / 2 + bpW / 2, pHeight, -(distToTopMargin + 16), formatFraction(bpW), "middle", "dim-width-overall");
-                    drawCadDimension(0, pHeight, postW, pHeight, -(distToTopMargin + 8), formatFraction(postW), "middle", "dim-width-post");
-                } else {
-                    drawCadDimension(0, pHeight, postW, pHeight, -(distToTopMargin + 8), formatFraction(postW), "middle", "dim-width-post");
-                }
-
-                // Flat Bar Top Gap & Length Dimensions (Right)
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                if (isMeshStyle) {
-                    const topRailH = props ? props.topRailH : 1.5;
-                    const botRailH = props ? props.botRailH : 1.5;
-                    const fenceHeight = props ? props.fHeight : 36.0;
-                    const midRailType = props ? props.midRailType : 'none';
-                    const midRailGap = props ? props.midRailGap : 12.0;
-                    const midRailH = props ? props.midRailH : 1.5;
-                    const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && midRailType !== 'none'));
-                    const yEnd = hasMid ? (pHeight - topRailH - midRailGap - midRailH) : (pHeight - topRailH);
-                    
-                    const bY = pHeight - fenceHeight;
-                    const yStart = bY + botRailH;
-                    const actualFbHeight = yEnd - yStart - 2.0;
-
-                    const topOfFb = yEnd - 1.0;
-                    const fbGap = pHeight - topOfFb;
-                    
-                    // Draw Flat Bar Top Gap (from top of flat bar to top of post, aligned inline with flat bar length)
-                    drawCadDimension(postW, topOfFb, postW, pHeight, distToRightMargin + 16, formatFraction(fbGap), "middle", "dim-height-fb-gap");
-                    
-                    // Draw Flat Bar Length (aligned inline with top gap)
-                    if (actualFbHeight > 0) {
-                        drawCadDimension(postW, yStart + 1.0, postW, yEnd - 1.0, distToRightMargin + 16, formatFeetInches(actualFbHeight), "middle", "dim-height-fb-len");
-                    }
-                }
-
-                // Vertical Dashed Centerline
-                const startY_cl = (includeBasePlates === 'yes' ? -bpH : 0) - 2;
-                const endY_cl = pHeight + 2;
-                const clStart = cadToPdf(postW / 2, startY_cl);
-                const clEnd = cadToPdf(postW / 2, endY_cl);
-                doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.18);
-                doc.setLineDashPattern([2, 1.5], 0);
-                doc.line(clStart[0], clStart[1], clEnd[0], clEnd[1]);
-                doc.setLineDashPattern([], 0); // Restore solid line style
             } else {
-                drawCadDimension(cadMinX, cadMaxY, cadMaxX, cadMaxY, dimOffset3, formatFraction(actualWidthInches), "middle", "dim-width");
-                drawCadDimension(cadMinX, cadMinY, cadMinX, cadMaxY, dimOffset3, formatFraction(actualHeightInches), "middle", "dim-height");
+                drawCadDimension(cadMinX, cadMaxY, cadMaxX, cadMaxY, -8, formatFraction(actualWidthInches));
+                drawCadDimension(cadMinX, cadMinY, cadMinX, cadMaxY, -8, formatFraction(actualHeightInches));
             }
 
             // --- DRAW CUSTOM AutoCAD DIMENSIONS ---
-            customDimensionsList.forEach((dim, idx) => {
-                drawCadDimensionDirect(dim, idx);
+            customDimensionsList.forEach(dim => {
+                drawCadDimensionDirect(dim);
             });
 
             // --- DRAW CALLOUT LEADERS ---
-            if (cat === 'rail_catalog' && !isLoosePost) {
-                const isLeftReturn = (activePanelType === 'leftReturn');
-                const isRightReturn = (activePanelType === 'rightReturn');
-                const isMainPanel = (activePanelType === 'main');
-                const isReturn = (isLeftReturn || isRightReturn);
-                const useLeftVerticalDims = false; // No vertical dimensions on the left side of any panel
-                const leftLeaderX = useLeftVerticalDims ? Math.max(9, pdfX - (useCompressedDims ? 23 : 31)) : Math.max(9, pdfX - 12);
-                const useRightVerticalDims = isMainPanel || isRightReturn; // Main panel and right return have vertical dimensions on the right
-                const rightLeaderOffset = useRightVerticalDims ? (useCompressedDims ? 23 : 33) : 12;
-                const rightLeaderX = isLeftReturn ? (pdfX + drawW + 12) : ((layoutMode === 'leftArea' || layoutMode === 'leftAligned') ? Math.min(176, pdfX + drawW + rightLeaderOffset) : Math.min(288, pdfX + drawW + rightLeaderOffset));
-                const leaderAlign = isLeftReturn ? "left" : "right";
-                
+            if (cat === 'rail_catalog') {
+                const leftLeaderX = Math.max(8, pdfX - 16);
+                const rightLeaderX = Math.min(179, pdfX + drawW + 16);
                 const style = vals.railStyle || 'classical';
                 
-                const isHardcodedStyle = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony');
-                let pHeight = isHardcodedStyle ? 45.75 : (vals.postHeight || 42.0);
-                let fHeight = isHardcodedStyle ? 41.0 : (vals.fenceHeight || 36.0);
-                let topH = isHardcodedStyle ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                let botH = isHardcodedStyle ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                let midH = (style === 'classical') ? 0 : (isHardcodedStyle ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
-                let midRailGap = (style === 'classical') ? 0 : (isHardcodedStyle ? 3.0 : (vals.midRailGap || 12.0));
-                let postW = isHardcodedStyle ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                let pHeight = (style === 'classical') ? 45.75 : (style === 'executive' ? 45.75 : (vals.postHeight || 36));
+                let fHeight = (style === 'classical') ? 41.0 : (style === 'executive' ? 41.0 : (vals.fenceHeight || 36));
+                let topH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                let botH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                let midH = (style === 'classical') ? 0 : (style === 'executive' ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
+                let midRailGap = (style === 'classical') ? 0 : (style === 'executive' ? 12.0 : (vals.midRailGap || 12.0));
+                let postW = (style === 'classical' || style === 'executive') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
                 let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
 
-                        const effectiveEmbed = 0;
-                        const botY = pHeight - fHeight;
-                        const railSpans = resolveRailMarksAndSpans(vals, drawingNo, cat, style, postW);
-                        const pendingLeaders = [];
-                        const addLeader = (cx, cy, text, leaderId) => {
-                            if (!text) return;
-                            pendingLeaders.push({ cx, cy, text, leaderId });
-                        };
-                        if (isReturn) {
-                            // 1. Top Rail leader (1FB)
-                            if (topMark) {
-                                const cyTop = pHeight - topH / 2;
-                                const targetX = vals.length * 0.25; // Point close to the left side where the label is drawn
-                                addLeader(targetX, cyTop, topMark, "leader-top-rail");
-                            }
-                            // 2. Bottom Rail leaders
-                            if (botMark && railSpans.bottomSegments.length > 0) {
-                                const uniqueMarksSeen = new Set();
-                                railSpans.bottomSegments.forEach((seg, idx) => {
-                                     if (!uniqueMarksSeen.has(seg.mark)) {
-                                         uniqueMarksSeen.add(seg.mark);
-                                         const spanW = seg.end - seg.start;
-                                         const targetX = seg.start + spanW * 0.25;
-                                         const targetY = botY + botH / 2;
-                                         addLeader(targetX, targetY, seg.mark, `leader-bot-rail-seg-${idx}`);
-                                     }
-                                 });
-                            }
+                const effectiveEmbed = 0;
+                const botY = pHeight - fHeight;
 
-                            // 3. Left Corner Post leader
-                            if (leftMark) {
-                                const cyLeft = pHeight * 0.5;
-                                addLeader(postW / 2, cyLeft, leftMark, "leader-left-post");
-                            }
-
-                            // 4. Right Corner Post leader
-                            if (rightMark) {
-                                const cyRight = pHeight * 0.5;
-                                addLeader(vals.length - postW / 2, cyRight, rightMark, "leader-right-post");
-                            }
-
-                            // 5. Mid Runner leaders
-                            if (midMark && railSpans.midSegments.length > 0) {
-                                const cyMid = pHeight - topH - midRailGap - midH / 2;
-                                const uniqueMarksSeen = new Set();
-                                railSpans.midSegments.forEach((seg, idx) => {
-                                    if (!uniqueMarksSeen.has(seg.mark)) {
-                                        uniqueMarksSeen.add(seg.mark);
-                                        const targetX = (leaderAlign === "left") ? (seg.end - 8.0) : (seg.start + 8.0);
-                                        addLeader(targetX, cyMid, seg.mark, `leader-mid-rail-${seg.mark}`);
-                                    }
-                                });
-                             }
-
-                             // 6. Mid Post leader
-                             if (midPostMark) {
-                                 const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                 if (resolvedCenters.length > 0) {
-                                     const midCx = resolvedCenters[0];
-                                     const mpH = style === 'executive' ? 44.25 : (pHeight - topH);
-                                     const cyMidPost = mpH * 0.5;
-                                     const targetX = (leaderAlign === "right") ? (midCx - postW / 2) : (midCx + postW / 2);
-                                     addLeader(targetX, cyMidPost, midPostMark, "leader-mid-post");
-                                 }
-                             }
-
-                             // 7. Picket leader
-                             if (picketMark && finalPicketsCount > 0) {
-                                 const leftPostW = (vals.leftPost === 'yes') ? postW : 0;
-                                 const rightPostW = (vals.rightPost === 'yes') ? postW : 0;
-                                 const pPositions = getPicketPositions(style, vals.length, leftPostW, rightPostW, picketW, vals.picketSpacing, midPostCount, postW, vals.midPosts, customSpacings, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                 if (pPositions && pPositions.length > 0) {
-                                      const rawPickX = pPositions[Math.min(2, pPositions.length - 1)];
-                                      const pickCx = rawPickX + picketW / 2;
-                                      const picketBottomY = botY + botH;
-                                      const pickCy = picketBottomY + 20.0;
-                                      addLeader(pickCx, pickCy, picketMark, "leader-pickets");
-                                  }
-                             }
-
-                             if (isMeshStyle) {
-                                 const mBottomY = botY + botH;
-                                 const mTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                                 const mHeight = mTopY - mBottomY;
-
-                                 const uniqueMeshMarksSeen = new Set();
-
-                                 railSpans.bottomSegments.forEach((seg, idx) => {
-                                     const baseMark = "a" + drawingNo;
-                                     const suffix = seg.mark.substring(baseMark.length);
-                                     const hMark = meshFbMark + suffix;
-                                     const pMark = meshPanelMark + suffix;
-                                     const vMark = meshFbMark + "V";
-
-                                     const startX = seg.start;
-                                     const endX = seg.end;
-                                     const spanW = endX - startX;
-                                      if (meshFbMark) {
-                                          if (!uniqueMeshMarksSeen.has(hMark)) {
-                                              uniqueMeshMarksSeen.add(hMark);
-                                              const fbY = mBottomY + 0.5;
-                                              const fbX = startX + spanW * 0.75;
-                                              addLeader(fbX, fbY, hMark, `leader-mesh-fb-${idx}`);
-                                          }
-                                          
-                                           if (!uniqueMeshMarksSeen.has(vMark)) {
-                                              uniqueMeshMarksSeen.add(vMark);
-                                              const leftOmitted = (idx === 0 && (vals.leftPost !== 'yes'));
-                                              const rightOmitted = (idx === railSpans.bottomSegments.length - 1 && (vals.rightPost !== 'yes'));
-                                              if (!(leftOmitted && rightOmitted)) {
-                                                   let vertFbX;
-                                                   if (leftOmitted) {
-                                                       vertFbX = startX + spanW - 0.5;
-                                                   } else if (rightOmitted) {
-                                                       vertFbX = startX + 0.5;
-                                                   } else {
-                                                       vertFbX = (leaderAlign === "right") ? (startX + 0.5) : (startX + spanW - 0.5);
-                                                   }
-                                                   const vertFbY = mBottomY + mHeight * 0.3;
-                                                   addLeader(vertFbX, vertFbY, vMark, `leader-mesh-fb-vert-${idx}`);
-                                               }
-                                           }
-                                       }
-                                       if (meshPanelMark) {
-                                           if (!uniqueMeshMarksSeen.has(pMark)) {
-                                               uniqueMeshMarksSeen.add(pMark);
-                                               const mY = mBottomY + mHeight * 0.70;
-                                               const mX = startX + spanW * 0.35;
-                                               addLeader(mX, mY, pMark, `leader-mesh-panel-${idx}`);
-                                           }
-                                       }
-                                 });
-                             }
-                        } else {
-                            // Main Panel
-                            // 1. Top Rail leader (1FB)
-                            if (topMark) {
-                                const cyTop = pHeight - topH / 2; // Corrected to top rail center
-                                const targetX = 0; // Point neatly to the left end face of the top rail
-                                addLeader(targetX, cyTop, topMark, "leader-top-rail");
-                            }
-
-                            // 2. Bottom Rail leaders
-                            if (botMark && railSpans.bottomSegments.length > 0) {
-                                railSpans.bottomSegments.forEach((seg, idx) => {
-                                     const spanW = seg.end - seg.start;
-                                     const targetX = seg.start + spanW * 0.25;
-                                     const targetY = botY + botH / 2;
-                                     addLeader(targetX, targetY, seg.mark, `leader-bot-rail-seg-${idx}`);
-                                 });
-                            }
-
-                            // 3. Left Corner Post leader
-                            if (leftMark) {
-                                const cyLeft = pHeight * 0.5;
-                                addLeader(postW / 2, cyLeft, leftMark, "leader-left-post");
-                            }
-
-                            // 4. Right Corner Post leader
-                            if (rightMark) {
-                                const cyRight = botY + botH / 2;
-                                addLeader(vals.length - postW / 2, cyRight, rightMark, "leader-right-post");
-                            }
-
-                            // 5. Mid Runner leaders
-                            if (midMark && railSpans.midSegments.length > 0) {
-                                const cyMid = pHeight - topH - midRailGap - midH / 2;
-                                railSpans.midSegments.forEach((seg, idx) => {
-                                    const targetX = seg.start + Math.min(18.0, (seg.end - seg.start) * 0.4);
-                                    addLeader(targetX, cyMid, seg.mark, `leader-mid-rail-seg-${idx}`);
-                                });
-                            }
-
-                            // 6. Mid Post leader
-                            if (midPostMark) {
-                                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                if (resolvedCenters.length > 0) {
-                                    const midCx = resolvedCenters[0];
-                                    const cyMidPost = botY + botH / 2;
-                                    addLeader(midCx, cyMidPost, midPostMark, "leader-mid-post");
-                                }
-                            }
-
-                            // 7. Picket leader
-                            if (picketMark && finalPicketsCount > 0) {
-                                const leftPostW = (vals.leftPost === 'yes') ? postW : 0;
-                                const rightPostW = (vals.rightPost === 'yes') ? postW : 0;
-                                const pPositions = getPicketPositions(style, vals.length, leftPostW, rightPostW, picketW, vals.picketSpacing, midPostCount, postW, vals.midPosts, customSpacings, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                if (pPositions && pPositions.length > 0) {
-                                    const rawPickX = isReturn ? pPositions[pPositions.length - 1] : pPositions[Math.min(2, pPositions.length - 1)];
-                                    const pickCx = rawPickX + picketW / 2;
-                                    const picketBottomY = botY + botH;
-                                    const pickCy = picketBottomY + 20.0;
-                                    addLeader(pickCx, pickCy, picketMark, "leader-pickets");
-                                }
-                            }
-
-                            // 8. Mesh and flat bar leaders
-                            if (isMeshStyle) {
-                                const mBottomY = botY + botH;
-                                const mTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                                const mHeight = mTopY - mBottomY;
-
-                                const postCenters = [];
-                                postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-                                if (vals.midPosts !== 'none' && midPostCount > 0) {
-                                    const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                    resolvedCenters.forEach(midCx => {
-                                        postCenters.push(midCx);
-                                    });
-                                }
-                                postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
-
-                                let targetBayIndex = 0;
-                                for (let i = 0; i < postCenters.length - 1; i++) {
-                                    let hasPostAtLeft = false;
-                                    if (i === 0) {
-                                        hasPostAtLeft = (vals.leftPost === 'yes' && vals.postType !== 'none');
-                                    } else {
-                                        hasPostAtLeft = (vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                                    }
-                                    if (hasPostAtLeft) {
-                                        targetBayIndex = i;
-                                        break;
-                                    }
-                                }
-                                const cutX = (postCenters.length >= 2) ? ((postCenters[targetBayIndex] + postCenters[targetBayIndex + 1]) / 2) : null;
-
-                                const adjustTargetX = (tx, minX, maxX) => {
-                                    if (typeof cutX === 'number' && cutX !== null && Math.abs(tx - cutX) < 10.0) {
-                                        if (tx >= cutX) {
-                                            tx = Math.max(tx, Math.min(maxX - 2.0, cutX + 10.0));
-                                        } else {
-                                            tx = Math.min(tx, Math.max(minX + 2.0, cutX - 10.0));
-                                        }
-                                    }
-                                    return tx;
-                                };
-
-                                railSpans.bottomSegments.forEach((seg, idx) => {
-                                    const baseMark = "a" + drawingNo;
-                                    const suffix = seg.mark.substring(baseMark.length);
-                                    const hMark = meshFbMark + suffix;
-                                    const pMark = meshPanelMark + suffix;
-                                    const vMark = meshFbMark + "V";
-
-                                    const startX = seg.start;
-                                    const endX = seg.end;
-                                    const spanW = endX - startX;
-
-                                    if (meshFbMark) {
-                                        const fbY = mBottomY + 0.5;
-                                        const fbX = startX + spanW * 0.75;
-                                        addLeader(fbX, fbY, hMark, `leader-mesh-fb-${idx}`);
-
-                                         const leftOmitted = (idx === 0 && (vals.leftPost !== 'yes'));
-                                         const rightOmitted = (idx === railSpans.bottomSegments.length - 1 && (vals.rightPost !== 'yes'));
-                                         if (!(leftOmitted && rightOmitted)) {
-                                            let vertFbX;
-                                            if (leftOmitted) {
-                                                vertFbX = endX - 0.5;
-                                            } else if (rightOmitted) {
-                                                vertFbX = startX + 0.5;
-                                            } else {
-                                                vertFbX = startX + 0.5;
-                                            }
-                                            const vertFbY = mBottomY + mHeight * 0.3;
-                                            addLeader(vertFbX, vertFbY, vMark, `leader-mesh-fb-vert-${idx}`);
-                                        }
-                                    }
-                                    if (meshPanelMark) {
-                                        const mY = mBottomY + mHeight * 0.70;
-                                        const mX = startX + spanW * 0.35;
-                                        addLeader(mX, mY, pMark, `leader-mesh-panel-${idx}`);
-                                    }
-                                });
-                            }
-                        }
-
-                        // Filter duplicates with a smart bay-crowding distribution algorithm
-                        const numBays = midPostCount + 1;
-                        const bayCrowding = new Array(numBays).fill(0);
-                        const groups = {}; // map of mark (text) -> array of pending leaders
-                        
-                        pendingLeaders.forEach(lead => {
-                            if (!groups[lead.text]) {
-                                groups[lead.text] = [];
-                            }
-                            // Calculate bay index based on target X coordinate
-                            const bayW = (vals.length || 120.0) / (numBays || 1);
-                            let bIdx = Math.floor(lead.cx / bayW);
-                            if (bIdx < 0) bIdx = 0;
-                            if (bIdx >= numBays) bIdx = numBays - 1;
-                            lead.bayIndex = bIdx;
-                            groups[lead.text].push(lead);
-                        });
-
-                        const uniqueLeaders = [];
-                        const uniqueMarks = Object.keys(groups);
-
-                        // First pass: select leaders for marks with only 1 candidate
-                        uniqueMarks.forEach(mark => {
-                            const candidates = groups[mark];
-                            if (candidates.length === 1) {
-                                const selected = candidates[0];
-                                uniqueLeaders.push(selected);
-                                bayCrowding[selected.bayIndex]++;
-                            }
-                        });
-
-                        // Second pass: select leaders for marks with multiple candidates (greedy selection based on crowding)
-                        const multiMarks = uniqueMarks.filter(mark => groups[mark].length > 1);
-                        multiMarks.forEach(mark => {
-                            const candidates = groups[mark];
-                            // Find the candidate with the lowest crowding score in its bay
-                            let bestLead = candidates[0];
-                            
-                            // Special check for vertical flat bar: prefer pointing next to the left mid post (index 1)
-                            let preferredFound = false;
-                            if (mark.endsWith("V") && candidates.some(c => c.leaderId && c.leaderId.endsWith("-vert-1"))) {
-                                const pref = candidates.find(c => c.leaderId && c.leaderId.endsWith("-vert-1"));
-                                if (pref) {
-                                    bestLead = pref;
-                                    preferredFound = true;
-                                }
-                            }
-                            
-                            if (!preferredFound) {
-                                let minCrowd = bayCrowding[bestLead.bayIndex];
-                                for (let i = 1; i < candidates.length; i++) {
-                                    const lead = candidates[i];
-                                    const crowd = bayCrowding[lead.bayIndex];
-                                    if (crowd < minCrowd) {
-                                        minCrowd = crowd;
-                                        bestLead = lead;
-                                    }
-                                }
-                            }
-                            uniqueLeaders.push(bestLead);
-                            bayCrowding[bestLead.bayIndex]++;
-                        });
-
-                        // Add PDF coordinates aligning with annotationOffsets
-                        uniqueLeaders.forEach(lead => {
-                            let tcx = lead.cx;
-                            let tcy = lead.cy;
-                            if (lead.leaderId && annotationOffsets[lead.leaderId]) {
-                                tcx += annotationOffsets[lead.leaderId].tdx || 0;
-                                tcy += annotationOffsets[lead.leaderId].tdy || 0;
-                            }
-                            const p = cadToPdf(tcx, tcy);
-                            lead.pdfTargetX = p[0];
-                            lead.pdfTargetY = p[1];
-                        });
-
-                        // Helper to distribute leaders horizontally along top/bottom margins
-                        function distributeHorizontal(leaders, leftLimit, rightLimit, gap = 4.0, isTop = false) {
-                            if (leaders.length === 0) return;
-                            
-                            // Initialize actual leaders
-                            leaders.forEach(lead => {
-                                let cleanedText = lead.text || "";
-                                if (cleanedText) {
-                                    cleanedText = cleanedText.split(/[\s(]/)[0];
-                                }
-                                doc.setFont('helvetica', 'bold');
-                                doc.setFontSize(4.8);
-                                const textWidth = doc.getTextWidth(cleanedText);
-                                lead.halfWidth = (textWidth + 6.0) / 2; // W_i / 2
-                                lead.labelX = lead.pdfTargetX;
-                                if (lead.leaderId === 'leader-mid-post') {
-                                    lead.labelX = lead.pdfTargetX + 18.0;
-                                } else if (lead.leaderId === 'leader-right-post') {
-                                    lead.labelX = lead.pdfTargetX - 8.0;
-                                } else if (lead.leaderId === 'leader-left-post') {
-                                    lead.labelX = lead.pdfTargetX + 8.0;
-                                } else if (lead.leaderId && lead.leaderId.startsWith('leader-mid-rail-seg-')) {
-                                    lead.labelX = lead.pdfTargetX - 8.0;
-                                    const match = lead.leaderId.match(/leader-mid-rail-seg-(\d+)/);
-                                    if (match) {
-                                        const idx = parseInt(match[1]);
-                                        if (typeof bayCentersPDF !== 'undefined' && bayCentersPDF[idx] !== undefined) {
-                                            lead.labelX = Math.min(lead.labelX, bayCentersPDF[idx] - 8.0);
-                                        }
-                                    }
-                                }
-                            });
-
-                            // Sort by pdfTargetX initially to define target order
-                            leaders.sort((a, b) => a.pdfTargetX - b.pdfTargetX);
-
-                            // Define unsafe points to avoid
-                            const unsafePoints = [];
-                            if (typeof extensionLinesPDF !== 'undefined') {
-                                unsafePoints.push(...extensionLinesPDF);
-                            }
-                            if (typeof bayCentersPDF !== 'undefined') {
-                                unsafePoints.push(...bayCentersPDF);
-                            }
-                            unsafePoints.push(pdfX + drawW / 2);
-                            if (isTop && typeof sectionCutPdfX === 'number' && sectionCutPdfX !== null) {
-                                // Block a horizontal zone of 24mm around the Section A cut line
-                                for (let offset = -12.0; offset <= 12.0; offset += 3.0) {
-                                    unsafePoints.push(sectionCutPdfX + offset);
-                                }
-                            }
-
-                            // Deduplicate unsafe points
-                            const uniqueUnsafePoints = [];
-                            unsafePoints.forEach(pt => {
-                                if (typeof pt !== 'number' || isNaN(pt)) return;
-                                if (!uniqueUnsafePoints.some(existing => Math.abs(existing - pt) < 1.5)) {
-                                    uniqueUnsafePoints.push(pt);
-                                }
-                            });
-                            const isPositionSafe = (x) => {
-                                for (const pt of uniqueUnsafePoints) {
-                                    if (Math.abs(x - pt) < 6.5) return false;
-                                }
-                                return true;
-                            };
-
-                            // Helper to search left and right for nearest safe position
-                            const findNearestSafeX = (startX, leftLim, rightLim, halfW) => {
-                                if (isPositionSafe(startX) && startX >= leftLim && startX <= rightLim) return startX;
-                                for (let step = 1.0; step <= 35.0; step += 1.0) {
-                                    const testLeft = startX - step;
-                                    const testRight = startX + step;
-                                    const leftOk = (testLeft >= leftLim + halfW) && isPositionSafe(testLeft);
-                                    const rightOk = (testRight <= rightLim - halfW) && isPositionSafe(testRight);
-                                    if (rightOk) return testRight;
-                                    if (leftOk) return testLeft;
-                                }
-                                return Math.max(leftLim + halfW, Math.min(rightLim - halfW, startX)); // fallback
-                            };
-
-                            // 1. Initial safe search (independent search per leader to prevent propagation)
-                            leaders.forEach(lead => {
-                                 lead.labelX = findNearestSafeX(lead.labelX, leftLimit, rightLimit, lead.halfWidth);
-                             });
-
-                             // Keep sorted by target X to prevent leader line crossing
-                             // leaders.sort((a, b) => a.labelX - b.labelX);
-
-                            // 2. Iteratively push apart (preserves target order)
-                            for (let iter = 0; iter < 50; iter++) {
-                                let moved = false;
-                                for (let i = 0; i < leaders.length - 1; i++) {
-                                    const lead1 = leaders[i];
-                                    const lead2 = leaders[i+1];
-                                    const minSpacing = lead1.halfWidth + lead2.halfWidth + gap;
-                                    const currentDist = lead2.labelX - lead1.labelX;
-                                    if (currentDist < minSpacing) {
-                                        const overlap = minSpacing - currentDist;
-                                        lead1.labelX -= overlap / 2;
-                                        lead2.labelX += overlap / 2;
-                                        moved = true;
-                                    }
-                                }
-                                // Clamp to boundaries and preserve order with minimum 1mm buffer
-                                leaders.forEach((lead, idx) => {
-                                    const prevLimit = (idx > 0) ? leaders[idx-1].labelX + leaders[idx-1].halfWidth + lead.halfWidth + 1.0 : leftLimit;
-                                    if (lead.labelX < prevLimit + lead.halfWidth) lead.labelX = prevLimit + lead.halfWidth;
-                                    
-                                    let maxAllowedX = rightLimit - lead.halfWidth;
-                                    const match = lead.leaderId && lead.leaderId.match(/leader-mid-rail-seg-(\d+)/);
-                                    if (match) {
-                                        const idx = parseInt(match[1]);
-                                        if (typeof bayCentersPDF !== 'undefined' && bayCentersPDF[idx] !== undefined) {
-                                            maxAllowedX = Math.min(maxAllowedX, bayCentersPDF[idx] - 8.0 - lead.halfWidth);
-                                        }
-                                    }
-                                    if (lead.labelX > maxAllowedX) lead.labelX = maxAllowedX;
-                                });
-                                if (!moved) break;
-                            }
-
-                            // 3. Final post-push safe search (preserves target order and limits propagation)
-                            leaders.forEach((lead, idx) => {
-                                const minAllowedX = (idx > 0) ? leaders[idx-1].labelX + leaders[idx-1].halfWidth + lead.halfWidth + 1.0 : leftLimit;
-                                const maxAllowedX = (idx < leaders.length - 1) ? leaders[idx+1].labelX - leaders[idx+1].halfWidth - lead.halfWidth - 1.0 : rightLimit;
-                                lead.labelX = findNearestSafeX(lead.labelX, minAllowedX, maxAllowedX, lead.halfWidth);
-                            });
-                        }
-
-                        // Calculate all vertical extension line X coordinates in PDF coordinates to help leaders avoid them
-                        extensionLinesPDF.length = 0;
-                        if (cat === 'rail_catalog') {
-                            const extensionLinesCAD = [];
-                            extensionLinesCAD.push(0);
-                            extensionLinesCAD.push(vals.length);
-                            if (vals.leftPost === 'yes') {
-                                extensionLinesCAD.push(postW / 2);
-                                extensionLinesCAD.push(postW);
-                            }
-                            if (vals.rightPost === 'yes') {
-                                extensionLinesCAD.push(vals.length - postW / 2);
-                                extensionLinesCAD.push(vals.length - postW);
-                            }
-                            if (vals.midPosts !== 'none' && midPostCount > 0) {
-                                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                resolvedCenters.forEach(c => {
-                                    extensionLinesCAD.push(c);
-                                    extensionLinesCAD.push(c - postW / 2);
-                                    extensionLinesCAD.push(c + postW / 2);
-                                });
-                            }
-                            const uniqueCAD = Array.from(new Set(extensionLinesCAD));
-                            uniqueCAD.forEach(cx => {
-                                extensionLinesPDF.push(cadToPdf(cx, 0)[0]);
-                            });
-                        } else if (cat === 'rails_gates') {
-                            const extensionLinesCAD = [0, vals.length, leftPostW / 2, vals.length - rightPostW / 2];
-                            const uniqueCAD = Array.from(new Set(extensionLinesCAD));
-                            uniqueCAD.forEach(cx => {
-                                extensionLinesPDF.push(cadToPdf(cx, 0)[0]);
-                            });
-                        } else if (cat === 'fence') {
-                            const extensionLinesCAD = [0, vals.length, postW / 2, vals.length - postW / 2];
-                            const uniqueCAD = Array.from(new Set(extensionLinesCAD));
-                            uniqueCAD.forEach(cx => {
-                                extensionLinesPDF.push(cadToPdf(cx, 0)[0]);
-                            });
-                        }
-
-                        // Calculate bay centers in PDF coordinates to help top leaders avoid top horizontal dimension text
-                        bayCentersPDF.length = 0;
-                        const postCentersCAD = [];
-                        if (cat === 'rail_catalog') {
-                            postCentersCAD.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-                            if (vals.midPosts !== 'none' && midPostCount > 0) {
-                                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                                resolvedCenters.forEach(c => postCentersCAD.push(c));
-                            }
-                            postCentersCAD.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
-                            if (postCentersCAD.length > 1) {
-                                for (let i = 0; i < postCentersCAD.length - 1; i++) {
-                                    bayCentersPDF.push(pdfX + ((postCentersCAD[i] + postCentersCAD[i + 1]) / 2) * pdfScale);
-                                }
-                            }
-                        }
-
-                        // Pre-calculate Section A cut coordinates and hook direction to allow leaders to avoid overlap
-                        if (isMeshStyle && !isLoosePost) {
-                            let targetBayIndex = 0;
-                            for (let i = 0; i < postCentersCAD.length - 1; i++) {
-                                let hasPostAtLeft = false;
-                                if (i === 0) {
-                                    hasPostAtLeft = (vals.leftPost === 'yes' && vals.postType !== 'none');
-                                } else {
-                                    hasPostAtLeft = (vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                                }
-                                if (hasPostAtLeft) {
-                                    targetBayIndex = i;
-                                    break;
-                                }
-                            }
-                            if (postCentersCAD.length >= 2) {
-                                const cutX = (postCentersCAD[targetBayIndex] + postCentersCAD[targetBayIndex + 1]) / 2;
-                                sectionCutPdfX = pdfX + cutX * pdfScale;
-                                sectionCutDir = (activePanelType === 'leftReturn') ? -1 : 1;
-                            }
-                        }
-
-                        // Split leaders by side (Left, Right, Top, or Bottom)
-                        const leftLeaders = [];
-                        const rightLeaders = [];
-                        const topLeaders = [];
-                        const bottomLeaders = [];
-
-                        uniqueLeaders.forEach(lead => {
-                            // All panels (main and returns): distribute to top, bottom, left to avoid vertical dimensions on the right
-                            if (lead.leaderId === 'leader-top-rail') {
-                                    // Top Rail (Main Mark): Draw on left margin to avoid crossing horizontal dimensions
-                                    leftLeaders.push(lead);
-                                } else if (lead.leaderId.startsWith('leader-mesh-panel-') || lead.leaderId.startsWith('leader-mid-rail-seg-')) {
-                                    topLeaders.push(lead);
-                                } else if (
-                                    lead.leaderId.startsWith('leader-bot-rail-seg-') ||
-                                    lead.leaderId.startsWith('leader-mesh-fb-') || // matches both horizontal & vertical mesh FB leaders
-                                    lead.leaderId === 'leader-kickplate' ||
-                                    lead.leaderId === 'leader-right-post' ||
-                                    lead.leaderId === 'leader-mid-post' ||
-                                    lead.leaderId === 'leader-panicbar' ||
-                                    lead.leaderId === 'leader-loose-bp'
-                                ) {
-                                    bottomLeaders.push(lead);
-                                } else {
-                                    leftLeaders.push(lead);
-                                }
-                        });
-
-                        // Sort both columns by target Y-coordinate (top-to-bottom)
-                        leftLeaders.sort((a, b) => a.pdfTargetY - b.pdfTargetY);
-                        rightLeaders.sort((a, b) => a.pdfTargetY - b.pdfTargetY);
-
-                        // Evenly distribute label Y positions strictly along the vertical span of the drawing (not above or below)
-                        let leftStartY = Math.max(hasTopDetails ? 58 : 24, pdfY + 2);
-                        let leftEndY = Math.min(170, pdfY + drawH - 2);
-                        if (leftEndY < leftStartY + 5) {
-                            leftEndY = leftStartY + 5;
-                        }
-
-                        let rightStartY = Math.max(52, pdfY + 2);
-                        let rightEndY = Math.min(170, pdfY + drawH - 2);
-                        if (rightEndY < rightStartY + 5) {
-                            rightEndY = rightStartY + 5;
-                        }
-
-                        // Draw Left Leaders
-                        const N_left = leftLeaders.length;
-                        leftLeaders.forEach((lead, idx) => {
-                            let labelY = lead.pdfTargetY;
-                            if (N_left > 1) {
-                                labelY = leftStartY + idx * (leftEndY - leftStartY) / (N_left - 1);
-                            }
-                            drawCadLeader(lead.cx, lead.cy, leftLeaderX, labelY, lead.text, "right", lead.leaderId);
-                        });
-
-                        // Draw Right Leaders
-                        const N_right = rightLeaders.length;
-                        rightLeaders.forEach((lead, idx) => {
-                            let labelY = lead.pdfTargetY;
-                            if (N_right > 1) {
-                                labelY = rightStartY + idx * (rightEndY - rightStartY) / (N_right - 1);
-                            }
-                            drawCadLeader(lead.cx, lead.cy, rightLeaderX, labelY, lead.text, "left", lead.leaderId);
-                        });
-                        // Draw Top Leaders
-                        const horizLeft = pdfX + 8.0;
-                        const horizRight = pdfX + drawW - 8.0;
-                        distributeHorizontal(topLeaders, horizLeft, horizRight, 4.0, true);
-                        topLeaders.forEach(lead => {
-                            let topLabelY;
-                            if (isMeshStyle) {
-                                topLabelY = useCompressedDims ? (pdfY - 4.5) : (pdfY - 6.5);
-                            } else {
-                                topLabelY = useCompressedDims ? (pdfY - 24.0) : (pdfY - 32.0);
-                            }
-                            drawTopBottomLeader(lead.cx, lead.cy, lead.labelX, topLabelY, lead.text, lead.leaderId, true);
-                        });
-
-                        // Draw Bottom Leaders
-                        distributeHorizontal(bottomLeaders, horizLeft, horizRight, 4.0, false);
-                        bottomLeaders.forEach(lead => {
-                            let bottomLabelY;
-                            const isClassicOrExec = (style === 'classical' || style === 'classic_custom' || style === 'executive' || style === 'executive_custom');
-                            if (isMeshStyle || isClassicOrExec) {
-                                bottomLabelY = useCompressedDims ? (pdfY + drawH + 5.5) : (pdfY + drawH + 8.5);
-                            } else {
-                                bottomLabelY = useCompressedDims ? (pdfY + drawH + 18.0) : (pdfY + drawH + 24.0);
-                            }
-                            drawTopBottomLeader(lead.cx, lead.cy, lead.labelX, bottomLabelY, lead.text, lead.leaderId, false);
-                        });
-                // Draw Section A cut line in elevation
-                if (isMeshStyle && !isLoosePost) {
-                    const postCenters = [];
-                    postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-                    if (vals.midPosts !== 'none' && midPostCount > 0) {
-                        const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, activePanelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                        resolvedCenters.forEach(midCx => {
-                            postCenters.push(midCx);
-                        });
-                    }
-                    postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
-
-                    // Find the first bay index that has a post on its left
-                    let targetBayIndex = 0;
-                    for (let i = 0; i < postCenters.length - 1; i++) {
-                        let hasPostAtLeft = false;
-                        if (i === 0) {
-                            hasPostAtLeft = (vals.leftPost === 'yes' && vals.postType !== 'none');
-                        } else {
-                            hasPostAtLeft = (vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                        }
-                        if (hasPostAtLeft) {
-                            targetBayIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (postCenters.length >= 2) {
-                        const cutX = (postCenters[targetBayIndex] + postCenters[targetBayIndex + 1]) / 2;
-                        const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && vals.midRailType !== 'none'));
-                        
-                        const propsResolved = getResolvedPanelProperties(vals, style);
-                        const pHeightResolved = propsResolved ? propsResolved.pHeight : 45.75;
-                        const fHeightResolved = propsResolved ? propsResolved.fHeight : 41.0;
-                        const topHResolved = propsResolved ? propsResolved.topRailH : 1.5;
-                        const midRailGapResolved = propsResolved ? propsResolved.midRailGap : 12.0;
-                        const midHResolved = propsResolved ? propsResolved.midRailH : 1.5;
-                        
-                        const topGapResolved = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? (pHeightResolved - fHeightResolved) : (vals.topGap !== undefined ? vals.topGap : 2.0);
-                        const midRailTop = pHeightResolved - topHResolved - midRailGapResolved;
-                        const midRailBottom = midRailTop - midHResolved;
-                        
-                        const cutYTop = hasMid ? (midRailTop + 1.5) : (pHeightResolved + 4);
-                        const cutYBot = hasMid ? (midRailBottom - 12) : (pHeightResolved - 12);
-                        
-                        const pTop = cadToPdf(cutX, cutYTop);
-                        const pBot = cadToPdf(cutX, cutYBot);
-                        
-                        // Draw vertical cut line
-                        doc.setDrawColor(0, 0, 0);
-                        doc.setLineWidth(0.28);
-                        doc.line(pTop[0], pTop[1], pBot[0], pBot[1]);
-                        
-                        // Draw horizontal hook at the top pointing left/right
-                        const isLeft = (activePanelType === 'leftReturn');
-                        const hookLength = 6.0; // in mm
-                        const hookEndX = isLeft ? (pTop[0] - hookLength) : (pTop[0] + hookLength);
-                        doc.line(pTop[0], pTop[1], hookEndX, pTop[1]);
-                        
-                        // Draw arrowhead pointing left/right at the end of the hook
-                        drawArrowhead(hookEndX, pTop[1], isLeft ? Math.PI : 0, 1.8);
-                        
-                        // Draw text label "A" next to the arrowhead
-                        doc.setFont('helvetica', 'bold');
-                        doc.setFontSize(7);
-                        if (isLeft) {
-                            doc.text("A", hookEndX - 3.5, pTop[1] + 2.5);
-                        } else {
-                            doc.text("A", hookEndX + 1.5, pTop[1] + 2.5);
-                        }
-                    }
-                }
-            } else if (isLoosePost) {
-                const style = vals.railStyle || 'classical';
-                const props = getResolvedPanelProperties(vals, style);
-                let pHeight = props ? props.pHeight : 45.75;
-                let postW = props ? props.postW : 1.5;
-                let includeBasePlates = props ? props.includeBasePlates : 'no';
-                let bpH = props ? props.basePlateT : 0.5;
-                let bpW = props ? props.basePlateW : 6.0;
-
-                const postDwgMark = `a${drawingNo.toUpperCase()}`;
-                const cyPost = pHeight * 0.8;
-                const pPost = cadToPdf(0, cyPost);
-                // Callout on the left side of the post
-                drawCadLeader(0, cyPost, pdfX - 16, pPost[1], postDwgMark, "right", "leader-loose-post");
-
-                if (includeBasePlates === 'yes') {
-                    const bpDwgMark = `b${drawingNo.toUpperCase()}`;
-                    const cyBp = -bpH * 0.5;
-                    const pBp = cadToPdf(postW / 2 - bpW / 2, cyBp);
-                    // Callout on the left side of the base plate
-                    drawCadLeader(postW / 2 - bpW / 2, cyBp, pdfX - 16, pBp[1], bpDwgMark, "right", "leader-loose-bp");
+                // 1. Top Rail leader
+                if (topMark) {
+                    const cyTop = pHeight - topH / 2;
+                    const pTop = cadToPdf(vals.length * 0.25, cyTop);
+                    drawCadLeader(vals.length * 0.25, cyTop, leftLeaderX, pTop[1] - 5, topMark, "right", "leader-top-rail");
                 }
 
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                if (isMeshStyle) {
-                    const fH = props ? props.fHeight : 41.0;
-                    const bY = pHeight - fH;
-                    const bH = (props && props.botRailH !== undefined) ? props.botRailH : 1.5;
-                    const tH = (props && props.topRailH !== undefined) ? props.topRailH : 1.5;
-                    const mGap = (props && props.midRailGap !== undefined) ? props.midRailGap : 3.0;
-                    const mH = (props && props.midRailH !== undefined) ? props.midRailH : 1.5;
-                    const mType = props ? props.midRailType : 'none';
+                // 2. Bottom Rail leader
+                if (botMark) {
+                    const cyBot = botY + botH / 2;
+                    const pBot = cadToPdf(vals.length * 0.25, cyBot);
+                    drawCadLeader(vals.length * 0.25, cyBot, leftLeaderX, pBot[1] + 5, botMark, "right", "leader-bot-rail");
+                }
 
-                    const yStart = bY + bH;
-                    const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && mType !== 'none'));
-                    const yEnd = hasMid ? (pHeight - tH - mGap - mH) : (pHeight - tH);
-                    const fbHeight = yEnd - yStart;
-                    const actualFbHeight = fbHeight - 2.0;
+                // 3. Left Corner Post leader
+                if (leftMark) {
+                    const cyLeft = pHeight * 0.5;
+                    const pLeft = cadToPdf(postW / 2, cyLeft);
+                    drawCadLeader(postW / 2, cyLeft, leftLeaderX, pLeft[1], leftMark, "right", "leader-left-post");
+                }
 
-                    if (actualFbHeight > 0) {
-                        const fbDwgMark = `c${drawingNo.toUpperCase()}`;
-                        const cyFb = yStart + 1.0 + actualFbHeight * 0.2;
-                        const pFb = cadToPdf(postW, cyFb);
-                        // Callout pointing to the flat bar interface (X = postW) on the left
-                        drawCadLeader(postW, cyFb, pdfX - 16, pFb[1], fbDwgMark, "right", "leader-loose-fb");
+                // 4. Right Corner Post leader
+                if (rightMark) {
+                    const cyRight = pHeight * 0.5;
+                    const pRight = cadToPdf(vals.length - postW / 2, cyRight);
+                    drawCadLeader(vals.length - postW / 2, cyRight, rightLeaderX, pRight[1], rightMark, "left", "leader-right-post");
+                }
+
+                // 5. Mid Runner leader
+                if (midMark) {
+                    const cyMid = pHeight - topH - midRailGap - midH / 2;
+                    const pMid = cadToPdf(vals.length * 0.75, cyMid);
+                    drawCadLeader(vals.length * 0.75, cyMid, rightLeaderX, pMid[1], midMark, "left", "leader-mid-rail");
+                }
+
+                // 6. Mid Post leader
+                if (midPostMark && midPostCount > 0) {
+                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                    const centerDist = endXBound - startXBound;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    const midCx = startXBound + spanSpacing;
+
+                    const isExecutiveStyle = (style === 'executive' || style === 'executive_custom');
+                    const mpH = isExecutiveStyle ? pHeight : (pHeight - topH);
+                    const cyMidPost = mpH * 0.4;
+                    const pMidPost = cadToPdf(midCx, cyMidPost);
+                    drawCadLeader(midCx, cyMidPost, rightLeaderX, pMidPost[1] - 3, midPostMark, "left", "leader-mid-post");
+                }
+
+                // 7. Picket leader
+                if (picketMark && finalPicketsCount > 0) {
+                    const startX = (vals.leftPost === 'yes') ? postW : 0;
+                    const endX = (midPostCount > 0) ? (startX + (vals.length - postW - (vals.leftPost === 'yes' ? postW : 0)) / (midPostCount + 1) - postW/2) : ((vals.rightPost === 'yes') ? (vals.length - postW) : vals.length);
+                    
+                    let leftPostCenter = startX;
+                    if (startX > 0) {
+                        leftPostCenter = startX - postW / 2;
+                    } else if (vals.leftPost === 'yes') {
+                        leftPostCenter = postW / 2;
+                    }
+
+                    let rightPostCenter = endX;
+                    if (endX < vals.length) {
+                        rightPostCenter = endX + postW / 2;
+                    } else if (vals.rightPost === 'yes') {
+                        rightPostCenter = vals.length - postW / 2;
+                    }
+
+                    const spanCenterDist = rightPostCenter - leftPostCenter;
+                    const numP = Math.max(0, Math.floor(spanCenterDist / vals.picketSpacing - 0.001));
+                    if (numP > 0) {
+                        const pickCx = leftPostCenter + vals.picketSpacing;
+
+                        const picketBottomY = botY + botH;
+                        const picketTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
+                        const pickCy = (picketBottomY + picketTopY) / 2;
+
+                        const pPick = cadToPdf(pickCx, pickCy);
+                        drawCadLeader(pickCx, pickCy, rightLeaderX, pPick[1] + 3, picketMark, "left", "leader-pickets");
                     }
                 }
             } else if (cat === 'rails_gates') {
-                const leftLeaderX = Math.max(22, pdfX - 16);
-                const rightLeaderX = Math.min(170, pdfX + drawW + 16);
-                
-                const isLeftReturn = (activePanelType === 'leftReturn');
-                const leaderLabelX = isLeftReturn ? rightLeaderX : leftLeaderX;
-                const leaderAlign = isLeftReturn ? "left" : "right";
-                
+                const leftLeaderX = Math.max(8, pdfX - 16);
+                const rightLeaderX = Math.min(179, pdfX + drawW + 16);
                 const effectiveEmbed = isGates ? 0 : ((vals.includeBasePlates === 'yes') ? 0 : Math.max(0, vals.postHeight - vals.fenceHeight - 6.0));
 
                 // 1. Top Runner / Rail leader
                 if (topMark) {
                     const cyTop = (isGates ? (vals.fenceHeight - topH / 2) : (vals.postHeight - topH / 2)) - effectiveEmbed;
                     const pTop = cadToPdf(vals.length * 0.25, cyTop);
-                    drawCadLeader(vals.length * 0.25, cyTop, leftLeaderX, pTop[1], topMark, "right", "leader-top-rail");
+                    drawCadLeader(vals.length * 0.25, cyTop, leftLeaderX, pTop[1] - 5, topMark, "right", "leader-top-rail");
                 }
 
                 // 2. Bottom Runner / Rail leader
                 if (botMark) {
                     const cyBot = (isGates ? (botH / 2) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH/2) : (botH / 2))) - effectiveEmbed;
                     const pBot = cadToPdf(vals.length * 0.25, cyBot);
-                    drawCadLeader(vals.length * 0.25, cyBot, leftLeaderX, pBot[1], botMark, "right", "leader-bot-rail");
+                    drawCadLeader(vals.length * 0.25, cyBot, leftLeaderX, pBot[1] + 5, botMark, "right", "leader-bot-rail");
                 }
 
                 // 3. Left Post / Runner leader
@@ -8424,9 +3592,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 4. Right Post / Runner leader
                 if (rightMark) {
                     const cyRight = (isGates ? (vals.fenceHeight * 0.5) : (vals.postHeight * 0.5)) - effectiveEmbed;
-                    const cyRightAdjusted = (leftMark && rightMark) ? (cyRight - 5.0) : cyRight;
-                    const pRightAdjusted = cadToPdf(vals.length - rightPostW / 2, cyRightAdjusted);
-                    drawCadLeader(vals.length - rightPostW / 2, cyRightAdjusted, rightLeaderX, pRightAdjusted[1], rightMark, "left", "leader-right-post");
+                    const pRight = cadToPdf(vals.length - rightPostW / 2, cyRight);
+                    drawCadLeader(vals.length - rightPostW / 2, cyRight, rightLeaderX, pRight[1], rightMark, "left", "leader-right-post");
                 }
 
                 // 5. Mid Runner / Rail leader (if present)
@@ -8446,7 +3613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         let picketBottomY, picketTopY;
                         if (isGates) {
-                            picketBottomY = (vals.midRailType !== 'none') ? midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? kickPlateH : botH + kickPlateH) : botH);
+                            picketBottomY = (vals.midRailType !== 'none') ? midRailGap : ((vals.kickPlate !== 'none') ? kickPlateH : botH);
                             picketTopY = vals.fenceHeight - topH;
                         } else {
                             picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
@@ -8456,47 +3623,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         const cyPick = pickCy - effectiveEmbed;
 
                         const pPick = cadToPdf(pickCx, cyPick);
-                        drawCadLeader(pickCx, cyPick, rightLeaderX, pPick[1], picketMark, "left", "leader-pickets");
+                        drawCadLeader(pickCx, cyPick, rightLeaderX, pPick[1] - 4, picketMark, "left", "leader-pickets");
                     }
                 }
 
                 // 7. Kick Plate leader (if present)
                 if (kpMark) {
-                    const cyKp = ((vals.kickPlateWeld === 'outer' ? 0 : botH) + kickPlateH / 2) - effectiveEmbed;
+                    const cyKp = (kickPlateH / 2) - effectiveEmbed;
                     const pKp = cadToPdf(vals.length * 0.75, cyKp);
-                    drawCadLeader(vals.length * 0.75, cyKp, rightLeaderX, pKp[1], kpMark, "left", "leader-kickplate");
-                }
-                
-                // 8. Wire Mesh / Expanded Metal Frame FB and Panel leaders in PDF
-                if (isGates && vals.meshType && vals.meshType !== 'none') {
-                    const picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? kickPlateH : botH + kickPlateH) : botH);
-                    const mOpeningH = (vals.fenceHeight - topH) - picketBottomY;
-                    const meshCenterY = picketBottomY + mOpeningH / 2;
-                    const cyMesh = meshCenterY - effectiveEmbed;
-                    
-                    if (meshFbMark) {
-                        const pMeshFb = cadToPdf(leftPostW + 4.0, cyMesh + 4.0);
-                        drawCadLeader(leftPostW + 4.0, cyMesh + 4.0, leftLeaderX, pMeshFb[1], meshFbMark, "right", "leader-mesh-fb");
-                    }
-                    if (meshPanelMark) {
-                        const pMeshPanel = cadToPdf(vals.length * 0.55, cyMesh);
-                        drawCadLeader(vals.length * 0.55, cyMesh, rightLeaderX, pMeshPanel[1], meshPanelMark, "left", "leader-mesh-panel");
-                    }
-                }
-                
-                // 9. Panic Bar Plate leader in PDF
-                if (isGates && vals.panicBarPlate === 'yes' && pbpMark) {
-                    const pbpCenterGap = vals.panicBarPlateGap !== undefined ? vals.panicBarPlateGap : 36.0;
-                    const cyPbp = pbpCenterGap - effectiveEmbed;
-                    const pPbp = cadToPdf(vals.length * 0.5, cyPbp);
-                    drawCadLeader(vals.length * 0.5, cyPbp, rightLeaderX, pPbp[1], pbpMark, "left", "leader-panicbar");
+                    drawCadLeader(vals.length * 0.75, cyKp, rightLeaderX, pKp[1] + 4, kpMark, "left", "leader-kickplate");
                 }
             } else if (cat === 'fence') {
-                const leftLeaderX = Math.max(22, pdfX - 16);
-                const rightLeaderX = Math.min(170, pdfX + drawW + 16);
-                
-                const leaderLabelX = leftLeaderX; // Fence has no returns, vertical dimensions on right
-                const leaderAlign = "right";
+                const leftLeaderX = Math.max(8, pdfX - 16);
+                const rightLeaderX = Math.min(179, pdfX + drawW + 16);
 
                 const postW = getPicketDimension(vals.postType, vals.postSize, vals.postW);
                 const topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
@@ -8514,28 +3653,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (topMark) {
                     const cyTop = topY + topH/2 - effectiveEmbed;
                     const pTop = cadToPdf(vals.length * 0.25, cyTop);
-                    drawCadLeader(vals.length * 0.25, cyTop, leaderLabelX, pTop[1], topMark, leaderAlign, "leader-top-rail");
+                    drawCadLeader(vals.length * 0.25, cyTop, leftLeaderX, pTop[1] - 5, topMark, "right", "leader-top-rail");
                 }
 
                 // 2. Post leader
                 if (postMark) {
                     const cyPost = vals.postHeight * 0.5 - effectiveEmbed;
                     const pPost = cadToPdf(postW/2, cyPost);
-                    drawCadLeader(postW/2, cyPost, leaderLabelX, pPost[1], postMark, leaderAlign, "leader-post");
+                    drawCadLeader(postW/2, cyPost, leftLeaderX, pPost[1], postMark, "right", "leader-post");
                 }
 
                 // 3. Bottom Rail leader
                 if (botMark) {
                     const cyBot = botY + botH/2 - effectiveEmbed;
                     const pBot = cadToPdf(vals.length * 0.25, cyBot);
-                    drawCadLeader(vals.length * 0.25, cyBot, leaderLabelX, pBot[1], botMark, leaderAlign, "leader-bot-rail");
+                    drawCadLeader(vals.length * 0.25, cyBot, leftLeaderX, pBot[1] + 5, botMark, "right", "leader-bot-rail");
                 }
 
                 // 4. Mid Rail leader
                 if (midMark) {
                     const cyMid = midY + midH/2 - effectiveEmbed;
                     const pMid = cadToPdf(vals.length * 0.75, cyMid);
-                    drawCadLeader(vals.length * 0.75, cyMid, leaderLabelX, pMid[1], midMark, leaderAlign, "leader-mid-rail");
+                    drawCadLeader(vals.length * 0.75, cyMid, rightLeaderX, pMid[1], midMark, "left", "leader-mid-rail");
                 }
 
                 // 5. Pickets leader
@@ -8550,455 +3689,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         const picketTopY = (vals.midRailType !== 'none') ? (topY - midRailGap - midH) : topY;
                         const pickCy = (picketY + picketTopY)/2;
                         const cyPick = pickCy - effectiveEmbed;
+
                         const pPick = cadToPdf(pickCx, cyPick);
-                        drawCadLeader(pickCx, cyPick, leaderLabelX, pPick[1], picketMark, leaderAlign, "leader-pickets");
+                        drawCadLeader(pickCx, cyPick, rightLeaderX, pPick[1] - 4, picketMark, "left", "leader-pickets");
                     }
                 }
             }
             
-            // --- DRAW DETAIL BOXES ---
-            const formatAiscSize = (sizeStr) => {
-                if (!sizeStr || sizeStr === 'NONE') return 'None';
-                return sizeStr.replace(/1\.5/g, '1 1/2').replace(/1\/2/g, '1/2');
-            };
-
-            const drawBasePlateDetail = (doc, boxX, boxY, boxW, boxH, vals) => {
-                const style = vals.railStyle || 'classical';
-                let bpPostW = 1.5;
-                let bpPostH = 1.5;
-                if (cat === 'rail_catalog') {
-                    bpPostW = (style === 'classical' || style === 'executive') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                    bpPostH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                } else if (cat === 'rails_gates') {
-                    bpPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW || 2.0);
-                    bpPostH = getProfileDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW || 2.0);
-                } else if (cat === 'fence') {
-                    bpPostW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 2.0);
-                    bpPostH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 2.0);
-                }
-
-                const bpW_val = parseFloat(vals.basePlateW) || 6.0;
-                const bpL_val = parseFloat(vals.basePlateL) || 6.0;
-                const bpT_val = parseFloat(vals.basePlateT) || 0.5;
-                const bpHoleD_val = parseFloat(vals.basePlateHoleD) || 0.5;
-                const bpHoleOffsetX_val = parseFloat(vals.basePlateHoleOffsetX) || 0.5;
-                const bpHoleOffsetY_val = parseFloat(vals.basePlateHoleOffsetY) || 0.25;
-
-                doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.28);
-                doc.setFillColor(255, 255, 255);
-                doc.rect(boxX, boxY, boxW, boxH, 'FD');
-
-                // Main Title
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(5.5);
-                doc.setTextColor(0, 0, 0);
-                doc.text("TYPICAL BASE PLATE DETAILS", boxX + boxW / 2, boxY + 4.5, { align: "center" });
-
-                const bpScale = 18 / bpW_val;
-                const bpDrawW = 18;
-                const bpDrawL = bpL_val * bpScale;
-
-                // --- 1. LEFT HALF: PLAN VIEW ---
-                const cx1 = boxX + (boxW > 60 ? 22 : 14);
-                const cy1 = boxY + boxH / 2 + 1;
-
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(4.5);
-                doc.text("PLAN VIEW", cx1, boxY + 9, { align: "center" });
-
-                doc.setLineWidth(0.28);
-                doc.rect(cx1 - bpDrawW / 2, cy1 - bpDrawL / 2, bpDrawW, bpDrawL, 'S');
-                const postDrawW = bpPostW * bpScale;
-                const postDrawH = bpPostH * bpScale;
-                doc.setLineWidth(0.28);
-                doc.rect(cx1 - postDrawW / 2, cy1 - postDrawH / 2, postDrawW, postDrawH, 'S');
-
-                doc.setLineWidth(0.1);
-                doc.setLineDashPattern([1, 1], 0);
-                doc.line(cx1 - bpDrawW / 2 - 2, cy1, cx1 + bpDrawW / 2 + 2, cy1);
-                doc.line(cx1, cy1 - bpDrawL / 2 - 2, cx1, cy1 + bpDrawL / 2 + 2);
-                doc.setLineDashPattern([], 0);
-
-                const hx1 = cx1 - bpDrawW / 2 + bpHoleOffsetX_val * bpScale;
-                const hx2 = cx1 + bpDrawW / 2 - bpHoleOffsetX_val * bpScale;
-                const hy1 = cy1 - bpDrawL / 2 + bpHoleOffsetY_val * bpScale;
-                const hy2 = cy1 + bpDrawL / 2 - bpHoleOffsetY_val * bpScale;
-
-                doc.setLineWidth(0.12);
-                doc.circle(hx1, hy1, (bpHoleD_val * bpScale) / 2, 'S');
-                doc.circle(hx2, hy1, (bpHoleD_val * bpScale) / 2, 'S');
-
-                doc.setLineWidth(0.08);
-                doc.setLineDashPattern([0.5, 0.5], 0);
-                doc.line(hx1 - 1.5, hy1, hx1 + 1.5, hy1);
-                doc.line(hx1, hy1 - 1.5, hx1, hy1 + 1.5);
-                doc.line(hx2 - 1.5, hy1, hx2 + 1.5, hy1);
-                doc.line(hx2, hy1 - 1.5, hx2, hy1 + 1.5);
-                doc.setLineDashPattern([], 0);
-
-                const dimY = cy1 + bpDrawL / 2 + 3.5;
-                doc.setLineWidth(0.10);
-                doc.line(cx1 - bpDrawW / 2, dimY, cx1 + bpDrawW / 2, dimY);
-                doc.line(cx1 - bpDrawW / 2, dimY - 0.8, cx1 - bpDrawW / 2, dimY + 0.8);
-                doc.line(cx1 + bpDrawW / 2, dimY - 0.8, cx1 + bpDrawW / 2, dimY + 0.8);
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(3.8);
-                doc.text(formatFraction(bpW_val) + " WIDTH", cx1, dimY + 3, { align: "center" });
-
-                const dimX = cx1 + bpDrawW / 2 + (boxW > 60 ? 3.5 : 2.5);
-                doc.line(dimX, cy1 - bpDrawL / 2, dimX, cy1 + bpDrawL / 2);
-                doc.line(dimX - 0.8, cy1 - bpDrawL / 2, dimX + 0.8, cy1 - bpDrawL / 2);
-                doc.line(dimX - 0.8, cy1 + bpDrawL / 2, dimX + 0.8, cy1 + bpDrawL / 2);
-
-                doc.text(formatFraction(bpL_val) + " LG", dimX + (boxW > 60 ? 1.5 : 1.0), cy1 + 1, { align: "left" });
-
-                doc.setLineWidth(0.28);
-                const postLeaderStartX = cx1 - postDrawW / 4;
-                const postLeaderStartY = cy1 - postDrawH / 4;
-                const postLeaderEndX = cx1 - (boxW > 60 ? 10 : 8);
-                const postLeaderEndY = cy1 - 10;
-                doc.line(postLeaderStartX, postLeaderStartY, postLeaderEndX, postLeaderEndY);
-                const postAngle = Math.atan2(postLeaderStartY - postLeaderEndY, postLeaderStartX - postLeaderEndX);
-                drawArrowhead(postLeaderStartX, postLeaderStartY, postAngle, 0.8);
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(boxW > 60 ? 4.5 : 3.5);
-                doc.text(formatFraction(bpPostW) + "x" + formatFraction(bpPostH) + " HSS POST", postLeaderEndX - 0.8, postLeaderEndY + 0.5, { align: "right" });
-
-                const holeLeaderStartX = hx1;
-                const holeLeaderStartY = hy1;
-                const holeLeaderEndX = cx1 - (boxW > 60 ? 10 : 8);
-                const holeLeaderEndY = cy1 + 10;
-                doc.line(holeLeaderStartX, holeLeaderStartY, holeLeaderEndX, holeLeaderEndY);
-                const holeAngle = Math.atan2(holeLeaderStartY - holeLeaderEndY, holeLeaderStartX - holeLeaderEndX);
-                drawArrowhead(holeLeaderStartX, holeLeaderStartY, holeAngle, 0.8);
-                doc.text("(2) " + formatFraction(bpHoleD_val) + "\" \u00D8 HOLES", holeLeaderEndX - 0.8, holeLeaderEndY + 0.5, { align: "right" });
-
-                // --- 2. RIGHT HALF: SECTION VIEW ---
-                const cx2 = boxX + (boxW > 60 ? 60 : 38);
-                const cy_top_surface = cy1 - 4;
-                const bpDrawT = Math.max(1.2, bpT_val * bpScale);
-
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(4.5);
-                doc.text("SECTION A-A", cx2, boxY + 9, { align: "center" });
-
-                doc.setLineWidth(0.28);
-                doc.rect(cx2 - bpDrawW / 2, cy_top_surface, bpDrawW, bpDrawT, 'S');
-                const postDrawH_side = 16;
-                doc.rect(cx2 - postDrawW / 2, cy_top_surface - postDrawH_side, postDrawW, postDrawH_side, 'S');
-
-                doc.setFillColor(0, 0, 0);
-                doc.triangle(cx2 - postDrawW / 2, cy_top_surface, cx2 - postDrawW / 2 - 1.2, cy_top_surface, cx2 - postDrawW / 2, cy_top_surface - 1.2, 'F');
-                doc.triangle(cx2 + postDrawW / 2, cy_top_surface, cx2 + postDrawW / 2 + 1.2, cy_top_surface, cx2 + postDrawW / 2, cy_top_surface - 1.2, 'F');
-
-                const boltLx1 = cx2 - bpDrawW / 2 + bpHoleOffsetX_val * bpScale;
-                const boltLx2 = cx2 + bpDrawW / 2 - bpHoleOffsetX_val * bpScale;
-                doc.setLineWidth(0.28);
-                doc.line(boltLx1, cy_top_surface + bpDrawT, boltLx1, cy_top_surface + bpDrawT + 8);
-                doc.line(boltLx2, cy_top_surface + bpDrawT, boltLx2, cy_top_surface + bpDrawT + 8);
-                doc.line(boltLx1 - 0.8, cy_top_surface + bpDrawT + 8, boltLx1 + 0.8, cy_top_surface + bpDrawT + 8);
-                doc.line(boltLx2 - 0.8, cy_top_surface + bpDrawT + 8, boltLx2 + 0.8, cy_top_surface + bpDrawT + 8);
-
-                const thickDimX = cx2 - bpDrawW / 2 - (boxW > 60 ? 3 : 2);
-                doc.setLineWidth(0.10);
-                doc.line(thickDimX, cy_top_surface, thickDimX, cy_top_surface + bpDrawT);
-                doc.line(thickDimX - 0.6, cy_top_surface, thickDimX + 0.6, cy_top_surface);
-                doc.line(thickDimX - 0.6, cy_top_surface + bpDrawT, thickDimX + 0.6, cy_top_surface + bpDrawT);
-                
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(3.8);
-                doc.text(formatFraction(bpT_val) + " THK", thickDimX - 1.0, cy_top_surface + bpDrawT / 2 + 1.2, { align: "right" });
-
-                const weldLeaderStartX = cx2 - postDrawW / 2 - 0.4;
-                const weldLeaderStartY = cy_top_surface - 0.4;
-                const weldLeaderEndX = cx2 - (boxW > 60 ? 12 : 9);
-                const weldLeaderEndY = cy_top_surface - 8;
-                doc.setLineWidth(0.28);
-                doc.line(weldLeaderStartX, weldLeaderStartY, weldLeaderEndX, weldLeaderEndY);
-                const weldAngle = Math.atan2(weldLeaderStartY - weldLeaderEndY, weldLeaderStartX - weldLeaderEndX);
-                drawArrowhead(weldLeaderStartX, weldLeaderStartY, weldAngle, 0.8);
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(boxW > 60 ? 4.5 : 3.5);
-                doc.text("3/16\" FILLET WELD TYP.", weldLeaderEndX - 0.6, weldLeaderEndY + 0.5, { align: "right" });
-            };
-            const drawWireMeshDetail = (doc, boxX, boxY, boxW, boxH, vals) => {
-                const ratioX = boxW / 110;
-                const ratioY = boxH / 45;
-                const scale = 9.5 * ratioX; // Scale down proportionally to boxW
-                const pDrawH = 22 * ratioY; // Scale down post height to boxH
-                const fontS = Math.max(2.8, 4.2 * ratioX);
-                const titleFontS = Math.max(4.0, 6.0 * ratioX);
-                const arrowSize = 0.6 * ratioX;
-
-                // Transparent and borderless background (no white fill rect)
-
-                const style = vals.railStyle || 'classical';
-                const cx = boxX + boxW * 0.38;
-                const cy_top = boxY + 8 * ratioY;
-                
-                const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && vals.midRailType !== 'none'));
-                let trH = 1.5;
-                let trW = 1.5;
-                if (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') {
-                    trH = 1.5;
-                    trW = 1.5;
-                } else {
-                    if (hasMid) {
-                        trH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                        trW = getPicketDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                    } else {
-                        trH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                        trW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                    }
-                }
-                const trDrawW = trW * scale;
-                const trDrawH = trH * scale;
-                
-                const topRunnerLeft = cx - trDrawW / 2;
-                const postLeft = topRunnerLeft;
-                const postRight = topRunnerLeft + trDrawW;
-                const pDrawW = trDrawW; // Post aligns exactly under the top runner
-                const fbY = cy_top + trDrawH;
-                
-                const fbX = postLeft + 0.24 * ratioX; // Shifted right by half line-width so it aligns perfectly inside the post boundary
-                const fbT = 0.125 * scale; // 1/8" flat bar thickness
-                const meshX = postLeft + 0.83 * ratioX; // Wire mesh is positioned to touch the flat bar with exactly zero gap
-                const fbDrawH = 1.0 * scale; // flat bar is a small line of 1" height attached to top runner bottom
-                
-                const postType = vals.postType || 'hss_rect';
-                const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                const hasPost = (postType !== 'none' && postType !== 'no') && (vals.leftPost === 'yes' || (vals.midPosts !== 'none' && midPostCount > 0));
-
-                doc.setLineWidth(0.09 * ratioX); // Thin structural outline
-                // Draw Top Runner
-                doc.rect(topRunnerLeft, cy_top, trDrawW, trDrawH, 'S');
-                
-                // Draw top horizontal line perfectly inside top runner bottom
-                doc.line(postLeft, cy_top + trDrawH, postRight, cy_top + trDrawH);
-                
-                if (hasPost) {
-                    // Draw Post
-                    doc.rect(postLeft, cy_top + trDrawH, pDrawW, pDrawH, 'S');
-                }
-                
-                // Draw Wire Mesh WWM 2x2x0.135
-                const wireH = pDrawH;
-                doc.setLineWidth(0.26 * ratioX); // wire thickness (kept original size)
-                doc.line(meshX, fbY, meshX, fbY + wireH);
-                
-                // Horizontal wires (dots) spaced vertically
-                doc.setFillColor(0, 0, 0);
-                const numDots = 4;
-                const dotSpacing = wireH / (numDots + 1);
-                for (let i = 1; i <= numDots; i++) {
-                    const dotY = fbY + i * dotSpacing;
-                    doc.circle(meshX, dotY, 0.35 * ratioX, 'FD');
-                }
-                
-                // Draw Flat Bar FB 1x1/8 immediately to the left of the wire mesh
-                doc.setLineWidth(0.48 * ratioX); // Thick flat bar line
-                doc.line(fbX, fbY, fbX, fbY + fbDrawH);
-
-                // Draw horizontal cut line at the bottom of post/flat bar
-                doc.setLineWidth(0.08 * ratioX); // Thin cut line
-                const cutLineEndX = postRight + 1.5 * ratioX;
-                doc.line(postLeft - 1.5 * ratioX, cy_top + trDrawH + pDrawH, cutLineEndX, cy_top + trDrawH + pDrawH);
-                
-                // Draw Angled Leaders and labels
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(fontS);
-                
-                let runnerSizeText = "";
-                if (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') {
-                    runnerSizeText = "HSS1 1/2x1 1/2x16GA";
-                } else {
-                    if (hasMid) {
-                        const rawText = vals.midRailSize === 'CUSTOM' ? `FB${vals.midRailW}x${vals.midRailH}` : formatAiscSize(vals.midRailSize);
-                        runnerSizeText = rawText.replace("HSS ", "HSS").replace("FB ", "FB");
-                    } else {
-                        const rawText = vals.topRailSize === 'CUSTOM' ? `HSS${vals.topRailW}x${vals.topRailH}` : formatAiscSize(vals.topRailSize);
-                        runnerSizeText = rawText.replace("HSS ", "HSS").replace("FB ", "FB");
-                    }
-                }
-                runnerSizeText = formatToArchitecturalDesc(runnerSizeText);
-                
-                const rawPText = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1 1/2x1 1/2x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postH}` : formatAiscSize(vals.postSize));
-                const pSizeText = formatToArchitecturalDesc(rawPText.replace("HSS ", "HSS"));
-                
-                const meshGridW = vals.meshGridW !== undefined ? vals.meshGridW : 2.0;
-                const meshGridH = vals.meshGridH !== undefined ? vals.meshGridH : 2.0;
-                const meshWireD = vals.meshWireD !== undefined ? vals.meshWireD : 0.135;
-                const meshText = `WWM${meshGridW}x${meshGridH}x${meshWireD}`;
-                
-                doc.setLineWidth(0.28 * ratioX);
-                
-                // Vertical range for label texts on the right
-                const startY = boxY + 5.0 * ratioY;
-                const endY = boxY + 22.0 * ratioY;
-                
-                // 1. Runner (Top Runner or Mid Runner)
-                const trLx1 = cx + trDrawW / 4;
-                const trLy1 = cy_top + trDrawH / 2;
-                const trLx2 = cx + trDrawW + 2 * ratioX;
-                const trLy2 = startY;
-                const trLx3 = trLx2 + 4 * ratioX;
-                doc.line(trLx1, trLy1, trLx2, trLy2);
-                doc.line(trLx2, trLy2, trLx3, trLy2);
-                
-                const trAngle = Math.atan2(trLy2 - trLy1, trLx2 - trLx1);
-                drawArrowhead(trLx1, trLy1, trAngle, arrowSize);
-                
-                doc.text(runnerSizeText, trLx3 + 0.8 * ratioX, trLy2 - 0.5 * ratioY, { align: "left" });
-                doc.text(hasMid ? "MID RUNNER" : "TOP RUNNING", trLx3 + 0.8 * ratioX, trLy2 + 1.2 * ratioY, { align: "left" });
-                
-                if (hasPost) {
-                    // 2. Post
-                    const pLx1 = postRight;
-                    const pTargetY = cy_top + trDrawH + pDrawH / 3;
-                    const pLx2 = cx + trDrawW + 2 * ratioX;
-                    const pLy2 = startY + (endY - startY) / 2;
-                    const pLx3 = pLx2 + 4 * ratioX;
-                    doc.line(pLx1, pTargetY, pLx2, pLy2);
-                    doc.line(pLx2, pLy2, pLx3, pLy2);
-                    
-                    const pAngle = Math.atan2(pLy2 - pTargetY, pLx2 - pLx1);
-                    drawArrowhead(pLx1, pTargetY, pAngle, arrowSize);
-                    
-                    doc.text(pSizeText, pLx3 + 0.8 * ratioX, pLy2 - 0.5 * ratioY, { align: "left" });
-                    doc.text("POST", pLx3 + 0.8 * ratioX, pLy2 + 1.2 * ratioY, { align: "left" });
-                }
-                
-                // 3. Mesh Wire
-                const mLx1 = meshX;
-                const mTargetY = fbY + 2.5 * dotSpacing;
-                const mLx2 = cx + trDrawW + 2 * ratioX;
-                const mLy2 = endY;
-                const mLx3 = mLx2 + 4 * ratioX;
-                doc.line(mLx1, mTargetY, mLx2, mLy2);
-                doc.line(mLx2, mLy2, mLx3, mLy2);
-                
-                const mAngle = Math.atan2(mLy2 - mTargetY, mLx2 - mLx1);
-                drawArrowhead(mLx1, mTargetY, mAngle, arrowSize);
-                
-                doc.text(meshText, mLx3 + 0.8 * ratioX, mLy2 - 0.5 * ratioY, { align: "left" });
-                doc.text("WIRE MESH", mLx3 + 0.8 * ratioX, mLy2 + 1.2 * ratioY, { align: "left" });
-                
-                // 4. Flat Bar (horizontal leader line on the left side)
-                const fLx1 = fbX;
-                const fLy1 = fbY + fbDrawH / 2;
-                const fLx2 = fbX - 10 * ratioX;
-                const fLy2 = fLy1;
-                const fLx3 = fLx2 - 4 * ratioX;
-                doc.line(fLx1, fLy1, fLx2, fLy2);
-                doc.line(fLx2, fLy2, fLx3, fLy2);
-                
-                const fAngle = Math.atan2(fLy2 - fLy1, fLx2 - fLx1);
-                drawArrowhead(fLx1, fLy1, fAngle, arrowSize);
-                
-                doc.text("FB1x1/8", fLx3 - 1 * ratioX, fLy2 + 1.0 * ratioY, { align: "right" });
-                
-                // Bottom Title SECTION A (underlined)
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(titleFontS);
-                const titleText = hasMid ? "DETAIL A" : "SECTION A";
-                const titleX = boxX + boxW / 2;
-                const titleY = boxY + boxH - 4.5 * ratioY;
-                doc.text(titleText, titleX, titleY, { align: "center" });
-                
-                // Underline
-                const textWidth = doc.getTextWidth(titleText);
-                doc.setLineWidth(0.35 * ratioX); // Bolder underline
-                doc.line(titleX - textWidth / 2, titleY + 0.5 * ratioY, titleX + textWidth / 2, titleY + 0.5 * ratioY);
-            };
-
-            const drawExtraFlatBarDetail = (doc, boxX, boxY, boxW, boxH, vals) => {
-                doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.3);
-
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(5.5);
-                doc.setTextColor(0, 0, 0);
-                doc.text("DETAIL - CORNER POST FLAT BARS", boxX + boxW / 2, boxY + 4.5, { align: "center" });
-
-                const cx = boxX + (boxW > 60 ? 30 : 20);
-                const cy = boxY + boxH / 2 + 2;
-                
-                doc.setLineWidth(0.28);
-                doc.rect(cx - 6, cy - 6, 12, 12, 'S');
-                doc.setFillColor(0, 0, 0);
-                doc.rect(cx - 7.5, cy - 6, 1.5, 12, 'FD');
-                doc.rect(cx + 6, cy - 6, 1.5, 12, 'FD');
-                
-                doc.triangle(cx - 6, cy - 4, cx - 6, cy - 5.2, cx - 5.2, cy - 4, 'F');
-                doc.triangle(cx - 6, cy + 4, cx - 6, cy + 5.2, cx - 5.2, cy + 4, 'F');
-                doc.triangle(cx + 6, cy - 4, cx + 6, cy - 5.2, cx + 5.2, cy - 4, 'F');
-                doc.triangle(cx + 6, cy + 4, cx + 6, cy + 5.2, cx + 5.2, cy + 4, 'F');
-                
-                const fontSize = boxW > 60 ? 4.2 : 3.5;
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(fontSize);
-                
-                const postTextX = boxW > 60 ? cx + 18 : cx + 12;
-                doc.line(cx, cy, postTextX - 2, cy);
-                drawArrowhead(cx, cy, Math.PI, 0.6);
-                doc.text("HSS POST", postTextX, cy + 0.5, { align: "left" });
-                
-                const leftTextX = boxX + 2;
-                doc.line(cx - 6.75, cy - 3, leftTextX + 16, cy - 14);
-                drawArrowhead(cx - 6.75, cy - 3, Math.atan2(-3 - (-14), -6.75 - (leftTextX + 16)), 0.6);
-                doc.text("WELDED FB (RETURN)", leftTextX, cy - 14 + 0.5, { align: "left" });
-                
-                const rightTextX = boxX + boxW - 2;
-                doc.line(cx + 6.75, cy + 3, rightTextX - 22, cy + 14);
-                drawArrowhead(cx + 6.75, cy + 3, Math.atan2(3 - 14, cx + 6.75 - (rightTextX - 22)), 0.6);
-                doc.text("WELDED FB (MAIN)", rightTextX, cy + 14 + 0.5, { align: "right" });
-            };
-
-            const topDetails = [];
-            if (vals.includeBasePlates === 'yes' && !isLoosePost) {
-                topDetails.push('base_plate');
-            }
-
-            topDetails.forEach((detail, index) => {
-                const boxX = 8;
-                const boxY = 8;
-                const boxW = 82;
-                const boxH = 50;
-                
-                if (detail === 'base_plate') {
-                    drawBasePlateDetail(doc, boxX, boxY, boxW, boxH, vals);
-                }
-            });
-            
+            // Divider between CAD viewport and right-hand specification sheet
+            doc.line(180, 7, 180, 175);
             // Horizontal divider above bottom blocks
             doc.line(7, 175, 290, 175);
-
-            function formatFeetInches(val) {
-                if (typeof val !== 'number' || isNaN(val)) return '0';
-                const totalSixteenths = Math.round(val * 16);
-                const totalInches = Math.floor(totalSixteenths / 16);
-                const sixteenths = totalSixteenths % 16;
-                const feet = Math.floor(totalInches / 12);
-                const inches = totalInches % 12;
-                
-                let fractionStr = '';
-                if (sixteenths > 0) {
-                    let num = sixteenths, den = 16;
-                    while (num % 2 === 0) { num /= 2; den /= 2; }
-                    fractionStr = ` ${num}/${den}`;
-                }
-                
-                if (feet > 0) {
-                    return `${feet}-${inches}${fractionStr}`;
-                } else {
-                    if (totalInches === 0 && sixteenths > 0) {
-                        return `${fractionStr.trim()}`;
-                    }
-                    return `${inches}${fractionStr}`;
-                }
-            }
 
             function formatFraction(val) {
                 if (typeof val !== 'number' || isNaN(val)) return '0"';
@@ -9015,26 +3716,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     fractionStr = ` ${num}/${den}`;
                 }
                 
-                let res = '';
                 if (feet > 0) {
-                    res = `${feet}'-${inches}${fractionStr}"`;
+                    return `${feet}'-${inches}${fractionStr}"`;
                 } else {
                     if (totalInches === 0 && sixteenths > 0) {
-                        res = `${fractionStr.trim()}"`;
-                    } else {
-                        res = `${inches}${fractionStr}"`;
+                        return `${fractionStr.trim()}"`;
                     }
+                    return `${inches}${fractionStr}"`;
                 }
-                return res.replace(/1\/2/g, '½')
-                          .replace(/3\/4/g, '¾')
-                          .replace(/1\/4/g, '¼');
-            }
-
-            function formatFractionWithVulgar(val) {
-                const str = formatFraction(val);
-                return str.replace(/1\/2/g, '½')
-                          .replace(/3\/4/g, '¾')
-                          .replace(/1\/4/g, '¼');
             }
 
             // --- CAD TO PDF COORDINATE MAPPING HELPERS ---
@@ -9045,137 +3734,85 @@ document.addEventListener('DOMContentLoaded', () => {
                 return [x, y];
             }
 
-            function drawArrowhead(x, y, angle, size = 2.28) {
-                let finalSize = size;
-                if (typeof pdfScale === 'number' && pdfScale > 0) {
-                    finalSize = size * pdfScale;
-                    finalSize = Math.max(0.8, Math.min(size, finalSize));
-                }
-                const length = finalSize;
-                const w_half = length * 0.222;
-                const alpha = Math.atan2(w_half, length);
-                const dist = Math.sqrt(length * length + w_half * w_half);
-                const x1 = x - dist * Math.cos(angle - alpha);
-                const y1 = y - dist * Math.sin(angle - alpha);
-                const x2 = x - dist * Math.cos(angle + alpha);
-                const y2 = y - dist * Math.sin(angle + alpha);
+            const pdfScale = (cadMaxX - cadMinX) > 0.001 ? (drawW / (cadMaxX - cadMinX)) : 1.0;
+
+            function drawArrowhead(x, y, angle, size = 1.8) {
+                const x1 = x - size * Math.cos(angle - Math.PI/6);
+                const y1 = y - size * Math.sin(angle - Math.PI/6);
+                const x2 = x - size * Math.cos(angle + Math.PI/6);
+                const y2 = y - size * Math.sin(angle + Math.PI/6);
                 doc.setFillColor(0, 0, 0);
                 doc.triangle(x, y, x1, y1, x2, y2, 'F');
             }
 
-            function drawCadDimensionDirect(dim, idx) {
-                const customDimId = `custom-dim-${idx}`;
-                if (hiddenAnnotations.has(customDimId)) return;
-                
-                const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                const cosS = Math.cos(slopeRad);
-                const sinS = Math.sin(slopeRad);
-                
-                const rx1 = dim.cx1 * cosS - dim.cy1 * sinS;
-                const ry1 = dim.cx1 * sinS + dim.cy1 * cosS;
-                const rx2 = dim.cx2 * cosS - dim.cy2 * sinS;
-                const ry2 = dim.cx2 * sinS + dim.cy2 * cosS;
-                const rdx1 = dim.cdx1 * cosS - dim.cdy1 * sinS;
-                const rdy1 = dim.cdx1 * sinS + dim.cdy1 * cosS;
-                const rdx2 = dim.cdx2 * cosS - dim.cdy2 * sinS;
-                const rdy2 = dim.cdx2 * sinS + dim.cdy2 * cosS;
-
-                const p1 = cadToPdf(rx1, ry1);
-                const p2 = cadToPdf(rx2, ry2);
-                const d1 = cadToPdf(rdx1, rdy1);
-                const d2 = cadToPdf(rdx2, rdy2);
+            function drawCadDimensionDirect(dim) {
+                const p1 = cadToPdf(dim.cx1, dim.cy1);
+                const p2 = cadToPdf(dim.cx2, dim.cy2);
+                const d1 = cadToPdf(dim.cdx1, dim.cdy1);
+                const d2 = cadToPdf(dim.cdx2, dim.cdy2);
                 
                 doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.08);
+                doc.setLineWidth(0.2);
                 doc.line(p1[0], p1[1], d1[0], d1[1]);
                 doc.line(p2[0], p2[1], d2[0], d2[1]);
+                doc.line(d1[0], d1[1], d2[0], d2[1]);
                 
-                // Draw dimension line with a 1.0mm overshoot beyond d1 and d2
                 const dx = d2[0] - d1[0];
                 const dy = d2[1] - d1[1];
                 const len = Math.sqrt(dx*dx + dy*dy);
                 if (len < 0.001) return;
                 
                 const arrowAngle = Math.atan2(dy, dx);
-                const overshoot = 1.0;
-                const d1_extended_x = d1[0] - Math.cos(arrowAngle) * overshoot;
-                const d1_extended_y = d1[1] - Math.sin(arrowAngle) * overshoot;
-                const d2_extended_x = d2[0] + Math.cos(arrowAngle) * overshoot;
-                const d2_extended_y = d2[1] + Math.sin(arrowAngle) * overshoot;
-                doc.line(d1_extended_x, d1_extended_y, d2_extended_x, d2_extended_y);
-                
-                // Draw bold architectural slash ticks slanting bottom-left to top-right
-                doc.setLineWidth(0.28);
-                const tickSize = 0.9;
-                doc.line(d1[0] - tickSize, d1[1] + tickSize, d1[0] + tickSize, d1[1] - tickSize);
-                doc.line(d2[0] - tickSize, d2[1] + tickSize, d2[0] + tickSize, d2[1] - tickSize);
+                if (len < 5.0) {
+                    const extLen = 2.0;
+                    doc.line(d1[0], d1[1], d1[0] - Math.cos(arrowAngle) * extLen, d1[1] - Math.sin(arrowAngle) * extLen);
+                    doc.line(d2[0], d2[1], d2[0] + Math.cos(arrowAngle) * extLen, d2[1] + Math.sin(arrowAngle) * extLen);
+                    drawArrowhead(d1[0], d1[1], arrowAngle, 1.2);
+                    drawArrowhead(d2[0], d2[1], arrowAngle + Math.PI, 1.2);
+                } else {
+                    drawArrowhead(d1[0], d1[1], arrowAngle + Math.PI, 1.5);
+                    drawArrowhead(d2[0], d2[1], arrowAngle, 1.5);
+                }
                 
                 const midX = (d1[0] + d2[0]) / 2;
                 const midY = (d1[1] + d2[1]) / 2;
                 
-                const spec = annotationProperties[customDimId] || {};
-                const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : customDimFontSize;
-                const activeTextGap = spec.textGap !== undefined ? spec.textGap : customDimTextGap;
-                
-                const dx_cad = dim.cx2 - dim.cx1;
-                const dy_cad = dim.cy2 - dim.cy1;
-                const distInches = Math.hypot(dx_cad, dy_cad);
-                const activeText = spec.text !== undefined && spec.text !== null ? spec.text : (dim.text || formatFraction(distInches));
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(4.4 * (activeFontSize / 12.0));
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(5.0 * (customDimFontSize / 12.0));
                 doc.setTextColor(0, 0, 0);
                 
                 let textAngle = -arrowAngle * 180 / Math.PI;
                 if (textAngle > 90) textAngle -= 180;
                 if (textAngle < -90) textAngle += 180;
-                if (textAngle <= -89.9) textAngle += 180;
                 
                 const px = -dy / len;
                 const py = dx / len;
-                let baseShift = 1.5 * (activeTextGap / 8.0);
-                const isVertical = Math.abs(px) > 0.5;
-                if (isVertical) {
-                    baseShift = 2.2;
-                } else {
-                    // For horizontal dimensions, keep the default 1.5mm visual gap.
-                    if (py > 0.01) {
-                        baseShift += 1.8; // Characters extend upwards towards the line
-                    }
-                }
-                const tx = midX + px * baseShift;
-                const ty = midY + py * baseShift;
+                const textShiftMm = 1.8;
+                const tx = midX + px * textShiftMm;
+                const ty = midY + py * textShiftMm;
                 
-                doc.text(activeText, tx, ty, { align: "center", angle: textAngle });
+                const labelText = dim.text || formatFraction(Math.hypot(dim.cx2 - dim.cx1, dim.cy2 - dim.cy1));
+                doc.text(labelText, tx, ty, { align: "center", angle: textAngle });
             }
 
-            function drawCadDimension(cx1, cy1, cx2, cy2, offsetMm, text, textSide, dimId) {
-                if (dimId && hiddenAnnotations.has(dimId)) return;
-
+            function drawCadDimension(cx1, cy1, cx2, cy2, offsetMm, text, textSide) {
                 let finalOffsetMm = offsetMm;
-                if (dimId && annotationOffsets[dimId] !== undefined) {
-                    finalOffsetMm += annotationOffsets[dimId] * pdfScale;
-                } else {
-                    if (Math.abs(cy1 - cy2) < 0.01 && cy1 > 10.0) {
-                        if (annotationOffsets["dim-width"] !== undefined) {
-                            finalOffsetMm += annotationOffsets["dim-width"] * pdfScale;
-                        }
-                    } else if (Math.abs(cx1 - cx2) < 0.01) {
-                        if (annotationOffsets["dim-height"] !== undefined) {
-                            finalOffsetMm += annotationOffsets["dim-height"] * pdfScale;
-                        }
+                if (Math.abs(cy1 - cy2) < 0.01) {
+                    if (offsetMm < 0) {
+                        const scaleVal = CadEngine.isLibReady() ? 25.4 : 10;
+                        const deltaY = annotationOffsets["dim-width"] !== undefined ? (annotationOffsets["dim-width"] - (35 / scaleVal)) : 0;
+                        finalOffsetMm = offsetMm - (deltaY * pdfScale);
+                    }
+                } else if (Math.abs(cx1 - cx2) < 0.01) {
+                    if (offsetMm < 0) {
+                        const scaleVal = CadEngine.isLibReady() ? 25.4 : 10;
+                        const deltaX = annotationOffsets["dim-height"] !== undefined ? (annotationOffsets["dim-height"] - (35 / scaleVal)) : 0;
+                        finalOffsetMm = offsetMm - (deltaX * pdfScale);
                     }
                 }
 
-                const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                const cosS = Math.cos(slopeRad);
-                const sinS = Math.sin(slopeRad);
-                const rx1 = cx1 * cosS - cy1 * sinS;
-                const ry1 = cx1 * sinS + cy1 * cosS;
-                const rx2 = cx2 * cosS - cy2 * sinS;
-                const ry2 = cx2 * sinS + cy2 * cosS;
-                const p1 = cadToPdf(rx1, ry1);
-                const p2 = cadToPdf(rx2, ry2);
+                const p1 = cadToPdf(cx1, cy1);
+                const p2 = cadToPdf(cx2, cy2);
                 
                 const dx = p2[0] - p1[0];
                 const dy = p2[1] - p1[1];
@@ -9185,393 +3822,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 const px = -dy / len;
                 const py = dx / len;
                 
-                // Clamp offset to keep dimension lines inside borders [9.5, 287.5]
-                if (Math.abs(px) > 0.01) {
-                    let d1_x = p1[0] + px * finalOffsetMm;
-                    let d2_x = p2[0] + px * finalOffsetMm;
-                    if (d1_x < 9.5 || d2_x < 9.5) {
-                        const shortage = 9.5 - Math.min(d1_x, d2_x);
-                        finalOffsetMm += shortage / px;
-                    }
-                    d1_x = p1[0] + px * finalOffsetMm;
-                    d2_x = p2[0] + px * finalOffsetMm;
-                    if (d1_x > 287.5 || d2_x > 287.5) {
-                        const excess = Math.max(d1_x, d2_x) - 287.5;
-                        finalOffsetMm -= excess / px;
-                    }
-                }
-                
                 const d1 = [p1[0] + px * finalOffsetMm, p1[1] + py * finalOffsetMm];
                 const d2 = [p2[0] + px * finalOffsetMm, p2[1] + py * finalOffsetMm];
                 
                 // Draw extension lines
                 const extAngle = Math.atan2(d1[1] - p1[1], d1[0] - p1[0]);
                 const extLength = Math.sqrt((d1[0]-p1[0])**2 + (d1[1]-p1[1])**2);
-                const gap = 0.76; // 0.03" gap from object
-                const extOver = 1.52; // 0.06" extension beyond dimension line
-                
-                const startX1 = p1[0] + gap * Math.cos(extAngle);
-                const startY1 = p1[1] + gap * Math.sin(extAngle);
-                const extX1 = p1[0] + (extLength + extOver) * Math.cos(extAngle);
-                const extY1 = p1[1] + (extLength + extOver) * Math.sin(extAngle);
+                const extX1 = p1[0] + (extLength + 1.8) * Math.cos(extAngle);
+                const extY1 = p1[1] + (extLength + 1.8) * Math.sin(extAngle);
                 doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.08);
-                doc.line(startX1, startY1, extX1, extY1);
+                doc.setLineWidth(0.2);
+                doc.line(p1[0], p1[1], extX1, extY1);
                 
-                const startX2 = p2[0] + gap * Math.cos(extAngle);
-                const startY2 = p2[1] + gap * Math.sin(extAngle);
-                const extX2 = p2[0] + (extLength + extOver) * Math.cos(extAngle);
-                const extY2 = p2[1] + (extLength + extOver) * Math.sin(extAngle);
-                doc.line(startX2, startY2, extX2, extY2);
+                const extX2 = p2[0] + (extLength + 1.8) * Math.cos(extAngle);
+                const extY2 = p2[1] + (extLength + 1.8) * Math.sin(extAngle);
+                doc.line(p2[0], p2[1], extX2, extY2);
                 
-                // Draw dimension line with a 1.0mm overshoot beyond d1 and d2
+                // Draw dimension line
+                doc.line(d1[0], d1[1], d2[0], d2[1]);
+                
+                // Draw arrowheads
                 const arrowAngle = Math.atan2(d2[1] - d1[1], d2[0] - d1[0]);
-                const overshoot = 1.0;
-                const d1_extended_x = d1[0] - Math.cos(arrowAngle) * overshoot;
-                const d1_extended_y = d1[1] - Math.sin(arrowAngle) * overshoot;
-                const d2_extended_x = d2[0] + Math.cos(arrowAngle) * overshoot;
-                const d2_extended_y = d2[1] + Math.sin(arrowAngle) * overshoot;
-                doc.line(d1_extended_x, d1_extended_y, d2_extended_x, d2_extended_y);
-                
-                // Draw bold architectural slash ticks slanting bottom-left to top-right
-                doc.setLineWidth(0.28);
-                const tickSize = 0.9;
-                doc.line(d1[0] - tickSize, d1[1] + tickSize, d1[0] + tickSize, d1[1] - tickSize);
-                doc.line(d2[0] - tickSize, d2[1] + tickSize, d2[0] + tickSize, d2[1] - tickSize);
+                if (len < 5.0) {
+                    const extLen = 2.0;
+                    doc.line(d1[0], d1[1], d1[0] - Math.cos(arrowAngle) * extLen, d1[1] - Math.sin(arrowAngle) * extLen);
+                    doc.line(d2[0], d2[1], d2[0] + Math.cos(arrowAngle) * extLen, d2[1] + Math.sin(arrowAngle) * extLen);
+                    
+                    drawArrowhead(d1[0], d1[1], arrowAngle, 1.2);
+                    drawArrowhead(d2[0], d2[1], arrowAngle + Math.PI, 1.2);
+                } else {
+                    drawArrowhead(d1[0], d1[1], arrowAngle + Math.PI, 1.5);
+                    drawArrowhead(d2[0], d2[1], arrowAngle, 1.5);
+                }
                 
                 const midX = (d1[0] + d2[0]) / 2;
                 const midY = (d1[1] + d2[1]) / 2;
                 
-                // Look up specific properties
-                const spec = (dimId && annotationProperties[dimId]) || {};
-                const activeTextGap = spec.textGap !== undefined ? spec.textGap : customDimTextGap;
-                const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : customDimFontSize;
-                const activeText = spec.text !== undefined && spec.text !== null ? spec.text : text;
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(4.4 * (activeFontSize / 12.0));
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(5.0 * (customDimFontSize / 12.0));
                 doc.setTextColor(0, 0, 0);
                 
                 let textAngle = -arrowAngle * 180 / Math.PI;
                 if (textAngle > 90) textAngle -= 180;
                 if (textAngle < -90) textAngle += 180;
-                if (textAngle <= -89.9) textAngle += 180;
                 
-                const isStaggered = (len < 12.0 && Math.abs(py) > 0.5 && finalOffsetMm < 0 && dimId && dimId.includes('-end-') && activeText.length > 2);
                 let sideMult = Math.sign(finalOffsetMm);
                 if (textSide === "left" || textSide === "opposite") {
                     sideMult = -sideMult;
                 }
-                if (isStaggered) {
-                    sideMult = -sideMult; // draw on the opposite side (below the dimension line)
-                }
-                let baseShift = 1.5 * (activeTextGap / 8.0);
-                const isVertical = Math.abs(px) > 0.5;
-                if (isVertical) {
-                    const isRightSide = offsetMm >= 0;
-                    if (isRightSide) {
-                        if (dimId === 'dim-vert-right-top-gap') {
-                            tx = midX - 1.0;
-                        } else if (dimId === 'dim-vert-right-picket-height' || dimId === 'dim-vert-right-mesh-height') {
-                            tx = midX + 0.8;
-                        } else if (dimId === 'dim-vert-right-fence-height') {
-                            tx = midX;
-                        } else if (dimId === 'dim-vert-right-bot-gap') {
-                            tx = midX + 0.4;
-                        } else if (dimId === 'dim-vert-right-overall-height') {
-                            tx = midX + 0.4;
-                        } else if (dimId === 'dim-vert-picket-height') {
-                            tx = midX - 1.0;
-                        } else if (dimId === 'dim-vert-mid-gap') {
-                            tx = midX - 1.0;
-                        } else if (dimId === 'dim-vert-fence-height') {
-                            tx = midX;
-                        } else if (dimId === 'dim-vert-bot-gap') {
-                            tx = midX - 1.0;
-                        } else if (dimId === 'dim-height') {
-                            tx = midX - 0.2;
-                        } else {
-                            tx = midX - 1.0;
-                        }
-                    } else {
-                        tx = midX - 1.0;
-                    }
-
-                    // If the text contains a fraction, shift it 1.8mm to the right to compensate for jsPDF unicode font spacing
-                    // ONLY apply this to generic/left dimensions to avoid double-compensating right-side dimensions which are explicitly set above.
-                    const isGenericOrLeft = !dimId || !dimId.includes('right-');
-                    if (isGenericOrLeft && activeText && (activeText.includes('½') || activeText.includes('¼') || activeText.includes('¾') || activeText.includes('/'))) {
-                        tx += 1.8;
-                    }
-
-                    if (dimId && (dimId.includes('gap') || len < 10.0) && dimId !== 'dim-vert-right-bot-gap' && dimId !== 'dim-vert-bot-gap') {
-                        ty = midY + 0.9; // Shift down by 0.9mm to compensate for 1.8mm text length and center it perfectly
-                    } else {
-                        ty = midY + 1.8; // Shift down by 1.8mm for longer text to center it perfectly
-                    }
-                    textAngle = 90;
-                    textAlign = "center";
-                } else {
-                    // For horizontal/sloped dimensions, text should ALWAYS sit ABOVE the dimension line.
-                    const textShiftMm = -1.5 * (activeTextGap / 8.0);
-                    const signPy = Math.sign(py) || 1;
-                    tx = midX + px * textShiftMm * signPy;
-                    ty = midY + py * textShiftMm * signPy;
-                    textAlign = "center";
-                }
-                console.log(`[drawCadDimension] ${dimId}: isVertical=${isVertical}, text='${activeText}', tx=${tx.toFixed(2)}, ty=${ty.toFixed(2)}, midX=${midX.toFixed(2)}, midY=${midY.toFixed(2)}, offsetMm=${offsetMm}`);
-
-                // Check for small dimensions (< 10.0 mm on paper) to move text outside (horizontal dimensions only)
-                if (!isVertical && len < 10.0 && Math.abs(dx) < 0.1 && dimId !== 'dim-vert-ground' && dimId !== 'dim-vert-mid-gap') {
-                    textAngle = 0; // horizontal text
-                    const dir = Math.sign(finalOffsetMm) || 1;
-                    let L = 6.0;
-                    let textStart = 1.2;
-                    
-                    if (dimId === 'dim-vert-ground') {
-                        L = 12.0;
-                        textStart = 6.8;
-                    }
-                    
-                    tx = midX + textStart * dir;
-                    ty = midY - 1.5; // above the line per user request
-                    textAlign = (dir > 0) ? "left" : "right";
-                }
+                const textShiftMm = 1.8 * sideMult;
+                const tx = midX + px * textShiftMm;
+                const ty = midY + py * textShiftMm;
                 
-                doc.text(activeText, tx, ty, { align: textAlign, angle: textAngle });
+                doc.text(text, tx, ty, { align: "center", angle: textAngle });
             }
 
-            function drawCadLeader(targetCx, targetCy, labelPdfX, labelPdfY, text, textAlign = "left", leaderId = "", skipYShift = false) {
-                if (leaderId && hiddenAnnotations.has(leaderId)) return;
-                
-                const defaultLeaderOffsets = {
-                    "leader-top-rail": { dx: 0, dy: 12 / 25.4 },
-                    "leader-bot-rail": { dx: 0, dy: -12 / 25.4 },
-                    "leader-left-post": { dx: 0, dy: 10 / 25.4 },
-                    "leader-right-post": { dx: 0, dy: -12 / 25.4 },
-                    "leader-mid-post": { dx: 0, dy: 10 / 25.4 },
-                    "leader-mid-rail": { dx: 0, dy: -10 / 25.4 },
-                    "leader-pickets": { dx: 0, dy: 10 / 25.4 },
-                    "leader-kickplate": { dx: 0, dy: -10 / 25.4 },
-                    "leader-post": { dx: 0, dy: 10 / 25.4 }
-                };
-                
-                let dx = 0, dy = 0;
-                const defOff = defaultLeaderOffsets[leaderId] || { dx: 0, dy: 0 };
-                if (leaderId && annotationOffsets[leaderId]) {
-                    dx = annotationOffsets[leaderId].dx * pdfScale;
-                    dy = -annotationOffsets[leaderId].dy * pdfScale;
-                } else {
-                    dx = defOff.dx * pdfScale;
-                    dy = -defOff.dy * pdfScale;
-                }
-                
-                let tcx_offset = targetCx;
-                let tcy_offset = targetCy;
-                if (leaderId && annotationOffsets[leaderId]) {
-                    tcx_offset += annotationOffsets[leaderId].tdx || 0;
-                    tcy_offset += annotationOffsets[leaderId].tdy || 0;
-                }
-                
-                const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                const cosS = Math.cos(slopeRad);
-                const sinS = Math.sin(slopeRad);
-                const rx = tcx_offset * cosS - tcy_offset * sinS;
-                const ry = tcx_offset * sinS + tcy_offset * cosS;
-                const target = cadToPdf(rx, ry);
-
-                // Get leader overrides and font properties first so we can compute actual text width
-                const spec = (leaderId && annotationProperties[leaderId]) || {};
-                const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : 11;
-                const activeText = spec.text !== undefined && spec.text !== null ? spec.text : text;
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(4.2 * (activeFontSize / 11.0));
-                doc.setTextColor(0, 0, 0);
-                
-                let cleanedText = activeText || "";
-                if (cleanedText) {
-                    cleanedText = cleanedText.split(/[\s(]/)[0];
-                }
-                const textWidth = doc.getTextWidth(cleanedText);
-
-                const finalLabelX = labelPdfX + dx;
-                let finalLabelY = labelPdfY + dy;
-                let actualAlign = textAlign;
-                if (actualAlign !== "center") {
-                    actualAlign = (target[0] > finalLabelX) ? "left" : "right";
-                }
-
-                // Clamp finalLabelX using actual text width so it is strictly inside the borders
-                let clampedLabelX = finalLabelX;
-                if (actualAlign === "left") {
-                    // Left-side leader: text is on the left, goes from clampedLabelX - 0.8 - textWidth to clampedLabelX - 0.8.
-                    // Must stay to the right of left inner border (7mm).
-                    clampedLabelX = Math.max(9.3 + textWidth, clampedLabelX);
-                } else if (actualAlign === "right") {
-                    // Right-side leader: text is on the right, goes from clampedLabelX + 0.8 to clampedLabelX + 0.8 + textWidth.
-                    // Must stay to the left of BOM table (176mm), or right border (287.5mm) in fullWidth mode, returns, or below BOM (Y >= 50)
-                    let rightLimit = 176.0;
-                    const isReturn = (activePanelType === 'leftReturn' || activePanelType === 'rightReturn');
-                    if (layoutMode === 'fullWidth' || isReturn || finalLabelY >= 50.0) {
-                        rightLimit = 287.0;
-                    }
-                    clampedLabelX = Math.min(rightLimit - textWidth, clampedLabelX);
-                }
-
-                if (!skipYShift) {
-                    // Prevent vertical overlap on the same side margin (left or right)
-                    let attempts = 0;
-                    while (attempts < 20) {
-                        let collision = false;
-                        for (const lead of placedPdfLeaders) {
-                            if (Math.abs(lead.x - clampedLabelX) < 10 && Math.abs(lead.y - finalLabelY) < 3.8) {
-                                collision = true;
-                                break;
-                            }
-                        }
-                        if (!collision) break;
-                        finalLabelY += 4.5; // shift down
-                        attempts++;
-                    }
-                }
-                // Clamp to keep strictly inside the page borders
-                if (finalLabelY > 171) finalLabelY = 171;
-                if (finalLabelY < 10) finalLabelY = 10;
-                placedPdfLeaders.push({ x: clampedLabelX, y: finalLabelY });
-
-                doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.10);
-                
-                let ex = clampedLabelX;
-                let shoulderLength = 3.0;
-                if (actualAlign === "left") {
-                    ex = clampedLabelX + shoulderLength;
-                } else if (actualAlign === "right") {
-                    ex = clampedLabelX - shoulderLength;
-                }
-                
-                doc.line(clampedLabelX, finalLabelY, ex, finalLabelY);
-
-                const dx_line = target[0] - ex;
-                const dy_line = target[1] - finalLabelY;
-                const len_line = Math.hypot(dx_line, dy_line);
-                let drawTargetX = target[0];
-                let drawTargetY = target[1];
-                const gap = 0.0; // arrow end should touch components exactly
-                if (len_line > gap) {
-                    drawTargetX = target[0] - (dx_line / len_line) * gap;
-                    drawTargetY = target[1] - (dy_line / len_line) * gap;
-                }
-                doc.line(ex, finalLabelY, drawTargetX, drawTargetY);
-                const finalAngle = Math.atan2(target[1] - finalLabelY, target[0] - ex);
-                drawArrowhead(drawTargetX, drawTargetY, finalAngle, 1.8);
-                
-                let pdfTextAlign = actualAlign;
-                let textShiftX = 0;
-                let textShiftY = 0.6; // Center vertically on the shoulder line (finalLabelY)
-                
-                if (actualAlign === "left") {
-                    pdfTextAlign = "right";
-                    textShiftX = -0.8;
-                } else if (actualAlign === "right") {
-                    pdfTextAlign = "left";
-                    textShiftX = 0.8;
-                } else if (actualAlign === "center") {
-                    textShiftY = -1.2;
-                }
-                
-                doc.text(cleanedText, clampedLabelX + textShiftX, finalLabelY + textShiftY, { align: pdfTextAlign });
-            }
-
-            function drawTopBottomLeader(targetCx, targetCy, labelPdfX, labelPdfY, text, leaderId = "", isTop = true) {
-                if (leaderId && hiddenAnnotations.has(leaderId)) return;
-
+            function drawCadLeader(targetCx, targetCy, labelPdfX, labelPdfY, text, textAlign = "left", leaderId = "") {
                 let dx = 0, dy = 0;
                 if (leaderId && annotationOffsets[leaderId]) {
                     dx = annotationOffsets[leaderId].dx * pdfScale;
                     dy = -annotationOffsets[leaderId].dy * pdfScale;
                 }
-
-                let tcx_offset = targetCx;
-                let tcy_offset = targetCy;
-                if (leaderId && annotationOffsets[leaderId]) {
-                    tcx_offset += annotationOffsets[leaderId].tdx || 0;
-                    tcy_offset += annotationOffsets[leaderId].tdy || 0;
-                }
-
-                const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                const cosS = Math.cos(slopeRad);
-                const sinS = Math.sin(slopeRad);
-                const rx = tcx_offset * cosS - tcy_offset * sinS;
-                const ry = tcx_offset * sinS + tcy_offset * cosS;
-                const target = cadToPdf(rx, ry);
-
-                // Get leader overrides and font properties first so we can compute actual text width
-                const spec = (leaderId && annotationProperties[leaderId]) || {};
-                const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : 11;
-                const activeText = spec.text !== undefined && spec.text !== null ? spec.text : text;
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(4.2 * (activeFontSize / 11.0));
-                doc.setTextColor(0, 0, 0);
-
-                let cleanedText = activeText || "";
-                if (cleanedText) {
-                    cleanedText = cleanedText.split(/[\s(]/)[0];
-                }
-
+                
+                const target = cadToPdf(targetCx, targetCy);
                 const finalLabelX = labelPdfX + dx;
                 const finalLabelY = labelPdfY + dy;
-
-                const isVertical = Math.abs(target[0] - finalLabelX) <= 1.5;
+                
                 doc.setDrawColor(0, 0, 0);
-                doc.setLineWidth(0.10);
-
-                if (isVertical) {
-                    // Draw a straight vertical line from text to target (no horizontal landing)
-                    const startY = isTop ? (finalLabelY + 1.2) : (finalLabelY - 3.2);
-                    doc.line(finalLabelX, startY, target[0], target[1]);
-                    const angle = Math.atan2(target[1] - startY, target[0] - finalLabelX);
-                    drawArrowhead(target[0], target[1], angle, 1.8);
-                    
-                    // Draw text centered
-                    doc.text(cleanedText, finalLabelX, finalLabelY, { align: "center" });
-                } else {
-                    // Draw horizontal landing and diagonal leader line
-                    let ex = finalLabelX;
-                    const shoulderLength = 3.0;
-                    let pdfTextAlign = "center";
-                    let textShiftX = 0;
-                    let textShiftY = 0.6; // Center vertically on the shoulder line
-
-                    if (target[0] > finalLabelX) {
-                        // Pointing right: shoulder goes right
-                        ex = finalLabelX + shoulderLength;
-                        pdfTextAlign = "right";
-                        textShiftX = -0.8;
-                    } else {
-                        // Pointing left: shoulder goes left
-                        ex = finalLabelX - shoulderLength;
-                        pdfTextAlign = "left";
-                        textShiftX = 0.8;
-                    }
-
-                    // Draw horizontal shoulder line
-                    doc.line(finalLabelX, finalLabelY, ex, finalLabelY);
-                    
-                    // Draw diagonal line from shoulder end to target
-                    doc.line(ex, finalLabelY, target[0], target[1]);
-                    
-                    // Draw arrowhead at target
-                    const angle = Math.atan2(target[1] - finalLabelY, target[0] - ex);
-                    drawArrowhead(target[0], target[1], angle, 1.8);
-                    
-                    // Draw text next to shoulder
-                    doc.text(cleanedText, finalLabelX + textShiftX, finalLabelY + textShiftY, { align: pdfTextAlign });
-                }
+                doc.setLineWidth(0.18);
+                doc.line(finalLabelX, finalLabelY, target[0], target[1]);
+                
+                const angle = Math.atan2(target[1] - finalLabelY, target[0] - finalLabelX);
+                drawArrowhead(target[0], target[1], angle, 1.2);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(4.8 * (customDimFontSize / 12.0));
+                doc.setTextColor(0, 0, 0);
+                
+                const textShift = textAlign === "left" ? 0.8 : -0.8;
+                doc.text(text, finalLabelX + textShift, finalLabelY + 1.0, { align: textAlign });
             }
-
 
             // Draw Fence Dimensions and Callouts if in fence mode
             if (cat === 'fence') {
@@ -9680,7 +4010,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Calculate active fence/structural values
             const bomItems = [];
-            desc = cat.toUpperCase();
+            let desc = cat.toUpperCase();
 
 
             if (currentMode === 'draft') {
@@ -9750,11 +4080,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     const wValSingle = calculateWeight(g.type, g.size, g.length, g.params, 1);
-                    const totalWeight = wValSingle * g.qty * assemblyQty;
+                    const totalWeight = wValSingle * g.qty;
                     
                     bomItems.push({
                         mark: markCode,
-                        qty: g.qty * assemblyQty,
+                        qty: g.qty,
                         desc: itemDesc,
                         len: g.type === 'plate' ? (g.size === 'CUSTOM' ? `PL ${g.params.t}"` : g.size) : formatFraction(g.length),
                         weight: Math.round(totalWeight * 10) / 10,
@@ -9834,11 +4164,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Top Rail
                 if (topMark) {
                     const topRailName = vals.topRailSize === 'CUSTOM' ? `HSS ${vals.topRailH}x${vals.topRailH}` : vals.topRailSize;
-                    const wVal = calculateWeight(vals.topRailType, vals.topRailSize, preciseSlopedWidth, { w: vals.topRailH, h: vals.topRailH, t: 0.12 }, numSpans * assemblyQty);
+                    const wVal = calculateWeight(vals.topRailType, vals.topRailSize, preciseSlopedWidth, { w: vals.topRailH, h: vals.topRailH, t: 0.12 }, numSpans);
                     
                     bomItems.push({
                         mark: topMark, 
-                        qty: numSpans * assemblyQty,
+                        qty: numSpans,
                         desc: topRailName,
                         remark: "TOP RAIL",
                         len: formatFraction(preciseSlopedWidth),
@@ -9852,11 +4182,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Posts
                 if (postMark) {
                     const postName = vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postW}` : vals.postSize;
-                    const wVal = calculateWeight(vals.postType, vals.postSize, vals.postHeight, { w: vals.postW, h: vals.postW, t: 0.15 }, numPosts * assemblyQty);
+                    const wVal = calculateWeight(vals.postType, vals.postSize, vals.postHeight, { w: vals.postW, h: vals.postW, t: 0.15 }, numPosts);
                     
                     bomItems.push({
                         mark: postMark, 
-                        qty: numPosts * assemblyQty,
+                        qty: numPosts,
                         desc: postName,
                         remark: "POST",
                         len: formatFraction(vals.postHeight),
@@ -9870,11 +4200,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Bottom Rail
                 if (botMark) {
                     const botRailName = vals.botRailSize === 'CUSTOM' ? `HSS ${vals.botRailH}x${vals.botRailH}` : vals.botRailSize;
-                    const wVal = calculateWeight(vals.botRailType, vals.botRailSize, preciseSlopedWidth, { w: vals.botRailH, h: vals.botRailH, t: 0.12 }, numSpans * assemblyQty);
+                    const wVal = calculateWeight(vals.botRailType, vals.botRailSize, preciseSlopedWidth, { w: vals.botRailH, h: vals.botRailH, t: 0.12 }, numSpans);
                     
                     bomItems.push({
                         mark: botMark,
-                        qty: numSpans * assemblyQty,
+                        qty: numSpans,
                         desc: botRailName,
                         remark: "BOTTOM RAIL",
                         len: formatFraction(preciseSlopedWidth),
@@ -9888,11 +4218,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Mid Rail
                 if (midMark) {
                     const midRailName = vals.midRailSize === 'CUSTOM' ? `HSS ${vals.midRailH}x${vals.midRailH}` : vals.midRailSize;
-                    const wVal = calculateWeight(vals.midRailType, vals.midRailSize, preciseSlopedWidth, { w: vals.midRailH, h: vals.midRailH, t: 0.12 }, numSpans * assemblyQty);
+                    const wVal = calculateWeight(vals.midRailType, vals.midRailSize, preciseSlopedWidth, { w: vals.midRailH, h: vals.midRailH, t: 0.12 }, numSpans);
                     
                     bomItems.push({
                         mark: midMark,
-                        qty: numSpans * assemblyQty,
+                        qty: numSpans,
                         desc: midRailName,
                         remark: "MID RAIL",
                         len: formatFraction(preciseSlopedWidth),
@@ -9906,11 +4236,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Pickets
                 if (picketMark) {
                     const picketName = vals.picketSize === 'CUSTOM' ? `HSS ${vals.picketW}x${vals.picketW}` : vals.picketSize;
-                    const wVal = calculateWeight(vals.picketType, vals.picketSize, picketH, { w: vals.picketW, h: vals.picketW, t: 0.08 }, totalPickets * assemblyQty);
+                    const wVal = calculateWeight(vals.picketType, vals.picketSize, picketH, { w: vals.picketW, h: vals.picketW, t: 0.08 }, totalPickets);
                     
                     bomItems.push({
                         mark: picketMark,
-                        qty: totalPickets * assemblyQty,
+                        qty: totalPickets,
                         desc: picketName,
                         remark: "PICKET",
                         len: formatFraction(picketH),
@@ -9924,11 +4254,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Base Plates
                 if (bpMark) {
                     const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
-                    const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, numPosts * assemblyQty);
+                    const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, numPosts);
                     
                     bomItems.push({
                         mark: bpMark,
-                        qty: numPosts * assemblyQty,
+                        qty: numPosts,
                         desc: `${bpW}x${bpL} Plate`,
                         remark: "BASE PLATE",
                         len: bpName,
@@ -9939,296 +4269,164 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             } else if (cat === 'rail_catalog') {
-                if (isLoosePost) {
-                    const style = vals.railStyle || 'classical';
-                    const props = getResolvedPanelProperties(vals, style);
-                    let pHeight = props ? props.pHeight : 45.75;
-                    let topH = props ? props.topRailH : 1.5;
-                    let postType = props ? props.postType : 'hss_rect';
-                    let postSize = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? 'CUSTOM' : vals.postSize;
-                    let postW = props ? props.postW : 1.5;
-                    let postH = props ? props.postH : 1.5;
-                    let postT = props ? props.postT : 0.1196;
-                    
-                    const postWeight = calculateWeight(postType, postSize, pHeight, { w: postW, h: postH, t: postT }, 1 * assemblyQty);
-                    const postDwgName = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                    
-                    bomItems.push({
-                        mark: `a${drawingNo.toUpperCase()}`,
-                        qty: 1 * assemblyQty,
-                        desc: postDwgName,
-                        remark: "LOOSE POST",
-                        len: formatFraction(pHeight),
-                        weight: Math.round(postWeight * 10) / 10,
-                        shape: postType.toUpperCase(),
-                        size: postDwgName,
-                        len_dec: pHeight,
-                        grade: 'A500'
-                    });
-                    
-                    const includeBasePlates = props ? props.includeBasePlates : 'no';
-                    if (includeBasePlates === 'yes') {
-                        let bpW = props ? props.basePlateW : 6.0;
-                        let bpL = props ? props.basePlateL : 6.0;
-                        let bpH = props ? props.basePlateT : 0.5;
-                        const bpWeight = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: bpH }, 1 * assemblyQty);
-                        const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${bpH}"` : vals.basePlateSize;
-                        
-                        bomItems.push({
-                            mark: `b${drawingNo.toUpperCase()}`,
-                            qty: 1 * assemblyQty,
-                            desc: `${bpW}x${bpL} Plate`,
-                            remark: "BASE PLATE",
-                            len: bpName,
-                            weight: Math.round(bpWeight * 10) / 10,
-                            shape: 'PLATE',
-                            size: `${bpW}x${bpL}x${bpH}`,
-                            len_dec: bpL,
-                            grade: 'A36'
-                        });
+                const style = vals.railStyle || 'classical';
+                let fHeight = 41.0;
+                let pHeight = 45.75;
+                let postType = 'hss_rect';
+                let postW = 1.5;
+                let postH = 1.5;
+                let postT = 0.1196;
+                let topRailType = 'hss_rect';
+                let topRailW = 1.5;
+                let topRailH = 1.5;
+                let topRailT = 0.0598;
+                let botRailType = 'hss_rect';
+                let botRailW = 1.5;
+                let botRailH = 1.5;
+                let botRailT = 0.0598;
+                let midRailType = 'none';
+                let midRailW = 0;
+                let midRailH = 0;
+                let midRailT = 0;
+                let midRailGap = 12.0;
+                let picketType = 'hss_rect';
+                let picketW = 0.5;
+                let picketH = 0.5;
+                let picketT = 0.0598;
+                let picketSpacing = 4.0;
+                let includeBasePlates = 'no';
+                let bpW = 6.0;
+                let bpL = 6.0;
+                let bpH = 0.5;
+                let bpHoleD = 0.5;
+                let bpHoleOffsetX = 0.5;
+                let bpHoleOffsetY = 0.25;
+
+                const getProfileThickness = (type, size, customVal) => {
+                    if (type === 'none' || size === 'NONE') return 0;
+                    if (size === 'CUSTOM') return customVal;
+                    const shapes = SHAPES_DB[type] || [];
+                    const selected = shapes.find(s => s.id === size);
+                    if (selected) {
+                        return selected.t || 0.12;
                     }
+                    return customVal;
+                };
 
-                    const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                    if (isMeshStyle) {
-                        const botRailH = props ? props.botRailH : 1.5;
-                        const topRailH = props ? props.topRailH : 1.5;
-                        const midRailType = props ? props.midRailType : 'none';
-                        const midRailH = props ? props.midRailH : 1.5;
-                        const midRailGap = props ? props.midRailGap : 12.0;
-                        const fenceHeight = props ? props.fHeight : 36.0;
-
-                        const bY = pHeight - fenceHeight;
-                        const yStart = bY + botRailH;
-                        const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && midRailType !== 'none'));
-                        const yEnd = hasMid ? (pHeight - topRailH - midRailGap - midRailH) : (pHeight - topRailH);
-                        const fbHeight = yEnd - yStart;
-                        const actualFbHeight = fbHeight - 2.0;
-
-                        if (actualFbHeight > 0) {
-                            const fbWeight = calculateWeight('plate', 'CUSTOM', actualFbHeight, { w: 1.0, h: actualFbHeight, t: 0.125 }, 1 * assemblyQty);
-                            bomItems.push({
-                                mark: `c${drawingNo.toUpperCase()}`,
-                                qty: 1 * assemblyQty,
-                                desc: `FB 1"x1/8"`,
-                                remark: "ATTACHED FB",
-                                len: formatFraction(actualFbHeight),
-                                weight: Math.round(fbWeight * 10) / 10,
-                                shape: 'FLAT_BAR',
-                                size: `1"x1/8"`,
-                                len_dec: actualFbHeight,
-                                grade: 'A36'
-                            });
-                        }
-                    }
+                if (style === 'classical') {
+                    fHeight = 41.0;
+                    pHeight = 45.75;
+                    postType = 'hss_rect';
+                    postW = 1.5;
+                    postH = 1.5;
+                    postT = 0.1196;
+                    topRailType = 'hss_rect';
+                    topRailW = 1.5;
+                    topRailH = 1.5;
+                    topRailT = 0.0598;
+                    botRailType = 'hss_rect';
+                    botRailW = 1.5;
+                    botRailH = 1.5;
+                    botRailT = 0.0598;
+                    midRailType = 'none';
+                    picketType = 'hss_rect';
+                    picketW = 0.5;
+                    picketH = 0.5;
+                    picketT = 0.0598;
+                    picketSpacing = 4.0;
+                    includeBasePlates = 'no';
+                } else if (style === 'executive') {
+                    fHeight = 41.0;
+                    pHeight = 45.75;
+                    postType = 'hss_rect';
+                    postW = 1.5;
+                    postH = 1.5;
+                    postT = 0.1196;
+                    topRailType = 'hss_rect';
+                    topRailW = 1.5;
+                    topRailH = 1.5;
+                    topRailT = 0.0598;
+                    botRailType = 'hss_rect';
+                    botRailW = 1.5;
+                    botRailH = 1.5;
+                    botRailT = 0.0598;
+                    midRailType = 'hss_rect';
+                    midRailW = 1.5;
+                    midRailH = 1.5;
+                    midRailT = 0.0598;
+                    midRailGap = 12.0;
+                    picketType = 'hss_rect';
+                    picketW = 0.5;
+                    picketH = 0.5;
+                    picketT = 0.0598;
+                    picketSpacing = 4.5;
+                    includeBasePlates = 'no';
                 } else {
-                    const style = vals.railStyle || 'classical';
-                    let fHeight = 41.0;
-                    let pHeight = 45.75;
-                    let postType = 'hss_rect';
-                    let postW = 1.5;
-                    let postH = 1.5;
-                    let postT = 0.1196;
-                    let topRailType = 'hss_rect';
-                    let topRailW = 1.5;
-                    let topRailH = 1.5;
-                    let topRailT = 0.0598;
-                    let botRailType = 'hss_rect';
-                    let botRailW = 1.5;
-                    let botRailH = 1.5;
-                    let botRailT = 0.0598;
-                    let midRailType = 'none';
-                    let midRailW = 0;
-                    let midRailH = 0;
-                    let midRailT = 0;
-                    let midRailGap = 12.0;
-                    let picketType = 'hss_rect';
-                    let picketW = 0.5;
-                    let picketH = 0.5;
-                    let picketT = 0.0598;
-                    let picketSpacing = 4.0;
-                    let includeBasePlates = 'no';
-                    let bpW = 6.0;
-                    let bpL = 6.0;
-                    let bpH = 0.5;
-                    let bpHoleD = 0.5;
-                    let bpHoleOffsetX = 0.5;
-                    let bpHoleOffsetY = 0.25;
+                    fHeight = vals.fenceHeight || 36;
+                    pHeight = vals.postHeight || 36;
+                    postType = vals.postType || 'hss_rect';
+                    postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                    postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                    postT = getProfileThickness(vals.postType, vals.postSize, vals.postW || 0.12);
+                    
+                    topRailType = vals.topRailType || 'hss_rect';
+                    topRailW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                    topRailH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                    topRailT = getProfileThickness(vals.topRailType, vals.topRailSize, vals.topRailH || 0.12);
+                    
+                    botRailType = vals.botRailType || 'hss_rect';
+                    botRailW = getPicketDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                    botRailH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                    botRailT = getProfileThickness(vals.botRailType, vals.botRailSize, vals.botRailH || 0.12);
+                    
+                    midRailType = vals.midRailType || 'none';
+                    midRailW = getPicketDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                    midRailH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
+                    midRailT = getProfileThickness(vals.midRailType, vals.midRailSize, vals.midRailH || 0.12);
+                    midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
 
-                    const getProfileThickness = (type, size, customVal) => window.getProfileThickness(type, size, customVal);
+                    picketType = vals.picketType || 'hss_rect';
+                    picketW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
+                    picketH = getProfileDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
+                    picketT = getProfileThickness(vals.picketType, vals.picketSize, vals.picketW || 0.083);
+                    picketSpacing = vals.picketSpacing || 4.0;
+                    includeBasePlates = vals.includeBasePlates || 'no';
+                    bpW = vals.basePlateW || 6.0;
+                    bpL = vals.basePlateL || 6.0;
+                    bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT || 0.5);
+                }
 
-                    if (style === 'classical') {
-                        fHeight = 41.0;
-                        pHeight = 45.75;
-                        postType = 'hss_rect';
-                        postW = 1.5;
-                        postH = 1.5;
-                        postT = 0.1196;
-                        topRailType = 'hss_rect';
-                        topRailW = 1.5;
-                        topRailH = 1.5;
-                        topRailT = 0.0598;
-                        botRailType = 'hss_rect';
-                        botRailW = 1.5;
-                        botRailH = 1.5;
-                        botRailT = 0.0598;
-                        midRailType = 'none';
-                        picketType = 'hss_rect';
-                        picketW = 0.5;
-                        picketH = 0.5;
-                        picketT = 0.0598;
-                        picketSpacing = 4.0;
-                        includeBasePlates = 'no';
-                    } else if (style === 'executive') {
-                        fHeight = 41.0;
-                        pHeight = 45.75;
-                        postType = 'hss_rect';
-                        postW = 1.5;
-                        postH = 1.5;
-                        postT = 0.1196;
-                        topRailType = 'hss_rect';
-                        topRailW = 1.5;
-                        topRailH = 1.5;
-                        topRailT = 0.0598;
-                        botRailType = 'hss_rect';
-                        botRailW = 1.5;
-                        botRailH = 1.5;
-                        botRailT = 0.0598;
-                        midRailType = 'hss_rect';
-                        midRailW = 1.5;
-                        midRailH = 1.5;
-                        midRailT = 0.0598;
-                        midRailGap = 3.0;
-                        picketType = 'hss_rect';
-                        picketW = 0.5;
-                        picketH = 0.5;
-                        picketT = 0.0598;
-                        picketSpacing = 4.0;
-                        includeBasePlates = 'no';
-                    } else if (style === 'urban_balcony') {
-                        fHeight = 41.0;
-                        pHeight = 45.75;
-                        postType = 'hss_rect';
-                        postW = 1.5;
-                        postH = 1.5;
-                        postT = 0.1196;
-                        topRailType = 'hss_rect';
-                        topRailW = 1.5;
-                        topRailH = 1.5;
-                        topRailT = 0.0598;
-                        botRailType = 'hss_rect';
-                        botRailW = 1.5;
-                        botRailH = 1.5;
-                        botRailT = 0.0598;
-                        midRailType = 'none';
-                        picketType = 'none';
-                        picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-                        includeBasePlates = 'no';
-                    } else if (style === 'villa_balcony') {
-                        fHeight = 41.0;
-                        pHeight = 45.75;
-                        postType = 'hss_rect';
-                        postW = 1.5;
-                        postH = 1.5;
-                        postT = 0.1196;
-                        topRailType = 'hss_rect';
-                        topRailW = 1.5;
-                        topRailH = 1.5;
-                        topRailT = 0.0598;
-                        botRailType = 'hss_rect';
-                        botRailW = 1.5;
-                        botRailH = 1.5;
-                        botRailT = 0.0598;
-                        midRailType = 'hss_rect';
-                        midRailW = 1.5;
-                        midRailH = 1.5;
-                        midRailT = 0.0598;
-                        midRailGap = 3.0;
-                        picketType = 'none';
-                        picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-                        includeBasePlates = 'no';
-                    } else if (style === 'urban_custom' || style === 'villa_custom') {
-                        fHeight = vals.fenceHeight || 36;
-                        pHeight = vals.postHeight || 36;
-                        postType = vals.postType || 'hss_rect';
-                        postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                        postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                        postT = getProfileThickness(vals.postType, vals.postSize, vals.postW || 0.12);
-                        
-                        topRailType = vals.topRailType || 'hss_rect';
-                        topRailW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                        topRailH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                        topRailT = getProfileThickness(vals.topRailType, vals.topRailSize, vals.topRailH || 0.12);
-                        
-                        botRailType = vals.botRailType || 'hss_rect';
-                        botRailW = getPicketDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                        botRailH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                        botRailT = getProfileThickness(vals.botRailType, vals.botRailSize, vals.botRailH || 0.12);
-                        
-                        midRailType = (style === 'villa_custom') ? (vals.midRailType || 'hss_rect') : 'none';
-                        midRailW = getPicketDimension(midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                        midRailH = getProfileDimension(midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                        midRailT = getProfileThickness(midRailType, vals.midRailSize, vals.midRailH || 0.12);
-                        midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
+                const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                midPostCount = (vals.midPosts === 'yes') ? (parseInt(vals.midPostCount) || 0) : 0;
+                const clearWidth = endXBound - startXBound - midPostCount * postW;
+                const spanW = clearWidth / (midPostCount + 1);
 
-                        picketType = 'none';
-                        picketW = 0; picketH = 0; picketT = 0; picketSpacing = 0;
-                        includeBasePlates = vals.includeBasePlates || 'no';
-                        bpW = vals.basePlateW || 6.0;
-                        bpL = vals.basePlateL || 6.0;
-                        bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT || 0.5);
-                        bpHoleD = vals.basePlateHoleD || 0.5;
-                        bpHoleOffsetX = vals.basePlateHoleOffsetX || 0.5;
-                        bpHoleOffsetY = vals.basePlateHoleOffsetY || 0.25;
-                    } else {
-                        fHeight = vals.fenceHeight || 36;
-                        pHeight = vals.postHeight || 36;
-                        postType = vals.postType || 'hss_rect';
-                        postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                        postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                        postT = getProfileThickness(vals.postType, vals.postSize, vals.postW || 0.12);
-                        
-                        topRailType = vals.topRailType || 'hss_rect';
-                        topRailW = getPicketDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                        topRailH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-                        topRailT = getProfileThickness(vals.topRailType, vals.topRailSize, vals.topRailH || 0.12);
-                        
-                        botRailType = vals.botRailType || 'hss_rect';
-                        botRailW = getPicketDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                        botRailH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-                        botRailT = getProfileThickness(vals.botRailType, vals.botRailSize, vals.botRailH || 0.12);
-                        
-                        midRailType = vals.midRailType || 'none';
-                        midRailW = getPicketDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                        midRailH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5);
-                        midRailT = getProfileThickness(vals.midRailType, vals.midRailSize, vals.midRailH || 0.12);
-                        midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
-
-                        picketType = vals.picketType || 'hss_rect';
-                        picketW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
-                        picketH = getProfileDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
-                        picketT = getProfileThickness(vals.picketType, vals.picketSize, vals.picketW || 0.083);
-                        picketSpacing = vals.picketSpacing || 4.0;
-                        includeBasePlates = vals.includeBasePlates || 'no';
-                        bpW = vals.basePlateW || 6.0;
-                        bpL = vals.basePlateL || 6.0;
-                        bpH = getProfileDimension('plate', vals.basePlateSize, vals.basePlateT || 0.5);
-                    }
-
-                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
-                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                    midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                    const clearWidth = endXBound - startXBound - midPostCount * postW;
-                    const spanW = clearWidth / (midPostCount + 1);
-
-                    const railSpans = resolveRailMarksAndSpans(vals, drawingNo, cat, style, postW);
-
-                    // Add Top Rail
-                    if (topMark) {
-                        const name = (style === 'classical') ? `HSS 1.5x1.5x16GA` : (style === 'executive' ? `HSS 1.5x1.5x16GA` : (vals.topRailSize === 'CUSTOM' ? `HSS ${topRailW}x${topRailH}x${topRailT}` : vals.topRailSize));
-                        const wVal = calculateWeight(topRailType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.topRailSize), vals.length, { w: topRailW, h: topRailH, t: topRailT }, 1 * assemblyQty);
+                // Add Top Rail
+                if (topMark) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x16GA` : (vals.topRailSize === 'CUSTOM' ? `HSS ${topRailW}x${topRailH}x${topRailT}` : vals.topRailSize);
+                    
+                    if (style === 'executive' || style === 'executive_custom') {
+                        // Split top rail into segments
+                        const segW = spanW + (vals.leftPost === 'yes' ? postW/2 : 0) + (vals.rightPost === 'yes' ? postW/2 : 0);
+                        const wVal = calculateWeight(topRailType, (style === 'executive' ? 'CUSTOM' : vals.topRailSize), segW, { w: topRailW, h: topRailH, t: topRailT }, midPostCount + 1);
                         bomItems.push({
                             mark: topMark,
-                            qty: 1 * assemblyQty,
+                            qty: midPostCount + 1,
+                            desc: name,
+                            remark: "TOP RUNNER",
+                            len: formatFraction(segW),
+                            weight: Math.round(wVal * 10) / 10,
+                            shape: topRailType.toUpperCase(),
+                            size: name,
+                            len_dec: segW
+                        });
+                    } else {
+                        // Continuous top rail
+                        const wVal = calculateWeight(topRailType, (style === 'classical' ? 'CUSTOM' : vals.topRailSize), vals.length, { w: topRailW, h: topRailH, t: topRailT }, 1);
+                        bomItems.push({
+                            mark: topMark,
+                            qty: 1,
                             desc: name,
                             remark: "TOP RUNNER",
                             len: formatFraction(vals.length),
@@ -10238,283 +4436,134 @@ document.addEventListener('DOMContentLoaded', () => {
                             len_dec: vals.length
                         });
                     }
+                }
 
-                    // Add Bottom Rail
-                    if (botMark) {
-                        const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x16GA` : (vals.botRailSize === 'CUSTOM' ? `HSS ${botRailW}x${botRailH}x${botRailT}` : vals.botRailSize);
-                        const bottomGroups = {};
-                        railSpans.bottomSegments.forEach(seg => {
-                            if (!bottomGroups[seg.mark]) {
-                                bottomGroups[seg.mark] = { len: seg.len, qty: 0 };
-                            }
-                            bottomGroups[seg.mark].qty++;
-                        });
-                        Object.keys(bottomGroups).forEach(mark => {
-                            const group = bottomGroups[mark];
-                            const wVal = calculateWeight(botRailType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.botRailSize), group.len, { w: botRailW, h: botRailH, t: botRailT }, group.qty * assemblyQty);
-                            bomItems.push({
-                                mark: mark,
-                                qty: group.qty * assemblyQty,
-                                desc: name,
-                                remark: "BOTTOM RUNNER",
-                                len: formatFraction(group.len),
-                                weight: Math.round(wVal * 10) / 10,
-                                shape: botRailType.toUpperCase(),
-                                size: name,
-                                len_dec: group.len
-                            });
-                        });
-                    }
+                // Add Bottom Rail
+                if (botMark) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x16GA` : (vals.botRailSize === 'CUSTOM' ? `HSS ${botRailW}x${botRailH}x${botRailT}` : vals.botRailSize);
+                    const wVal = calculateWeight(botRailType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.botRailSize), spanW, { w: botRailW, h: botRailH, t: botRailT }, midPostCount + 1);
+                    bomItems.push({
+                        mark: botMark,
+                        qty: midPostCount + 1,
+                        desc: name,
+                        remark: "BOTTOM RUNNER",
+                        len: formatFraction(spanW),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: botRailType.toUpperCase(),
+                        size: name,
+                        len_dec: spanW
+                    });
+                }
 
-                    // Add Mid Rail
-                    if (midMark && midRailType !== 'none') {
-                        const name = (style === 'executive' || style === 'villa_balcony') ? `HSS 1.5x1.5x16GA` : (vals.midRailSize === 'CUSTOM' ? `HSS ${midRailW}x${midRailH}x${midRailT}` : vals.midRailSize);
-                        const midGroups = {};
-                        railSpans.midSegments.forEach(seg => {
-                            if (!midGroups[seg.mark]) {
-                                midGroups[seg.mark] = { len: seg.len, qty: 0 };
-                            }
-                            midGroups[seg.mark].qty++;
-                        });
-                        Object.keys(midGroups).forEach(mark => {
-                            const group = midGroups[mark];
-                            const wVal = calculateWeight(midRailType, (style === 'executive' ? 'CUSTOM' : vals.midRailSize), group.len, { w: midRailW, h: midRailH, t: midRailT }, group.qty * assemblyQty);
-                            bomItems.push({
-                                mark: mark,
-                                qty: group.qty * assemblyQty,
-                                desc: name,
-                                remark: "MID RUNNER",
-                                len: formatFraction(group.len),
-                                weight: Math.round(wVal * 10) / 10,
-                                shape: midRailType.toUpperCase(),
-                                size: name,
-                                len_dec: group.len
-                            });
-                        });
-                    }
+                // Add Mid Rail
+                if (midMark && midRailType !== 'none') {
+                    const name = (style === 'executive') ? `HSS 1.5x1.5x16GA` : (vals.midRailSize === 'CUSTOM' ? `HSS ${midRailW}x${midRailH}x${midRailT}` : vals.midRailSize);
+                    const wVal = calculateWeight(midRailType, (style === 'executive' ? 'CUSTOM' : vals.midRailSize), spanW, { w: midRailW, h: midRailH, t: midRailT }, midPostCount + 1);
+                    bomItems.push({
+                        mark: midMark,
+                        qty: midPostCount + 1,
+                        desc: name,
+                        remark: "MID RUNNER",
+                        len: formatFraction(spanW),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: midRailType.toUpperCase(),
+                        size: name,
+                        len_dec: spanW
+                    });
+                }
 
-                    // Add Left / Right Posts
-                    if (leftMark && rightMark && leftMark === rightMark) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                        const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony' ? 'CUSTOM' : vals.postSize), pHeight, { w: postW, h: postH, t: postT }, 2 * assemblyQty);
-                        bomItems.push({
-                            mark: leftMark,
-                            qty: 2 * assemblyQty,
-                            desc: name,
-                            remark: "L/R POST",
-                            len: formatFraction(pHeight),
-                            weight: Math.round(wVal * 10) / 10,
-                            shape: postType.toUpperCase(),
-                            size: name,
-                            len_dec: pHeight
-                        });
-                    } else {
-                        if (leftMark) {
-                            const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                            const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony' ? 'CUSTOM' : vals.postSize), pHeight, { w: postW, h: postH, t: postT }, 1 * assemblyQty);
-                            bomItems.push({
-                                mark: leftMark,
-                                qty: 1 * assemblyQty,
-                                desc: name,
-                                remark: "LEFT POST",
-                                len: formatFraction(pHeight),
-                                weight: Math.round(wVal * 10) / 10,
-                                shape: postType.toUpperCase(),
-                                size: name,
-                                len_dec: pHeight
-                            });
-                        }
-                        if (rightMark) {
-                            const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                            const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony' ? 'CUSTOM' : vals.postSize), pHeight, { w: postW, h: postH, t: postT }, 1 * assemblyQty);
-                            bomItems.push({
-                                mark: rightMark,
-                                qty: 1 * assemblyQty,
-                                desc: name,
-                                remark: "RIGHT POST",
-                                len: formatFraction(pHeight),
-                                weight: Math.round(wVal * 10) / 10,
-                                shape: postType.toUpperCase(),
-                                size: name,
-                                len_dec: pHeight
-                            });
-                        }
-                    }
+                // Add Left Post
+                if (leftMark) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
+                    const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.postSize), pHeight, { w: postW, h: postH, t: postT }, 1);
+                    bomItems.push({
+                        mark: leftMark,
+                        qty: 1,
+                        desc: name,
+                        remark: "LEFT POST",
+                        len: formatFraction(pHeight),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: postType.toUpperCase(),
+                        size: name,
+                        len_dec: pHeight
+                    });
+                }
 
-                    // Add Mid Posts
-                    if (midPostMark && midPostCount > 0) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                        const isExecutiveStyle = (style === 'executive' || style === 'executive_custom');
-                        const mpH = style === 'executive' ? 44.25 : (pHeight - topRailH);
-                        const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony' ? 'CUSTOM' : vals.postSize), mpH, { w: postW, h: postH, t: postT }, midPostCount * assemblyQty);
-                        bomItems.push({
-                            mark: midPostMark,
-                            qty: midPostCount * assemblyQty,
-                            desc: name,
-                            remark: "MID POST",
-                            len: formatFraction(mpH),
-                            weight: Math.round(wVal * 10) / 10,
-                            shape: postType.toUpperCase(),
-                            size: name,
-                            len_dec: mpH
-                        });
-                    }
+                // Add Right Post
+                if (rightMark) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
+                    const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.postSize), pHeight, { w: postW, h: postH, t: postT }, 1);
+                    bomItems.push({
+                        mark: rightMark,
+                        qty: 1,
+                        desc: name,
+                        remark: "RIGHT POST",
+                        len: formatFraction(pHeight),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: postType.toUpperCase(),
+                        size: name,
+                        len_dec: pHeight
+                    });
+                }
 
-                    // Add Pickets
-                    if (picketMark && finalPicketsCount > 0) {
-                        const name = (style === 'classical' || style === 'executive') ? `HSS 1/2x1/2x16GA` : (vals.picketSize === 'CUSTOM' ? `HSS ${picketW}x${picketH}x${picketT}` : vals.picketSize);
-                        const picketBottomY = (pHeight - fHeight) + botH;
-                        const picketTopY = (midRailType !== 'none') ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                        const picketLen = picketTopY - picketBottomY;
-                        const wVal = calculateWeight(picketType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.picketSize), picketLen, { w: picketW, h: picketH, t: picketT }, finalPicketsCount * assemblyQty);
+                // Add Mid Posts
+                if (midPostMark && midPostCount > 0) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
+                    const isExecutiveStyle = (style === 'executive' || style === 'executive_custom');
+                    const mpH = isExecutiveStyle ? pHeight : (pHeight - topRailH);
+                    const wVal = calculateWeight(postType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.postSize), mpH, { w: postW, h: postH, t: postT }, midPostCount);
+                    bomItems.push({
+                        mark: midPostMark,
+                        qty: midPostCount,
+                        desc: name,
+                        remark: "MID POST",
+                        len: formatFraction(mpH),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: postType.toUpperCase(),
+                        size: name,
+                        len_dec: mpH
+                    });
+                }
+
+                // Add Pickets
+                if (picketMark && finalPicketsCount > 0) {
+                    const name = (style === 'classical' || style === 'executive') ? `HSS 1/2x1/2x16GA` : (vals.picketSize === 'CUSTOM' ? `HSS ${picketW}x${picketH}x${picketT}` : vals.picketSize);
+                    const picketBottomY = botH;
+                    const picketTopY = (midRailType !== 'none') ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
+                    const picketLen = picketTopY - picketBottomY;
+                    const wVal = calculateWeight(picketType, (style === 'classical' || style === 'executive' ? 'CUSTOM' : vals.picketSize), picketLen, { w: picketW, h: picketH, t: picketT }, finalPicketsCount);
+                    
+                    bomItems.push({
+                        mark: picketMark,
+                        qty: finalPicketsCount,
+                        desc: name,
+                        remark: "PICKET",
+                        len: formatFraction(picketLen),
+                        weight: Math.round(wVal * 10) / 10,
+                        shape: picketType.toUpperCase(),
+                        size: name,
+                        len_dec: picketLen
+                    });
+                }
+
+                // Add Base Plates
+                if (bpMark && includeBasePlates === 'yes') {
+                    const totalPostsCount = (vals.leftPost === 'yes' ? 1 : 0) + (vals.rightPost === 'yes' ? 1 : 0) + midPostCount;
+                    if (totalPostsCount > 0) {
+                        const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
+                        const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, totalPostsCount);
                         
                         bomItems.push({
-                            mark: picketMark,
-                            qty: finalPicketsCount * assemblyQty,
-                            desc: name,
-                            remark: "PICKET",
-                            len: formatFraction(picketLen),
+                            mark: bpMark,
+                            qty: totalPostsCount,
+                            desc: `${bpW}x${bpL} Plate`,
+                            remark: "BASE PLATE",
+                            len: bpName,
                             weight: Math.round(wVal * 10) / 10,
-                            shape: picketType.toUpperCase(),
-                            size: name,
-                            len_dec: picketLen
+                            shape: 'PLATE',
+                            size: `${bpW}x${bpL}x${vals.basePlateT !== undefined ? vals.basePlateT : 0.5}`,
+                            len_dec: bpL
                         });
-                    }
-
-                    // Add Mesh Frame & Panel
-                    const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                    if (isMeshStyle) {
-                        const picketBottomY = (pHeight - fHeight) + botH;
-                        const picketTopY = (midRailType !== 'none') ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                        const fbHeight = picketTopY - picketBottomY;
-                        
-                        // Group by suffix/length for Horizontal Flat Bars and Wire Mesh Panels
-                        const meshGroups = {};
-                        railSpans.bottomSegments.forEach(seg => {
-                            const baseMark = "a" + drawingNo;
-                            const suffix = seg.mark.substring(baseMark.length);
-                            const hMark = meshFbMark + suffix;
-                            const pMark = meshPanelMark + suffix;
-                            
-                            if (!meshGroups[suffix]) {
-                                meshGroups[suffix] = {
-                                    len: seg.len,
-                                    qty: 0,
-                                    hMark: hMark,
-                                    pMark: pMark
-                                };
-                            }
-                            meshGroups[suffix].qty++;
-                        });
-
-                        // Horizontal flat bars
-                        if (meshFbMark) {
-                            Object.keys(meshGroups).forEach(suffix => {
-                                const group = meshGroups[suffix];
-                                const fbHorizQty = 2 * group.qty * assemblyQty;
-                                const wValHoriz = calculateWeight('plate', 'CUSTOM', group.len, { w: 1.0, h: group.len, t: 0.125 }, fbHorizQty);
-                                bomItems.push({
-                                    mark: group.hMark,
-                                    qty: fbHorizQty,
-                                    desc: `FB 1"x1/8"`,
-                                    remark: "MESH FRAME HORIZ",
-                                    len: formatFraction(group.len),
-                                    weight: Math.round(wValHoriz * 10) / 10,
-                                    shape: 'FLAT_BAR',
-                                    size: `1"x1/8"`,
-                                    len_dec: group.len
-                                });
-                            });
-                        }
-
-                        // Vertical flat bars
-                        if (meshFbMark) {
-                            const leftOmitted = (vals.leftPost === 'yes') ? 0 : 1;
-                            const rightOmitted = (vals.rightPost === 'yes') ? 0 : 1;
-                            const fbVertQty = (2 * (midPostCount + 1) - leftOmitted - rightOmitted) * assemblyQty;
-                            if (fbVertQty > 0) {
-                                const fbVertLen = fbHeight - 2.0;
-                                const wValVert = calculateWeight('plate', 'CUSTOM', fbVertLen, { w: 1.0, h: fbVertLen, t: 0.125 }, fbVertQty);
-                                bomItems.push({
-                                    mark: meshFbMark + "V",
-                                    qty: fbVertQty,
-                                    desc: `FB 1"x1/8"`,
-                                    remark: "MESH FRAME VERT",
-                                    len: formatFraction(fbVertLen),
-                                    weight: Math.round(wValVert * 10) / 10,
-                                    shape: 'FLAT_BAR',
-                                    size: `1"x1/8"`,
-                                    len_dec: fbVertLen
-                                });
-                            }
-                        }
-
-                        // Wire Mesh Panels
-                        if (meshPanelMark) {
-                            const meshGridW = vals.meshGridW !== undefined ? vals.meshGridW : 2.0;
-                            const meshGridH = vals.meshGridH !== undefined ? vals.meshGridH : 2.0;
-                            const meshWireD = vals.meshWireD !== undefined ? vals.meshWireD : 0.135;
-                            const wwmSize = `${meshGridW}x${meshGridH}x${meshWireD} x ${formatFraction(fbHeight)}`;
-
-                            Object.keys(meshGroups).forEach(suffix => {
-                                const group = meshGroups[suffix];
-                                const meshQty = group.qty * assemblyQty;
-                                const meshAreaSqFt = (group.len * fbHeight) / 144.0;
-                                const wValMesh = meshAreaSqFt * 1.5 * meshQty; // 1.5 lbs/sqft
-                                const wwmDesc = `WWM ${meshGridW}x${meshGridH}x${meshWireD} x ${formatFraction(fbHeight)}`;
-                                
-                                bomItems.push({
-                                    mark: group.pMark,
-                                    qty: meshQty,
-                                    desc: wwmDesc,
-                                    remark: "WWM WIRE MESH",
-                                    len: formatFraction(group.len),
-                                    weight: Math.round(wValMesh * 10) / 10,
-                                    shape: 'WWM',
-                                    size: wwmSize,
-                                    len_dec: group.len
-                                });
-                            });
-                        }
-                    }
-
-                    if (vals.extraFlatBar === 'yes' && (activePanelType === 'leftReturn' || activePanelType === 'rightReturn') && vals.leftPost === 'yes') {
-                        const picketBottomY = (pHeight - fHeight) + botH;
-                        const picketTopY = (midRailType !== 'none') ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                        const fbHeight = picketTopY - picketBottomY;
-                        const wValExtra = calculateWeight('plate', 'CUSTOM', fbHeight, { w: 1.0, h: fbHeight, t: 0.125 }, 1 * assemblyQty);
-                        bomItems.push({
-                            mark: meshFbMark,
-                            remark: "EXTRA CORNER FB",
-                            desc: `FB 1"x1/8"`,
-                            qty: 1 * assemblyQty,
-                            len: formatFraction(fbHeight),
-                            weight: Math.round(wValExtra * 10) / 10,
-                            shape: 'FLAT_BAR',
-                            size: '1"x1/8"',
-                            len_dec: fbHeight
-                        });
-                    }
-
-                    // Add Base Plates
-                    if (bpMark && includeBasePlates === 'yes') {
-                        const totalPostsCount = countLeftPost + countRightPost + midPostCount;
-                        if (totalPostsCount > 0) {
-                            const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
-                            const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, totalPostsCount * assemblyQty);
-                            
-                            bomItems.push({
-                                mark: bpMark,
-                                qty: totalPostsCount * assemblyQty,
-                                desc: `${bpW}x${bpL} Plate`,
-                                remark: "BASE PLATE",
-                                len: bpName,
-                                weight: Math.round(wVal * 10) / 10,
-                                shape: 'PLATE',
-                                size: `${bpW}x${bpL}x${vals.basePlateT !== undefined ? vals.basePlateT : 0.5}`,
-                                len_dec: bpL
-                            });
-                        }
                     }
                 }
             } else if (cat === 'rails_gates') {
@@ -10537,15 +4586,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Calculate correct sloped lengths
                 const rad = vals.slope * Math.PI / 180;
                 const cos = Math.cos(rad);
-                const isPlateFrame = isGates && (vals.leftPostType === 'plate' || vals.rightPostType === 'plate' || vals.topRailType === 'plate' || vals.botRailType === 'plate');
-                let topRailLen = vals.length;
-                if (isPlateFrame) {
-                    topRailLen = vals.length - leftPostW - rightPostW;
-                }
+                const topRailLen = vals.length;
                 const preciseTopLen = Math.round((cos > 0.001 ? (topRailLen / cos) : topRailLen) * 16) / 16;
                 
                 let botRailLen = vals.length;
-                if (isExtended || isPlateFrame) {
+                if (isExtended) {
                     botRailLen = vals.length - leftPostW - rightPostW;
                 }
                 const preciseBotLen = Math.round((cos > 0.001 ? (botRailLen / cos) : botRailLen) * 16) / 16;
@@ -10557,22 +4602,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 const effectiveEmbed = (vals.includeBasePlates === 'yes') ? 0 : Math.max(0, vals.postHeight - vals.fenceHeight - 6.0);
                 const finalMidPostHeight = midPostHeight + effectiveEmbed;
 
-                const picketPositions = getPicketPositions(
-                    vals.railStyle || 'classical',
-                    vals.length,
-                    leftPostW,
-                    rightPostW,
-                    pickW,
-                    vals.picketSpacing,
-                    midPostCount,
-                    midPostW,
-                    vals.midPosts,
-                    customSpacings,
-                    vals.extra6,
-                    balconyWizardState.activePanelType || 'main'
-                );
-                const numPickets = picketPositions.length;
+                const clearWidth = vals.length - leftPostW - rightPostW;
+                const numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
+                
+                // Subtract pickets that overlap mid posts
                 let finalPicketsCount = numPickets;
+                if (midPostCount > 0 && isExtended) {
+                    const centerDist = vals.length - leftPostW/2 - rightPostW/2;
+                    const spanSpacing = centerDist / (midPostCount + 1);
+                    for (let i = 0; i < numPickets; i++) {
+                        const px = leftPostW + (clearWidth - ((numPickets - 1) * vals.picketSpacing + pickW)) / 2 + i * vals.picketSpacing;
+                        for (let j = 1; j <= midPostCount; j++) {
+                            const midCx = leftPostW/2 + j * spanSpacing;
+                            if (Math.abs(px + pickW/2 - midCx) < (midPostW/2 + pickW/2 + 0.1)) {
+                                finalPicketsCount--;
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 // Unified piece mark assignment
                 const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -10607,11 +4655,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Top Rail / Runner (Main Mark)
                 if (topMark) {
                     const name = vals.topRailSize === 'CUSTOM' ? `HSS ${vals.topRailH}x${vals.topRailH}` : vals.topRailSize;
-                    const wVal = calculateWeight(vals.topRailType, vals.topRailSize, preciseTopLen, { w: vals.topRailH, h: vals.topRailH, t: 0.12 }, 1 * assemblyQty);
+                    const wVal = calculateWeight(vals.topRailType, vals.topRailSize, preciseTopLen, { w: vals.topRailH, h: vals.topRailH, t: 0.12 }, 1);
                     
                     bomItems.push({
                         mark: topMark,
-                        qty: 1 * assemblyQty,
+                        qty: 1,
                         desc: name,
                         remark: isGates ? "TOP RUNNER" : "TOP RAIL",
                         len: formatFraction(preciseTopLen),
@@ -10625,11 +4673,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Bottom Rail / Runner
                 if (botMark) {
                     const name = vals.botRailSize === 'CUSTOM' ? `HSS ${vals.botRailH}x${vals.botRailH}` : vals.botRailSize;
-                    const wVal = calculateWeight(vals.botRailType, vals.botRailSize, preciseBotLen, { w: vals.botRailH, h: vals.botRailH, t: 0.12 }, 1 * assemblyQty);
+                    const wVal = calculateWeight(vals.botRailType, vals.botRailSize, preciseBotLen, { w: vals.botRailH, h: vals.botRailH, t: 0.12 }, 1);
                     
                     bomItems.push({
                         mark: botMark,
-                        qty: 1 * assemblyQty,
+                        qty: 1,
                         desc: name,
                         remark: isGates ? "BOTTOM RUNNER" : "BOTTOM RAIL",
                         len: formatFraction(preciseBotLen),
@@ -10643,11 +4691,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Mid Rail / Runner
                 if (midMark) {
                     const name = vals.midRailSize === 'CUSTOM' ? `HSS ${vals.midRailH}x${vals.midRailH}` : vals.midRailSize;
-                    const wVal = calculateWeight(vals.midRailType, vals.midRailSize, preciseMidLen, { w: vals.midRailH, h: vals.midRailH, t: 0.12 }, 1 * assemblyQty);
+                    const wVal = calculateWeight(vals.midRailType, vals.midRailSize, preciseMidLen, { w: vals.midRailH, h: vals.midRailH, t: 0.12 }, 1);
                     
                     bomItems.push({
                         mark: midMark,
-                        qty: 1 * assemblyQty,
+                        qty: 1,
                         desc: name,
                         remark: isGates ? "MID RUNNER" : "MID RAIL",
                         len: formatFraction(preciseMidLen),
@@ -10662,11 +4710,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const runnerH = isGates ? vals.fenceHeight : vals.postHeight;
                 if (leftMark) {
                     const name = vals.leftPostSize === 'CUSTOM' ? `HSS ${vals.leftPostW}x${vals.leftPostW}` : vals.leftPostSize;
-                    const wVal = calculateWeight(vals.leftPostType, vals.leftPostSize, runnerH, { w: vals.leftPostW, h: vals.leftPostW, t: 0.15 }, 1 * assemblyQty);
+                    const wVal = calculateWeight(vals.leftPostType, vals.leftPostSize, runnerH, { w: vals.leftPostW, h: vals.leftPostW, t: 0.15 }, 1);
                     
                     bomItems.push({
                         mark: leftMark,
-                        qty: 1 * assemblyQty,
+                        qty: 1,
                         desc: name,
                         remark: isGates ? "LEFT RUNNER" : "LEFT POST",
                         len: formatFraction(runnerH),
@@ -10680,11 +4728,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Right Post / Runner
                 if (rightMark) {
                     const name = vals.rightPostSize === 'CUSTOM' ? `HSS ${vals.rightPostW}x${vals.rightPostW}` : vals.rightPostSize;
-                    const wVal = calculateWeight(vals.rightPostType, vals.rightPostSize, runnerH, { w: vals.rightPostW, h: vals.rightPostW, t: 0.15 }, 1 * assemblyQty);
+                    const wVal = calculateWeight(vals.rightPostType, vals.rightPostSize, runnerH, { w: vals.rightPostW, h: vals.rightPostW, t: 0.15 }, 1);
                     
                     bomItems.push({
                         mark: rightMark,
-                        qty: 1 * assemblyQty,
+                        qty: 1,
                         desc: name,
                         remark: isGates ? "RIGHT RUNNER" : "RIGHT POST",
                         len: formatFraction(runnerH),
@@ -10698,11 +4746,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Add Mid Posts
                 if (midPostMark) {
                     const name = vals.midPostSize === 'CUSTOM' ? `HSS ${vals.midPostW}x${vals.midPostW}` : vals.midPostSize;
-                    const wVal = calculateWeight(vals.midPostType, vals.midPostSize, finalMidPostHeight, { w: vals.midPostW, h: vals.midPostW, t: 0.15 }, midPostCount * assemblyQty);
+                    const wVal = calculateWeight(vals.midPostType, vals.midPostSize, finalMidPostHeight, { w: vals.midPostW, h: vals.midPostW, t: 0.15 }, midPostCount);
                     
                     bomItems.push({
                         mark: midPostMark,
-                        qty: midPostCount * assemblyQty,
+                        qty: midPostCount,
                         desc: name,
                         remark: "MID POST",
                         len: formatFraction(finalMidPostHeight),
@@ -10711,11 +4759,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         size: name,
                         len_dec: finalMidPostHeight
                     });
-                }                // Add Pickets
-                if (picketMark && vals.picketType !== 'none') {
+                }
+
+                // Add Pickets
+                if (picketMark) {
                     const picketBottomY = (isGates && vals.midRailType !== 'none') 
                         ? midRailGap 
-                        : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? vals.kickPlateH : botH + vals.kickPlateH) : botH);
+                        : ((vals.kickPlate !== 'none') ? vals.kickPlateH : botH);
                     
                     const picketTopY = (vals.midRailType !== 'none') 
                         ? (isGates ? (vals.fenceHeight - topH) : (topY - midRailGap - midH)) 
@@ -10723,11 +4773,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const picketH = Math.max(2, picketTopY - picketBottomY);
                     
                     const name = vals.picketSize === 'CUSTOM' ? `HSS ${vals.picketW}x${vals.picketW}` : vals.picketSize;
-                    const wVal = calculateWeight(vals.picketType, vals.picketSize, picketH, { w: vals.picketW, h: vals.picketW, t: 0.08 }, finalPicketsCount * assemblyQty);
+                    const wVal = calculateWeight(vals.picketType, vals.picketSize, picketH, { w: vals.picketW, h: vals.picketW, t: 0.08 }, finalPicketsCount);
                     
                     bomItems.push({
                         mark: picketMark,
-                        qty: finalPicketsCount * assemblyQty,
+                        qty: finalPicketsCount,
                         desc: name,
                         remark: "PICKET",
                         len: formatFraction(picketH),
@@ -10751,18 +4801,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const plates = SHAPES_DB['plate'] || [];
                     const selectedPlate = plates.find(p => p.id === kickPlateSize) || { t: 0.1196, name: '11 GA Plate' };
                     const kpT = selectedPlate.t;
-                    const wVal = calculateWeight('plate', kickPlateSize, kpW, { w: kpW, h: kpH, t: kpT }, kpQty * assemblyQty);
+                    const kpName = selectedPlate.name;
                     
-                    const kpDesc = formatPlateDesc(kickPlateSize, kpH);
+                    const wVal = calculateWeight('plate', kickPlateSize, kpW, { w: kpW, h: kpH, t: kpT }, kpQty);
+                    
                     bomItems.push({
                         mark: kpMark,
-                        qty: kpQty * assemblyQty,
-                        desc: kpDesc,
+                        qty: kpQty,
+                        desc: kpName,
                         remark: `KICK PL (${vals.kickPlate === '2_sides' ? '2S' : '1S'} ${isOuter ? 'OUT' : 'INN'})`,
                         len: formatFraction(kpW),
                         weight: Math.round(wVal * 10) / 10,
                         shape: 'PLATE',
-                        size: kpDesc,
+                        size: kpName,
                         len_dec: kpW
                     });
                 }
@@ -10771,11 +4822,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (bpMark) {
                     const totalPosts = (vals.leftPostType !== 'none' ? 1 : 0) + (vals.rightPostType !== 'none' ? 1 : 0) + (vals.midPostType !== 'none' ? midPostCount : 0);
                     const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
-                    const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, totalPosts * assemblyQty);
+                    const wVal = calculateWeight('plate', vals.basePlateSize, bpL, { w: bpW, h: bpL, t: vals.basePlateT }, totalPosts);
                     
                     bomItems.push({
                         mark: bpMark,
-                        qty: totalPosts * assemblyQty,
+                        qty: totalPosts,
                         desc: `${bpW}x${bpL} Plate`,
                         remark: "BASE PLATE",
                         len: bpName,
@@ -10783,97 +4834,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         shape: 'PLATE',
                         size: `${bpW}x${bpL}x${vals.basePlateT !== undefined ? vals.basePlateT : 0.5}`,
                         len_dec: bpL
-                    });
-                }
-
-                // Add Wire Mesh / XF Frame & Panel (Consolidated BOM)
-                if (isGates && vals.meshType && vals.meshType !== 'none') {
-                    const meshFbSize = vals.meshFbSize || 'FB1x1/8';
-                    const meshSize = vals.meshSize || 'WWM2x2x0.135';
-                    
-                    const picketBottomY = (vals.midRailType !== 'none') 
-                        ? midRailGap 
-                        : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? vals.kickPlateH : botH + vals.kickPlateH) : botH);
-                    const mOpeningW = vals.length - leftPostW - rightPostW;
-                    const mOpeningH = (vals.fenceHeight - topH) - picketBottomY;
-                    
-                    const fbMark = getMark(true);
-                    const meshPanelMark = getMark(true);
-                    
-                    const fbW = 1.0;
-                    const fbT = 0.125;
-                    const fbWtH = fbW * fbT * mOpeningW * 0.2833;
-                    const fbWtV = fbW * fbT * mOpeningH * 0.2833;
-                    
-                    // Horizontal FBs
-                    bomItems.push({
-                        mark: fbMark + "H",
-                        qty: 2 * assemblyQty,
-                        desc: meshFbSize,
-                        remark: "MESH FRAME FB",
-                        len: formatFraction(mOpeningW),
-                        weight: Math.round(fbWtH * 10) / 10,
-                        shape: 'FLAT_BAR',
-                        size: meshFbSize,
-                        len_dec: mOpeningW
-                    });
-                    
-                    // Vertical FBs
-                    bomItems.push({
-                        mark: fbMark + "V",
-                        qty: 2 * assemblyQty,
-                        desc: meshFbSize,
-                        remark: "MESH FRAME FB",
-                        len: formatFraction(mOpeningH),
-                        weight: Math.round(fbWtV * 10) / 10,
-                        shape: 'FLAT_BAR',
-                        size: meshFbSize,
-                        len_dec: mOpeningH
-                    });
-                    
-                    const areaSqFt = (mOpeningW * mOpeningH) / 144.0;
-                    const meshWtFactor = vals.meshType === 'mesh' ? 0.8 : 1.8;
-                    const panelWt = areaSqFt * meshWtFactor;
-                    
-                    const parsedMesh = parseMeshSpec(vals.meshType, meshSize, mOpeningH);
-                    bomItems.push({
-                        mark: meshPanelMark,
-                        qty: 1 * assemblyQty,
-                        desc: parsedMesh.bomDesc,
-                        remark: vals.meshType === 'mesh' ? "WWM WIRE MESH" : "EXPANDED METAL",
-                        len: formatFraction(mOpeningW),
-                        weight: Math.round(panelWt * 10) / 10,
-                        shape: vals.meshType === 'mesh' ? 'WWM' : 'XF',
-                        size: parsedMesh.dimensions,
-                        len_dec: mOpeningW,
-                        grade: vals.meshType === 'mesh' ? 'WELDED' : 'A36'
-                    });
-                }
-                
-                // Add Panic Bar Plate (Consolidated BOM)
-                if (isGates && vals.panicBarPlate === 'yes') {
-                    const pbpMark = getMark(true);
-                    const pbpW = vals.panicBarPlateW || 8.0;
-                    const pbpT = vals.panicBarPlateSize || 'PL3/16';
-                    const pbpLen = vals.length - leftPostW - rightPostW;
-                    
-                    const plates = SHAPES_DB['plate'] || [];
-                    const selectedPlate = plates.find(p => p.id === pbpT) || { t: 0.1875 };
-                    const pbpThick = selectedPlate.t;
-                    const pbpDesc = formatPlateDesc(pbpT, pbpW);
-                    
-                    const pbpWt = pbpLen * pbpW * pbpThick * 0.2833;
-                    
-                    bomItems.push({
-                        mark: pbpMark,
-                        qty: 1 * assemblyQty,
-                        desc: pbpDesc,
-                        remark: "PANIC BAR PLATE",
-                        len: formatFraction(pbpLen),
-                        weight: Math.round(pbpWt * 10) / 10,
-                        shape: 'PLATE',
-                        size: pbpDesc,
-                        len_dec: pbpLen
                     });
                 }
             } else if (cat === 'welded_assembly') {
@@ -10946,51 +4906,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     grade: grade,
                     isWeldedPiece: true
                 });
-            } else if (cat === 'plate') {
-                const shapes = SHAPES_DB['plate'] || [];
-                const selectedSizeId = document.getElementById('shape-size')?.value || 'PL1/2';
-                const selectedPlate = shapes.find(s => s.id === selectedSizeId) || { t: 0.5, name: '1/2" PL' };
-                const plateT = selectedPlate.t;
-                
-                let rowDesc = "";
-                let lenVal = `PL ${plateT}"`;
-                let wVal = 0.0;
-                let preciseLen = vals.w || 12.0;
-                
-                if (vals.fabMethod === 'custom') {
-                    let minX = 0, maxX = 0, minY = 0, maxY = 0;
-                    customPlatePoints.forEach(p => {
-                        if (p[0] < minX) minX = p[0];
-                        if (p[0] > maxX) maxX = p[0];
-                        if (p[1] < minY) minY = p[1];
-                        if (p[1] > maxY) maxY = p[1];
-                    });
-                    const bboxW = maxX - minX;
-                    const bboxH = maxY - minY;
-                    rowDesc = `Custom Plate ${formatFraction(bboxW)} x ${formatFraction(bboxH)} x ${plateT}"`;
-                    wVal = bboxW * bboxH * plateT * 0.2836;
-                    preciseLen = bboxW;
-                } else if (vals.fabMethod === 'bent') {
-                    const devLen = CadEngine.calculatePlateDevelopedLength(vals.leg1, vals.leg2, plateT, vals.insideRadius, vals.bendAngle);
-                    rowDesc = `Bent Plate L1=${vals.leg1}" L2=${vals.leg2}" W=${vals.w}" x ${plateT}" BENT ${vals.bendAngle}° R=${vals.insideRadius}"`;
-                    lenVal = formatFraction(devLen);
-                    wVal = vals.w * devLen * plateT * 0.2836;
-                    preciseLen = devLen;
-                } else {
-                    rowDesc = `${vals.w}" x ${vals.h}" x ${plateT}" Plate`;
-                    wVal = vals.w * vals.h * plateT * 0.2836;
-                }
-                
-                bomItems.push({
-                    mark: mainMarkUpper,
-                    qty: 1,
-                    desc: rowDesc,
-                    len: lenVal,
-                    weight: Math.round(wVal * 10) / 10,
-                    shape: 'PLATE',
-                    size: rowDesc,
-                    len_dec: preciseLen
-                });
             } else {
                 // Standard Shapes
                 desc = document.getElementById('shape-size') ? document.getElementById('shape-size').options[document.getElementById('shape-size').selectedIndex].text : cat.toUpperCase();
@@ -11027,62 +4942,53 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // --- A. DRAW BOM BOX ---
-            const bomX = 199, bomY = 7, bomW = 91;
-            
-            // Column widths: Qty (6), Mark (12), Desc (24), Len (10), Steel (9), Finish (9), Remark (14), Weight (7)
-            const colW = [6, 12, 24, 10, 9, 9, 14, 7];
-            const colX = [];
-            let tempX = bomX;
-            for (let i = 0; i < colW.length; i++) {
-                colX.push(tempX);
-                tempX += colW[i];
-            }
-            colX.push(tempX); // 290
+            const bomX = 180, bomY = 7, bomW = 110;
             
             // Header Row (BILL OF MATERIAL)
             doc.setFillColor(235, 238, 242);
-            doc.rect(bomX, bomY, bomW, 6, 'FD');
+            doc.rect(bomX, bomY, bomW, 8, 'FD');
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8.0);
-            doc.text("BILL OF MATERIAL", bomX + bomW / 2, bomY + 4.2, { align: "center" });
+            doc.setFontSize(8.5);
+            doc.text("BILL OF MATERIAL", bomX + 55, bomY + 5.5, { align: "center" });
             
-            const subY = bomY + 6;
+            const subY = bomY + 8;
             doc.setFillColor(245, 247, 250);
-            doc.rect(bomX, subY, bomW, 5, 'FD');
-            doc.setFontSize(4.5);
+            doc.rect(bomX, subY, bomW, 7, 'FD');
+            doc.setFontSize(5);
             
             // Column Headers
-            doc.text("QTY", colX[0] + colW[0] / 2, subY + 2.0, { align: "center" });
-            doc.text("TOTAL", colX[0] + colW[0] / 2, subY + 4.0, { align: "center" });
+            // x-splits: 180 -> 187 -> 201 -> 232 -> 243 -> 254 -> 266 -> 282 -> 290
+            doc.text("QTY", 183.5, subY + 3, { align: "center" });
+            doc.text("TOTAL", 183.5, subY + 5.5, { align: "center" });
             
-            doc.text("PIECE", colX[1] + colW[1] / 2, subY + 2.0, { align: "center" });
-            doc.text("MARK", colX[1] + colW[1] / 2, subY + 4.0, { align: "center" });
+            doc.text("PIECE", 194, subY + 3, { align: "center" });
+            doc.text("MARK", 194, subY + 5.5, { align: "center" });
             
-            doc.text("DESCRIPTION", colX[2] + colW[2] / 2, subY + 3.2, { align: "center" });
-            doc.text("LENGTH", colX[3] + colW[3] / 2, subY + 3.2, { align: "center" });
+            doc.text("DESCRIPTION", 216.5, subY + 4.5, { align: "center" });
+            doc.text("LENGTH", 237.5, subY + 4.5, { align: "center" });
             
-            doc.text("STEEL", colX[4] + colW[4] / 2, subY + 2.0, { align: "center" });
-            doc.text("GRADE", colX[4] + colW[4] / 2, subY + 4.0, { align: "center" });
+            doc.text("STEEL", 248.5, subY + 3, { align: "center" });
+            doc.text("GRADE", 248.5, subY + 5.5, { align: "center" });
             
-            doc.text("SURFACE", colX[5] + colW[5] / 2, subY + 2.0, { align: "center" });
-            doc.text("FINISH", colX[5] + colW[5] / 2, subY + 4.0, { align: "center" });
+            doc.text("SURFACE", 260, subY + 3, { align: "center" });
+            doc.text("FINISH", 260, subY + 5.5, { align: "center" });
             
-            doc.text("REMARKS", colX[6] + colW[6] / 2, subY + 3.2, { align: "center" });
+            doc.text("REMARKS", 274, subY + 4.5, { align: "center" });
             
-            doc.text("WEIGHT", colX[7] + colW[7] / 2, subY + 2.0, { align: "center" });
-            doc.text("TOTAL", colX[7] + colW[7] / 2, subY + 4.0, { align: "center" });
+            doc.text("WEIGHT", 286, subY + 3, { align: "center" });
+            doc.text("TOTAL", 286, subY + 5.5, { align: "center" });
             
             // Column Header Dividers
-            doc.line(colX[1], subY, colX[1], subY + 5);
-            doc.line(colX[2], subY, colX[2], subY + 5);
-            doc.line(colX[3], subY, colX[3], subY + 5);
-            doc.line(colX[4], subY, colX[4], subY + 5);
-            doc.line(colX[5], subY, colX[5], subY + 5);
-            doc.line(colX[6], subY, colX[6], subY + 5);
-            doc.line(colX[7], subY, colX[7], subY + 5);
+            doc.line(187, subY, 187, subY + 7);
+            doc.line(201, subY, 201, subY + 7);
+            doc.line(232, subY, 232, subY + 7);
+            doc.line(243, subY, 243, subY + 7);
+            doc.line(254, subY, 254, subY + 7);
+            doc.line(266, subY, 266, subY + 7);
+            doc.line(282, subY, 282, subY + 7);
             
             // Draw Rows
-            let currentY = subY + 5;
+            let currentY = subY + 7;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(5.5);
             
@@ -11091,24 +4997,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 let grade = 'A500';
                 if (s.includes('plate') || s.includes('pl')) {
                     grade = 'A36';
-                } else if (s === 'wwm') {
-                    grade = 'WELDED';
                 }
                 return grade.replace(/\bgr[.\s]*[a-z0-9]+/gi, '').trim();
             };
             
-            const consolidatedBomItems = consolidateBOMItems(bomItems);
-            
-            const straightItems = consolidatedBomItems.filter(item => !item.isBent && (typeof item.qty === 'number' ? item.qty > 0 : (item.qty === 'AR' || parseInt(item.qty) > 0)));
-            const bentItems = consolidatedBomItems.filter(item => item.isBent && (typeof item.qty === 'number' ? item.qty > 0 : (item.qty === 'AR' || parseInt(item.qty) > 0)));
+            const straightItems = bomItems.filter(item => !item.isBent);
+            const bentItems = bomItems.filter(item => item.isBent);
             
             const drawCellText = (text, startX, cellWidth, alignment = "left", isBold = false) => {
                 doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-                let currentSize = 4.8;
+                let currentSize = 5.5;
                 doc.setFontSize(currentSize);
                 let textW = doc.getTextWidth(text);
-                const maxW = cellWidth - 1.6; // 1.6mm padding total
-                while (textW > maxW && currentSize > 2.5) {
+                const maxW = cellWidth - 2.0; // 2mm padding total
+                while (textW > maxW && currentSize > 3.0) {
                     currentSize -= 0.1;
                     doc.setFontSize(currentSize);
                     textW = doc.getTextWidth(text);
@@ -11118,54 +5020,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (alignment === "center") {
                     x = startX + cellWidth / 2;
                 } else if (alignment === "left") {
-                    x = startX + 1.0; // 1.0mm left padding
+                    x = startX + 1.2; // 1.2mm left padding
                 } else if (alignment === "right") {
-                    x = startX + cellWidth - 1.0; // 1.0mm right padding
+                    x = startX + cellWidth - 1.2; // 1.2mm right padding
                 }
                 
-                doc.text(text, x, currentY + 3.1, { align: alignment });
-                doc.setFontSize(4.8); // restore default
+                doc.text(text, x, currentY + 3.8, { align: alignment });
+                doc.setFontSize(5.5); // restore default
                 doc.setFont('helvetica', 'normal');
             };
 
             const drawRow = (item) => {
-                doc.rect(bomX, currentY, bomW, 4.5, 'S');
+                doc.rect(bomX, currentY, bomW, 5.5, 'S');
                 
                 // Qty
-                drawCellText(item.qty.toString(), colX[0], colW[0], "center");
+                drawCellText(item.qty.toString(), 180, 7, "center");
                 // Piece Mark
-                drawCellText(item.mark, colX[1], colW[1], "center", true);
+                drawCellText(item.mark, 187, 14, "center", true);
                 
                 // Description (raw size only, e.g. HSS 2x2x1/8)
-                const dText = formatToArchitecturalDesc(item.desc || "");
-                drawCellText(dText, colX[2], colW[2], "left");
+                const dText = item.desc || "";
+                drawCellText(dText, 201, 31, "left");
                 
                 // Length
-                drawCellText(item.len, colX[3], colW[3], "center");
+                drawCellText(item.len, 232, 11, "center");
                 // Steel Grade
                 const grade = item.grade || getSteelGrade(item.shape);
-                drawCellText(grade, colX[4], colW[4], "center");
+                drawCellText(grade, 243, 11, "center");
                 // Surface Finish
                 const shortFinish = finishText.toUpperCase();
-                drawCellText(shortFinish, colX[5], colW[5], "center");
+                drawCellText(shortFinish, 254, 12, "center");
                 
                 // Remarks (descriptive labels like LEFT RUNNER, etc.)
                 const rText = item.remark || "";
-                drawCellText(rText, colX[6], colW[6], "left");
+                drawCellText(rText, 266, 16, "left");
                 
                 // Weight
-                drawCellText(item.weight.toFixed(1), colX[7], colW[7], "center");
+                drawCellText(item.weight.toFixed(1), 282, 8, "center");
                 
                 // Column Dividers
-                doc.line(colX[1], currentY, colX[1], currentY + 4.5);
-                doc.line(colX[2], currentY, colX[2], currentY + 4.5);
-                doc.line(colX[3], currentY, colX[3], currentY + 4.5);
-                doc.line(colX[4], currentY, colX[4], currentY + 4.5);
-                doc.line(colX[5], currentY, colX[5], currentY + 4.5);
-                doc.line(colX[6], currentY, colX[6], currentY + 4.5);
-                doc.line(colX[7], currentY, colX[7], currentY + 4.5);
+                doc.line(187, currentY, 187, currentY + 5.5);
+                doc.line(201, currentY, 201, currentY + 5.5);
+                doc.line(232, currentY, 232, currentY + 5.5);
+                doc.line(243, currentY, 243, currentY + 5.5);
+                doc.line(254, currentY, 254, currentY + 5.5);
+                doc.line(266, currentY, 266, currentY + 5.5);
+                doc.line(282, currentY, 282, currentY + 5.5);
                 
-                currentY += 4.5;
+                currentY += 5.5;
             };
 
             // Draw Straight Items
@@ -11178,146 +5080,30 @@ document.addEventListener('DOMContentLoaded', () => {
             // Draw Bent Items Divider & Items
             if (bentItems.length > 0 && currentY < 175) {
                 doc.setFillColor(235, 238, 242);
-                doc.rect(bomX, currentY, bomW, 4.5, 'FD');
+                doc.rect(bomX, currentY, bomW, 5.5, 'FD');
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(4.8);
-                doc.text("BENT ITEMS (FABRICATED)", bomX + bomW / 2, currentY + 3.1, { align: "center" });
-                currentY += 4.5;
+                doc.text("BENT ITEMS (FABRICATED)", bomX + 55, currentY + 3.8, { align: "center" });
+                currentY += 5.5;
                 
                 bentItems.forEach(item => {
                     if (currentY < 175) drawRow(item);
                 });
             }
             
-            // Left blank - empty cells removed to save space and match clean AutoCAD styles
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.2);
-            doc.line(bomX, 7, bomX, currentY);
-
-            // Draw bottom-right details below the BOM box
-            const bottomDetails = [];
-            if (isMeshStyle && !isLoosePost) {
-                bottomDetails.push('wire_mesh');
+            // Draw empty rows up to the top of the bottom blocks (y = 175)
+            while (currentY < 175) {
+                const rowH = Math.min(5.5, 175 - currentY);
+                if (rowH < 2) break;
+                doc.rect(bomX, currentY, bomW, rowH, 'S');
+                doc.line(187, currentY, 187, currentY + rowH);
+                doc.line(201, currentY, 201, currentY + rowH);
+                doc.line(232, currentY, 232, currentY + rowH);
+                doc.line(243, currentY, 243, currentY + rowH);
+                doc.line(254, currentY, 254, currentY + rowH);
+                doc.line(266, currentY, 266, currentY + rowH);
+                doc.line(282, currentY, 282, currentY + rowH);
+                currentY += rowH;
             }
-            if (isMeshStyle && !isLoosePost && (activePanelType === 'leftReturn' || activePanelType === 'rightReturn') && vals.extraFlatBar === 'yes' && vals.leftPost === 'yes') {
-                bottomDetails.push('extra_flat_bar');
-            }
-
-            if (bottomDetails.length > 0) {
-                const boxH = 42;
-                
-                // Determine whether to place details on the left margin or right margin
-                // based on where there is more empty horizontal space relative to the main drawing.
-                const leftSpace = pdfX - 9;
-                const rightSpace = 198 - (pdfX + drawW);
-                const isReturn = (activePanelType === 'leftReturn' || activePanelType === 'rightReturn');
-                const placeOnLeft = isReturn || (leftSpace > rightSpace);
-                
-                bottomDetails.forEach((detail, index) => {
-                    let boxX, boxY, boxW;
-                    if (bottomDetails.length === 1) {
-                        boxW = 48;
-                        if (placeOnLeft) {
-                            boxX = 9;
-                            boxY = 10; // Move efficiently to empty top-left corner
-                        } else {
-                            boxX = Math.min(198 - boxW, pdfX + drawW + 8);
-                            boxY = 131; // Bottom-right below the BOM box
-                        }
-                    } else {
-                        boxW = 38;
-                        if (placeOnLeft) {
-                            boxX = index === 0 ? 9 : 9 + boxW + 4;
-                            boxY = 10; // Move efficiently to empty top-left corner
-                        } else {
-                            boxW = 38;
-                            boxX = index === 0 ? Math.min(198 - 2 * boxW - 4, pdfX + drawW + 8) : Math.min(198 - boxW, pdfX + drawW + boxW + 12);
-                            boxY = 131;
-                        }
-                    }
-                    if (detail === 'wire_mesh') {
-                        drawWireMeshDetail(doc, boxX, boxY, boxW, boxH, vals);
-                    } else if (detail === 'extra_flat_bar') {
-                        drawExtraFlatBarDetail(doc, boxX, boxY, boxW, boxH, vals);
-                    }
-                });
-            }
-
-            // Draw Main Mark Label centered horizontally over the drawing
-            const drawMainMarkLabel = () => {
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(8.5);
-                doc.setTextColor(0, 0, 0);
-                
-                // 1. Style Code Mapping
-                let styleCode = 'QCL';
-                const styleLower = (style || 'classical').toLowerCase();
-                if (styleLower.includes('classical') || styleLower.includes('classic')) {
-                    styleCode = 'QCL';
-                } else if (styleLower.includes('executive')) {
-                    styleCode = 'QEX';
-                } else if (styleLower.includes('augusta')) {
-                    styleCode = 'QAU';
-                } else if (styleLower.includes('urban')) {
-                    styleCode = 'QUR';
-                } else if (styleLower.includes('villa')) {
-                    styleCode = 'QVI';
-                } else if (styleLower.includes('ivy')) {
-                    styleCode = 'QIV';
-                } else if (styleLower.includes('magnolia')) {
-                    styleCode = 'QMA';
-                }
-
-                // 2. Post Code Mapping
-                let postCode = 'A';
-                if (activePanelType === 'leftReturn') {
-                    postCode = 'CL';
-                } else if (activePanelType === 'rightReturn') {
-                    postCode = 'CR';
-                } else {
-                    const hasLeftPost = (vals.leftPost === 'yes');
-                    const hasRightPost = (vals.rightPost === 'yes');
-                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                    const hasMidPosts = (vals.midPosts !== 'none' && midPostCount > 0);
-                    
-                    if (vals.postType === 'none' || (!hasLeftPost && !hasRightPost && !hasMidPosts)) {
-                        postCode = 'X';
-                    } else if (vals.midPosts === 'custom') {
-                        postCode = 'B';
-                    } else {
-                        postCode = 'A';
-                    }
-                }
-
-                // 3. Panel Body Height
-                let fHeight = (style === 'classical' || style === 'executive') ? 41.0 : (vals.fenceHeight || 36.0);
-                const bodyHeight = Math.round(fHeight);
-
-                // 4. Combined marking label
-                const mmText = `${assemblyQty}-${styleCode}-${postCode}-${bodyHeight} : ${mainMark.toUpperCase()}`;
-                const scaleText = scaleLabelText;
-                
-                const mmCenterX = pdfX + drawW / 2;
-                let mmCenterY = 171.0;
-                let scaleCenterY = 174.0;
-                const dimLineY = pdfY + drawH + dimOffsetBottom;
-                if (dimLineY + 7.0 > 171.0) {
-                    mmCenterY = dimLineY + 7.0;
-                    scaleCenterY = mmCenterY + 2.5;
-                }
-                // Ensure scale label does not cross the bottom title block boundary starting at 175.0 mm.
-                // We keep scaleCenterY at most 174.0 (leaving 1.0mm safe margin) and mmCenterY at most 171.5.
-                if (scaleCenterY > 174.0) {
-                    scaleCenterY = 174.0;
-                    mmCenterY = scaleCenterY - 2.5; // 171.5
-                }
-                
-                doc.text(mmText, mmCenterX, mmCenterY, { align: "center" });
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(6.5);
-                doc.text(scaleText, mmCenterX, scaleCenterY, { align: "center" });
-            };
-            drawMainMarkLabel();
 
             // --- DRAW BOTTOM TITLE BLOCKS (y = 175 to 203, height = 28mm) ---
             const blockY = 175;
@@ -11397,23 +5183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text(cityState.toUpperCase(), 165, blockY + 14.5);
             doc.text(gc.toUpperCase(), 165, blockY + 19.5);
             
-            let titleDesc = cat === 'fence' ? "INDUSTRIAL FENCE BLUEPRINT" : `${desc.toUpperCase()} FABRICATION`;
-            if (cat === 'rail_catalog') {
-                if (isLoosePost) {
-                    titleDesc = "LOOSE CORNER POST";
-                } else if (mainMark.toUpperCase().endsWith("FB")) {
-                    titleDesc = "BALCONY MAIN RAIL";
-                } else if (mainMark.toUpperCase().endsWith("LB") || mainMark.toUpperCase().endsWith("RB")) {
-                    titleDesc = "BALCONY RETURN RAIL";
-                } else {
-                    titleDesc = "BALCONY RAIL";
-                }
-            }
-            if (assemblyQty > 1) {
-                titleDesc += ` - ${assemblyQty} REQD`;
-            } else {
-                titleDesc += ` - 1 REQD`;
-            }
+            const titleDesc = cat === 'fence' ? "INDUSTRIAL FENCE BLUEPRINT" : `${desc.toUpperCase()} FABRICATION`;
             doc.text(titleDesc.toUpperCase(), 165, blockY + 24.5);
 
             // 4. Drawing Details Details
@@ -11448,26 +5218,9 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text(fabNo.toUpperCase(), 277.5, blockY + 9.5, { align: "center" });
             doc.text(drawingNo.toUpperCase(), 277.5, blockY + 23.5, { align: "center" });
 
-            if (isPreviewOnly) {
-                const blob = doc.output('blob');
-                const blobUrl = URL.createObjectURL(blob);
-                resolve({ blobUrl: blobUrl, bomItems: bomItems });
-                return;
-            }
-
-            if (isZipBatch) {
-                if (url && url.indexOf('blob:') === 0) {
-                    URL.revokeObjectURL(url);
-                }
-                resolve({ pdfData: doc.output('arraybuffer'), bomItems: bomItems });
-                return;
-            }
-
             // Save PDF drawing
-            doc.save(`${drawingNo}.pdf`);
-            if (url && url.indexOf('blob:') === 0) {
-                URL.revokeObjectURL(url);
-            }
+            doc.save(`${drawingNo}_QUALITY_IRONWORKS_DRAWING.pdf`);
+            URL.revokeObjectURL(url);
             
             // --- D. GENERATE EXCEL DETAILED BOM (.XLSX) IF REQUESTED ---
             if (needFBOM) {
@@ -11476,8 +5229,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     let grade = 'A500';
                     if (s.includes('plate') || s.includes('pl')) {
                         grade = 'A36';
-                    } else if (s === 'wwm') {
-                        grade = 'WELDED';
                     }
                     // Strip suffix like Gr. B / Gr. B / Gr B etc.
                     return grade.replace(/\bgr[.\s]*[a-z0-9]+/gi, '').trim();
@@ -11497,18 +5248,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (shapeCol.includes('HSS')) {
                         shapeCol = 'HSS';
                     }
-                    if (shapeCol === 'PLATE') shapeCol = 'PL';
-                    if (shapeCol === 'FLAT_BAR') shapeCol = 'FB';
 
-                    // Determine dimensions: only put dimension, don't put HSS/PL/FB
-                    let dimCol = (item.size || item.desc || '').toUpperCase();
-                    dimCol = dimCol
-                        .replace(/HSS/gi, '')
-                        .replace(/\bPL\b/gi, '')
-                        .replace(/\bFB\b/gi, '')
-                        .replace(/^PL\s*/i, '')
-                        .replace(/^FB\s*/i, '')
-                        .trim();
+                    // Determine dimensions: only put dimension, don't put HSS
+                    let dimCol = (item.desc || item.size || '').toUpperCase();
+                    dimCol = dimCol.replace(/HSS/gi, '').replace(/\bHSS\b/gi, '').trim();
 
                     // Length: use formatted fraction (item.len)
                     const lengthCol = item.len;
@@ -11589,7 +5332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const wsData = [excelHeaders, ...excelRows];
                     const ws = XLSX.utils.aoa_to_sheet(wsData);
                     XLSX.utils.book_append_sheet(wb, ws, "FBOM");
-                    XLSX.writeFile(wb, `FBOM-${jobNo}-${fabNo}.xlsx`);
+                    XLSX.writeFile(wb, `SteelDraft_FBOM_${drawingNo}.xlsx`);
                 } else {
                     console.warn("SheetJS XLSX library not loaded, falling back to CSV");
                     let csvContent = excelHeaders.map(h => `"${h}"`).join(",") + "\n";
@@ -11603,7 +5346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const csvUrl = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = csvUrl;
-                    a.download = `FBOM-${jobNo}-${fabNo}.csv`;
+                    a.download = `SteelDraft_FBOM_${drawingNo}.csv`;
                     a.click();
                     URL.revokeObjectURL(csvUrl);
                 }
@@ -11620,20 +5363,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 toast.style.animation = 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) reverse';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
-            resolve();
-                } catch (err) {
-                    reject(err);
-                }
-            }, 150);
-        };
-        img.onerror = (err) => {
-            if (url && url.indexOf('blob:') === 0) {
-                URL.revokeObjectURL(url);
-            }
-            reject(err);
         };
         img.src = url;
-        });
     }
 
     // --- AI drawing assistant logic ---
@@ -11741,7 +5472,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
             if (picketWVal !== null) setVal('picketW', picketWVal);
 
-            
             // Picket Spacing
             const picketSVal = extractNum([
                 /picket\s*spacing\s*(?:to|is|=)?\s*(\d+(?:\.\d+)?)/,
@@ -11928,10 +5658,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleTweakBtn.style.borderColor = 'var(--border-color)';
                 if (btnSpan) btnSpan.textContent = 'Tweak Mode Off';
                 toggleTweakBtn.style.boxShadow = 'none';
-                selectedAnnotId = null; // Deselect on disable
             }
             
-            updateAnnotToolbar();
             if (currentMode === 'shapes') {
                 renderCurrentCAD();
             } else if (currentMode === 'draft') {
@@ -11961,6 +5689,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleAutocadDimBtn.style.borderColor = '#00d4ff';
                 toggleAutocadDimBtn.querySelector('span').textContent = 'AutoCAD Dim On';
                 toggleAutocadDimBtn.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.4)';
+                if (autocadDimToolbar) autocadDimToolbar.classList.remove('hidden');
                 
                 // Cache snap points
                 if (currentModel) {
@@ -11972,10 +5701,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleAutocadDimBtn.style.borderColor = 'var(--border-color)';
                 toggleAutocadDimBtn.querySelector('span').textContent = 'AutoCAD Dim Off';
                 toggleAutocadDimBtn.style.boxShadow = 'none';
+                if (autocadDimToolbar) autocadDimToolbar.classList.add('hidden');
                 
                 dimStartPoint = null;
                 activeSnapPoint = null;
-                selectedAnnotId = null; // Deselect on disable
                 
                 // Clean snap and temp overlay layers
                 const svgElement = svgContainer.querySelector('svg');
@@ -11986,78 +5715,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (gTemp) gTemp.innerHTML = "";
                 }
             }
-            updateAnnotToolbar();
         });
-    }
-
-    function updateAnnotToolbar() {
-        const autocadDimToolbar = document.getElementById('autocad-dim-toolbar');
-        if (!autocadDimToolbar) return;
-
-        const shouldShow = autocadDimModeActive || tweakModeActive || (selectedAnnotId !== null);
-        if (shouldShow) {
-            autocadDimToolbar.classList.remove('hidden');
-        } else {
-            autocadDimToolbar.classList.add('hidden');
-        }
-
-        if (!selectedAnnotId) {
-            // No selection
-            const delBtn = document.getElementById('delete-selected-dim');
-            if (delBtn) delBtn.classList.add('hidden');
-            const panelTitle = document.getElementById('autocad-dim-panel-title');
-            if (panelTitle) panelTitle.textContent = "AutoCAD Dimensioning";
-            
-            // Set values to globals
-            if (dimFontSizeVal) dimFontSizeVal.textContent = `${customDimFontSize}px`;
-            if (dimTextGapVal) dimTextGapVal.textContent = `${customDimTextGap}px`;
-            const overrideInput = document.getElementById('dim-text-override');
-            if (overrideInput) overrideInput.value = "";
-            return;
-        }
-        
-        // We have a selection! Show delete button
-        const delBtn = document.getElementById('delete-selected-dim');
-        if (delBtn) delBtn.classList.remove('hidden');
-        const panelTitle = document.getElementById('autocad-dim-panel-title');
-        if (panelTitle) panelTitle.textContent = `Selected: ${selectedAnnotId}`;
-        
-        // Initialize annotationProperties entry if not present
-        if (!annotationProperties[selectedAnnotId]) {
-            annotationProperties[selectedAnnotId] = {};
-        }
-        const spec = annotationProperties[selectedAnnotId];
-        
-        // Get values
-        let currentSize = spec.fontSize;
-        if (currentSize === undefined) {
-            if (selectedAnnotId.startsWith('custom-dim-')) {
-                currentSize = customDimFontSize;
-            } else if (selectedAnnotId.startsWith('leader-')) {
-                currentSize = 11; // Leader default
-            } else {
-                currentSize = 12; // Standard dimension default
-            }
-        }
-        
-        let currentGap = spec.textGap;
-        if (currentGap === undefined) {
-            if (selectedAnnotId.startsWith('custom-dim-')) {
-                currentGap = customDimTextGap;
-            } else if (selectedAnnotId.startsWith('leader-')) {
-                currentGap = 0; // Not applicable
-            } else {
-                currentGap = 8; // Default text gap
-            }
-        }
-        
-        if (dimFontSizeVal) dimFontSizeVal.textContent = `${currentSize}px`;
-        if (dimTextGapVal) dimTextGapVal.textContent = `${currentGap}px`;
-        
-        const overrideInput = document.getElementById('dim-text-override');
-        if (overrideInput) {
-            overrideInput.value = spec.text !== undefined && spec.text !== null ? spec.text : "";
-        }
     }
 
     // Font size controls
@@ -12067,18 +5725,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (dimFontIncBtn) {
         dimFontIncBtn.addEventListener('click', () => {
-            if (selectedAnnotId) {
-                if (!annotationProperties[selectedAnnotId]) annotationProperties[selectedAnnotId] = {};
-                const spec = annotationProperties[selectedAnnotId];
-                let currentSize = spec.fontSize;
-                if (currentSize === undefined) {
-                    currentSize = selectedAnnotId.startsWith('custom-dim-') ? customDimFontSize : (selectedAnnotId.startsWith('leader-') ? 11 : 12);
-                }
-                spec.fontSize = Math.min(32, currentSize + 1);
-            } else {
-                customDimFontSize = Math.min(32, customDimFontSize + 1);
-            }
-            updateAnnotToolbar();
+            customDimFontSize = Math.min(32, customDimFontSize + 1);
+            if (dimFontSizeVal) dimFontSizeVal.textContent = `${customDimFontSize}px`;
             if (currentMode === 'shapes') {
                 renderCurrentCAD();
             } else if (currentMode === 'draft') {
@@ -12089,106 +5737,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (dimFontDecBtn) {
         dimFontDecBtn.addEventListener('click', () => {
-            if (selectedAnnotId) {
-                if (!annotationProperties[selectedAnnotId]) annotationProperties[selectedAnnotId] = {};
-                const spec = annotationProperties[selectedAnnotId];
-                let currentSize = spec.fontSize;
-                if (currentSize === undefined) {
-                    currentSize = selectedAnnotId.startsWith('custom-dim-') ? customDimFontSize : (selectedAnnotId.startsWith('leader-') ? 11 : 12);
-                }
-                spec.fontSize = Math.max(6, currentSize - 1);
-            } else {
-                customDimFontSize = Math.max(6, customDimFontSize - 1);
-            }
-            updateAnnotToolbar();
+            customDimFontSize = Math.max(6, customDimFontSize - 1);
+            if (dimFontSizeVal) dimFontSizeVal.textContent = `${customDimFontSize}px`;
             if (currentMode === 'shapes') {
                 renderCurrentCAD();
             } else if (currentMode === 'draft') {
                 renderDraftSpace();
-            }
-        });
-    }
-
-    // Text gap controls
-    const dimGapIncBtn = document.getElementById('dim-gap-inc');
-    const dimGapDecBtn = document.getElementById('dim-gap-dec');
-    const dimTextGapVal = document.getElementById('dim-text-gap-val');
-
-    if (dimGapIncBtn) {
-        dimGapIncBtn.addEventListener('click', () => {
-            if (selectedAnnotId) {
-                if (!annotationProperties[selectedAnnotId]) annotationProperties[selectedAnnotId] = {};
-                const spec = annotationProperties[selectedAnnotId];
-                let currentGap = spec.textGap;
-                if (currentGap === undefined) {
-                    currentGap = selectedAnnotId.startsWith('custom-dim-') ? customDimTextGap : 8;
-                }
-                spec.textGap = Math.min(60, currentGap + 1);
-            } else {
-                customDimTextGap = Math.min(60, customDimTextGap + 1);
-            }
-            updateAnnotToolbar();
-            if (currentMode === 'shapes') {
-                renderCurrentCAD();
-            } else if (currentMode === 'draft') {
-                renderDraftSpace();
-            }
-        });
-    }
-    
-    if (dimGapDecBtn) {
-        dimGapDecBtn.addEventListener('click', () => {
-            if (selectedAnnotId) {
-                if (!annotationProperties[selectedAnnotId]) annotationProperties[selectedAnnotId] = {};
-                const spec = annotationProperties[selectedAnnotId];
-                let currentGap = spec.textGap;
-                if (currentGap === undefined) {
-                    currentGap = selectedAnnotId.startsWith('custom-dim-') ? customDimTextGap : 8;
-                }
-                spec.textGap = Math.max(0, currentGap - 1);
-            } else {
-                customDimTextGap = Math.max(0, customDimTextGap - 1);
-            }
-            updateAnnotToolbar();
-            if (currentMode === 'shapes') {
-                renderCurrentCAD();
-            } else if (currentMode === 'draft') {
-                renderDraftSpace();
-            }
-        });
-    }
-
-    // Text override input listener
-    const dimTextOverrideInput = document.getElementById('dim-text-override');
-    if (dimTextOverrideInput) {
-        dimTextOverrideInput.addEventListener('input', () => {
-            if (selectedAnnotId) {
-                if (!annotationProperties[selectedAnnotId]) annotationProperties[selectedAnnotId] = {};
-                const textVal = dimTextOverrideInput.value.trim();
-                annotationProperties[selectedAnnotId].text = textVal !== "" ? textVal : null;
-                
-                if (currentMode === 'shapes') {
-                    renderCurrentCAD();
-                } else if (currentMode === 'draft') {
-                    renderDraftSpace();
-                }
-            }
-        });
-    }
-
-    // Delete selected annotation listener
-    const deleteSelectedDimBtn = document.getElementById('delete-selected-dim');
-    if (deleteSelectedDimBtn) {
-        deleteSelectedDimBtn.addEventListener('click', () => {
-            if (selectedAnnotId) {
-                hiddenAnnotations.add(selectedAnnotId);
-                selectedAnnotId = null;
-                updateAnnotToolbar();
-                if (currentMode === 'shapes') {
-                    renderCurrentCAD();
-                } else if (currentMode === 'draft') {
-                    renderDraftSpace();
-                }
             }
         });
     }
@@ -12200,8 +5754,6 @@ document.addEventListener('DOMContentLoaded', () => {
             customDimensionsList = [];
             dimStartPoint = null;
             activeSnapPoint = null;
-            selectedAnnotId = null;
-            updateAnnotToolbar();
             if (currentMode === 'shapes') {
                 renderCurrentCAD();
             } else if (currentMode === 'draft') {
@@ -12240,6 +5792,31 @@ document.addEventListener('DOMContentLoaded', () => {
         let bomItems = [];
         const scale = CadEngine.isLibReady() ? 25.4 : 10;
         
+        const formatFraction = (val) => {
+            if (typeof val !== 'number' || isNaN(val)) return '0"';
+            const totalSixteenths = Math.round(val * 16);
+            const totalInches = Math.floor(totalSixteenths / 16);
+            const sixteenths = totalSixteenths % 16;
+            const feet = Math.floor(totalInches / 12);
+            const inches = totalInches % 12;
+            
+            let fractionStr = '';
+            if (sixteenths > 0) {
+                let num = sixteenths, den = 16;
+                while (num % 2 === 0) { num /= 2; den /= 2; }
+                fractionStr = ` ${num}/${den}`;
+            }
+            
+            if (feet > 0) {
+                return `${feet}'-${inches}${fractionStr}"`;
+            } else {
+                if (totalInches === 0 && sixteenths > 0) {
+                    return `${fractionStr.trim()}"`;
+                }
+                return `${inches}${fractionStr}"`;
+            }
+        };
+
         if (currentMode === 'draft') {
             draftMembers.forEach((m, idx) => {
                 const cleanId = m.id.replace(/member_/g, 'M-').substring(0, 10).toUpperCase();
@@ -12264,8 +5841,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cat = shapeCategory.value;
             const vals = {};
             dynamicInputs.querySelectorAll('input').forEach(inp => {
-                const id = inp.id.replace('inp-', '');
-                vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
+                vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
             });
             dynamicInputs.querySelectorAll('select').forEach(sel => {
                 vals[sel.id.replace('inp-', '')] = sel.value;
@@ -12274,8 +5850,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isGates = vals.railsGatesType === 'gates';
             const drawingNo = document.getElementById('exp-drawingNo')?.value || 'D-101';
             const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            const activeDwgNo = (cat === 'rail_catalog') ? getActiveBalconyDwgAndMark().drawingNo : cleanDrawingNo;
-            const mainMarkCode = (cat === 'rail_catalog') ? getActiveBalconyDwgAndMark().mainMark : (cleanDrawingNo + 'M1');
+            const mainMarkCode = cleanDrawingNo + 'M1';
             
             let charCode = 97; // 'a'
             let mainMarkAssigned = false;
@@ -12285,319 +5860,104 @@ document.addEventListener('DOMContentLoaded', () => {
                     mainMarkAssigned = true;
                     return mainMarkCode;
                 }
-                const m = String.fromCharCode(charCode) + activeDwgNo;
+                const m = String.fromCharCode(charCode) + cleanDrawingNo;
                 charCode++;
                 return m;
             };
 
-            const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-            const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+            const getProfileDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.h || selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.d || 0;
+                    if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
+
+            const getPicketDimension = (type, size, customVal) => {
+                if (type === 'none' || size === 'NONE') return 0;
+                if (size === 'CUSTOM') return customVal;
+                const shapes = SHAPES_DB[type] || [];
+                const selected = shapes.find(s => s.id === size);
+                if (selected) {
+                    if (type === 'hss_rect') return selected.w || 0;
+                    if (type === 'hss_circ') return selected.d || 0;
+                    if (type === 'w_beam') return selected.bf || 0;
+                    if (type === 'angles') return selected.leg1 || 0;
+                    if (type === 'plate') return selected.t || 0;
+                }
+                return customVal;
+            };
 
             if (cat === 'rail_catalog') {
-                const activeSet = balconyWizardState.tempSet || (balconyWizardState.sets ? balconyWizardState.sets[balconyWizardState.activeSetIdx] : null);
-                const activePanelType = balconyWizardState.activePanelType || 'main';
-                if (activeSet) {
-                    const panelObj = (activePanelType === 'main' || activePanelType === 'loosePost') ? activeSet.main : (activePanelType === 'leftReturn' ? activeSet.leftReturn : activeSet.rightReturn);
-                    if (panelObj) {
-                        for (const key in panelObj) {
-                            vals[key] = panelObj[key];
-                        }
-                    }
-                }
-                vals.originalLength = vals.length;
-                if (vals.extra6) {
-                    vals.length += (activePanelType === 'main' ? 12.0 : ((activePanelType === 'leftReturn' || activePanelType === 'rightReturn') ? 6.0 : 0.0));
-                }
-                const ext = CadEngine.resolveFreeEndExtensions(vals, vals.railStyle || 'classical', activePanelType);
-                vals.deltaLeft = ext.deltaLeft;
-                vals.deltaRight = ext.deltaRight;
-                vals.length += (ext.deltaLeft + ext.deltaRight);
-
                 const style = vals.railStyle || 'classical';
-                const props = getResolvedPanelProperties(vals, style);
-                let fHeight = props ? props.fHeight : 41.0;
-                let pHeight = props ? props.pHeight : 45.75;
-                let postType = props ? props.postType : 'hss_rect';
-                let postW = props ? props.postW : 1.5;
-                let postH = props ? props.postH : 1.5;
-                let postT = props ? props.postT : 0.1196;
-                let topRailType = props ? props.topRailType : 'hss_rect';
-                let topRailW = props ? props.topRailW : 1.5;
-                let topRailH = props ? props.topRailH : 1.5;
-                let topRailT = props ? props.topRailT : 0.0598;
-                let botRailType = props ? props.botRailType : 'hss_rect';
-                let botRailW = props ? props.botRailW : 1.5;
-                let botRailH = props ? props.botRailH : 1.5;
-                let botRailT = props ? props.botRailT : 0.0598;
-                let midRailType = props ? props.midRailType : 'none';
-                let midRailW = props ? props.midRailW : 1.5;
-                let midRailH = props ? props.midRailH : 1.5;
-                let midRailT = props ? props.midRailT : 0.0598;
-                let midRailGap = props ? props.midRailGap : 12.0;
-                let picketType = props ? props.picketType : 'none';
-                let picketW = props ? props.picketW : 0.5;
-                let picketH = props ? props.picketH : 0.5;
-                let picketT = props ? props.picketT : 0.0598;
-                let picketSpacing = props ? props.picketSpacing : 4.0;
-                let includeBasePlates = props ? props.includeBasePlates : 'no';
-
-                let topH = topRailH;
-                let botH = botRailH;
-                let midH = (midRailType === 'none') ? 0 : midRailH;
-                let picketW_size = picketW;
-                let midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+                let fHeight = 41.0;
+                let pHeight = 45.75;
+                let postType = 'hss_rect';
+                let postW = 1.5;
+                let postH = 1.5;
+                if (style === 'classical' || style === 'executive') {
+                    postW = 1.5; postH = 1.5;
+                } else {
+                    postType = vals.postType || 'hss_rect';
+                    postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                    postH = getProfileDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+                }
+                let topH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+                let botH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+                let midH = (style === 'classical') ? 0 : (style === 'executive' ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
+                let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
+                let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.5 : (vals.picketSpacing || 4.0));
+                let midPostCount = (vals.midPosts === 'yes') ? (parseInt(vals.midPostCount) || 0) : 0;
                 let botY = pHeight - fHeight;
-                let midRailGap_size = midRailGap;
-
-                const startXBound = (vals.leftPost === 'yes') ? postW : 0;
-                const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                const clearWidth = endXBound - startXBound - midPostCount * postW;
-                const spanW = clearWidth / (midPostCount + 1);
-
-                const panelType = balconyWizardState.activePanelType || 'main';
-                const isLoosePost = (panelType === 'loosePost');
-                const hasLeft = (vals.leftPost === 'yes');
-                const hasRight = (vals.rightPost === 'yes');
-
-                let countLeftPost = 0;
-                let countRightPost = 0;
-
-                countLeftPost = hasLeft ? 1 : 0;
-                countRightPost = hasRight ? 1 : 0;
+                let midRailGap = (style === 'classical') ? 0 : (style === 'executive' ? 12.0 : (vals.midRailGap || 12.0));
 
                 const topMark = getMark(vals.topRailType !== 'none');
                 const botMark = getMark(vals.botRailType !== 'none');
-                const midMark = getMark(style === 'executive' || style === 'villa_balcony' || style === 'villa_custom' || style === 'executive_custom' || (style.includes('custom') && vals.midRailType !== 'none'));
-                const leftMark = getMark(countLeftPost > 0 && vals.postType !== 'none');
-                const rightMark = (countRightPost > 0 && vals.postType !== 'none') ? (leftMark ? leftMark : getMark(true)) : null;
-                const midPostMark = getMark(vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                const picketMark = getMark(picketType !== 'none');
-                const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-                const meshFbMark = getMark(isMeshStyle);
-                const meshPanelMark = getMark(isMeshStyle);
-                const bpMark = getMark(vals.includeBasePlates === 'yes');
+                const midMark = getMark(style !== 'classical' && vals.midRailType !== 'none');
+                const leftMark = getMark(vals.leftPost === 'yes' && vals.postType !== 'none');
+                const rightMark = getMark(vals.rightPost === 'yes' && vals.postType !== 'none');
+                const midPostMark = getMark(vals.midPosts === 'yes' && midPostCount > 0 && vals.postType !== 'none');
+                const picketMark = getMark(vals.picketType !== 'none');
 
-                const railSpans = resolveRailMarksAndSpans(vals, drawingNo, cat, style, postW);
-
-                if (isLoosePost) {
-                    const postDwgName = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}x${postT}` : vals.postSize);
-                    bomItems.push({
-                        mark: `a${drawingNo.toUpperCase()}`,
-                        remark: "LOOSE POST",
-                        desc: postDwgName,
-                        qty: 1,
-                        len: formatFraction(pHeight),
-                        shape: postType.toUpperCase(),
-                        size: postDwgName
-                    });
-                    
-                    if (vals.includeBasePlates === 'yes') {
-                        const bpW = vals.basePlateW || 6.0;
-                        const bpL = vals.basePlateL || 6.0;
-                        const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
-                        bomItems.push({
-                            mark: `b${drawingNo.toUpperCase()}`,
-                            remark: "BASE PLATE",
-                            desc: `${bpW}x${bpL} Plate`,
-                            qty: 1,
-                            len: bpName,
-                            shape: 'PLATE',
-                            size: `${bpW}x${bpL}x${vals.basePlateT !== undefined ? vals.basePlateT : 0.5}`
-                        });
-                    }
-
-                    if (isMeshStyle) {
-                        const fH = vals.fenceHeight !== undefined ? vals.fenceHeight : 41.0;
-                        const bY = pHeight - fH;
-                        const bH = botRailH !== undefined ? botRailH : 1.5;
-                        const tH = topRailH !== undefined ? topRailH : 1.5;
-                        const mGap = midRailGap !== undefined ? midRailGap : 3.0;
-                        const mH = midRailH !== undefined ? midRailH : 1.5;
-                        
-                        const yStart = bY + bH;
-                        const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && midRailType !== 'none'));
-                        const yEnd = hasMid ? (pHeight - tH - mGap - mH) : (pHeight - tH);
-                        const fbHeight = yEnd - yStart;
-
-                        if (fbHeight > 0) {
-                            bomItems.push({
-                                mark: `c${drawingNo.toUpperCase()}`,
-                                remark: "ATTACHED FB",
-                                desc: `FB 1"x1/8"`,
-                                qty: 1,
-                                len: formatFraction(fbHeight),
-                                shape: 'FLAT_BAR',
-                                size: `1"x1/8"`
-                            });
-                        }
-                    }
-                } else {
-                    if (topMark) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x16GA` : (vals.topRailSize === 'CUSTOM' ? `HSS ${postW}x${topH}` : vals.topRailSize);
-                        bomItems.push({ mark: topMark, remark: "TOP RAIL", desc: name, qty: 1, len: formatFraction(vals.length) });
-                    }
-                    if (botMark) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x16GA` : (vals.botRailSize === 'CUSTOM' ? `HSS ${postW}x${botH}` : vals.botRailSize);
-                        const bottomGroups = {};
-                        railSpans.bottomSegments.forEach(seg => {
-                            if (!bottomGroups[seg.mark]) {
-                                bottomGroups[seg.mark] = { len: seg.len, qty: 0 };
-                            }
-                            bottomGroups[seg.mark].qty++;
-                        });
-                        Object.keys(bottomGroups).forEach(mark => {
-                            const group = bottomGroups[mark];
-                            bomItems.push({ mark: mark, remark: "BOTTOM RAIL", desc: name, qty: group.qty, len: formatFraction(group.len) });
-                        });
-                    }
-                    if (leftMark && rightMark && leftMark === rightMark) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}` : vals.postSize);
-                        bomItems.push({ mark: leftMark, remark: "L/R POST", desc: name, qty: 2, len: formatFraction(pHeight) });
-                    } else {
-                        if (leftMark) {
-                            const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}` : vals.postSize);
-                            bomItems.push({ mark: leftMark, remark: "LEFT POST", desc: name, qty: 1, len: formatFraction(pHeight) });
-                        }
-                        if (rightMark) {
-                            const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}` : vals.postSize);
-                            bomItems.push({ mark: rightMark, remark: "RIGHT POST", desc: name, qty: 1, len: formatFraction(pHeight) });
-                        }
-                    }
-                    if (midMark) {
-                        const name = (style === 'executive' || style === 'villa_balcony') ? `HSS 1.5x1.5x16GA` : (vals.midRailSize === 'CUSTOM' ? `HSS ${postW}x${midH}` : vals.midRailSize);
-                        const midGroups = {};
-                        railSpans.midSegments.forEach(seg => {
-                            if (!midGroups[seg.mark]) {
-                                midGroups[seg.mark] = { len: seg.len, qty: 0 };
-                            }
-                            midGroups[seg.mark].qty++;
-                        });
-                        Object.keys(midGroups).forEach(mark => {
-                            const group = midGroups[mark];
-                            bomItems.push({ mark: mark, remark: "MID RUNNER", desc: name, qty: group.qty, len: formatFraction(group.len) });
-                        });
-                    }
-                    if (midPostMark) {
-                        const name = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? `HSS 1.5x1.5x11GA` : (vals.postSize === 'CUSTOM' ? `HSS ${postW}x${postH}` : vals.postSize);
-                        const mpH = style === 'executive' ? 44.25 : (pHeight - topH);
-                        bomItems.push({ mark: midPostMark, remark: "MID POST", desc: name, qty: midPostCount, len: formatFraction(mpH) });
-                    }
-                    if (picketMark) {
-                        const name = (style === 'classical' || style === 'executive') ? `HSS 1/2x1/2x16GA` : (vals.picketSize === 'CUSTOM' ? `HSS ${picketW}x${picketW}` : vals.picketSize);
-                        const picketBottomY = botY + botH;
-                        const picketTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                        const picketH = picketTopY - picketBottomY;
-                        bomItems.push({ mark: picketMark, remark: "PICKET", desc: name, qty: "AR", len: formatFraction(picketH) });
-                    }
-                    if (isMeshStyle) {
-                        const picketBottomY = botY + botH;
-                        const picketTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                        const fbHeight = picketTopY - picketBottomY;
-
-                        // Group by suffix/length for Horizontal Flat Bars and Wire Mesh Panels
-                        const meshGroups = {};
-                        railSpans.bottomSegments.forEach(seg => {
-                            const baseMark = "a" + drawingNo;
-                            const suffix = seg.mark.substring(baseMark.length);
-                            const hMark = meshFbMark + suffix;
-                            const pMark = meshPanelMark + suffix;
-                            
-                            if (!meshGroups[suffix]) {
-                                meshGroups[suffix] = {
-                                    len: seg.len,
-                                    qty: 0,
-                                    hMark: hMark,
-                                    pMark: pMark
-                                };
-                            }
-                            meshGroups[suffix].qty++;
-                        });
-
-                        // Horizontal flat bars
-                        if (meshFbMark) {
-                            Object.keys(meshGroups).forEach(suffix => {
-                                const group = meshGroups[suffix];
-                                bomItems.push({
-                                    mark: group.hMark,
-                                    remark: "MESH FRAME HORIZ",
-                                    desc: `FB 1"x1/8"`,
-                                    qty: 2 * group.qty,
-                                    len: formatFraction(group.len),
-                                    shape: 'FLAT_BAR',
-                                    size: '1"x1/8"',
-                                    len_dec: group.len
-                                });
-                            });
-                        }
-
-                        // Vertical flat bars
-                        if (meshFbMark) {
-                            const leftOmitted = (vals.leftPost === 'yes') ? 0 : 1;
-                            const rightOmitted = (vals.rightPost === 'yes') ? 0 : 1;
-                            const vertQty = 2 * (midPostCount + 1) - leftOmitted - rightOmitted;
-                            if (vertQty > 0) {
-                                const fbVertLen = fbHeight - 2.0;
-                                bomItems.push({
-                                    mark: meshFbMark + "V",
-                                    remark: "MESH FRAME VERT",
-                                    desc: `FB 1"x1/8"`,
-                                    qty: vertQty,
-                                    len: formatFraction(fbVertLen),
-                                    shape: 'FLAT_BAR',
-                                    size: '1"x1/8"',
-                                    len_dec: fbVertLen
-                                });
-                            }
-                        }
-
-                        // Wire Mesh Panels
-                        if (meshPanelMark) {
-                            const meshGridW = vals.meshGridW !== undefined ? vals.meshGridW : 2.0;
-                            const meshGridH = vals.meshGridH !== undefined ? vals.meshGridH : 2.0;
-                            const meshWireD = vals.meshWireD !== undefined ? vals.meshWireD : 0.135;
-                            const wwmSize = `${meshGridW}x${meshGridH}x${meshWireD} x ${formatFraction(fbHeight)}`;
-
-                            Object.keys(meshGroups).forEach(suffix => {
-                                const group = meshGroups[suffix];
-                                const wwmDesc = `WWM ${meshGridW}x${meshGridH}x${meshWireD} x ${formatFraction(fbHeight)}`;
-                                bomItems.push({
-                                    mark: group.pMark,
-                                    remark: "WWM WIRE MESH",
-                                    desc: wwmDesc,
-                                    qty: group.qty,
-                                    len: formatFraction(group.len),
-                                    shape: 'WWM',
-                                    size: wwmSize,
-                                    len_dec: group.len
-                                });
-                            });
-                        }
-
-                        if (vals.extraFlatBar === 'yes' && (panelType === 'leftReturn' || panelType === 'rightReturn') && vals.leftPost === 'yes') {
-                            bomItems.push({
-                                mark: meshFbMark,
-                                remark: "EXTRA CORNER FB",
-                                desc: `FB 1"x1/8"`,
-                                qty: 1,
-                                len: formatFraction(fbHeight),
-                                shape: 'FLAT_BAR',
-                                size: '1"x1/8"'
-                            });
-                        }
-                    }
-                    if (bpMark && vals.includeBasePlates === 'yes') {
-                        const totalPostsCount = countLeftPost + countRightPost + midPostCount;
-                        if (totalPostsCount > 0) {
-                            const bpName = vals.basePlateSize === 'CUSTOM' ? `PL ${vals.basePlateT}"` : vals.basePlateSize;
-                            bomItems.push({
-                                mark: bpMark,
-                                remark: "BASE PLATE",
-                                desc: `${vals.basePlateW || 6.0}x${vals.basePlateL || 6.0} Plate`,
-                                qty: totalPostsCount,
-                                len: bpName
-                            });
-                        }
-                    }
+                if (topMark) {
+                    const sizeName = vals.topRailSize === 'CUSTOM' ? `HSS ${vals.topRailH}x${vals.topRailH}` : vals.topRailSize;
+                    bomItems.push({ mark: topMark, remark: "TOP RAIL", desc: sizeName, qty: 1, len: formatFraction(vals.length) });
+                }
+                if (botMark) {
+                    const sizeName = vals.botRailSize === 'CUSTOM' ? `HSS ${vals.botRailH}x${vals.botRailH}` : vals.botRailSize;
+                    bomItems.push({ mark: botMark, remark: "BOTTOM RAIL", desc: sizeName, qty: 1, len: formatFraction(vals.length) });
+                }
+                if (leftMark) {
+                    const sizeName = vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postW}` : vals.postSize;
+                    bomItems.push({ mark: leftMark, remark: "LEFT POST", desc: sizeName, qty: 1, len: formatFraction(pHeight) });
+                }
+                if (rightMark) {
+                    const sizeName = vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postW}` : vals.postSize;
+                    bomItems.push({ mark: rightMark, remark: "RIGHT POST", desc: sizeName, qty: 1, len: formatFraction(pHeight) });
+                }
+                if (midMark) {
+                    const sizeName = vals.midRailSize === 'CUSTOM' ? `HSS ${vals.midRailH}x${vals.midRailH}` : vals.midRailSize;
+                    bomItems.push({ mark: midMark, remark: "MID RUNNER", desc: sizeName, qty: 1, len: formatFraction(vals.length) });
+                }
+                if (midPostMark) {
+                    const sizeName = vals.postSize === 'CUSTOM' ? `HSS ${vals.postW}x${vals.postW}` : vals.postSize;
+                    const isExecutiveStyle = (style === 'executive' || style === 'executive_custom');
+                    const mpH = isExecutiveStyle ? pHeight : (pHeight - topH);
+                    bomItems.push({ mark: midPostMark, remark: "MID POST", desc: sizeName, qty: midPostCount, len: formatFraction(mpH) });
+                }
+                if (picketMark) {
+                    const sizeName = vals.picketSize === 'CUSTOM' ? `HSS ${vals.picketW}x${vals.picketW}` : vals.picketSize;
+                    const picketBottomY = botY + botH;
+                    const picketTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
+                    const picketH = picketTopY - picketBottomY;
+                    bomItems.push({ mark: picketMark, remark: "PICKET", desc: sizeName, qty: "AR", len: formatFraction(picketH) });
                 }
             } else if (cat === 'rails_gates') {
                 const leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
@@ -12611,17 +5971,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const midPostCount = parseInt(vals.midPostCount) || 0;
                 
                 const isExtended = !isGates && (vals.postHeight > vals.fenceHeight);
-                const picketPositions = getPicketPositions(
-                    vals.railStyle || 'classical',
-                    vals.length,
-                    leftPostW,
-                    rightPostW,
-                    pickW,
-                    vals.picketSpacing,
-                    midPostCount,
-                    midPostW
-                );
-                const numPickets = picketPositions.length;
+                const clearWidth = vals.length - leftPostW - rightPostW;
+                const numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
                 const finalPicketsCount = numPickets;
 
                 const topMark = getMark(vals.topRailType !== 'none');
@@ -12637,15 +5988,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const rad = vals.slope * Math.PI / 180;
                 const cos = Math.cos(rad);
 
-                const isPlateFrame = isGates && (vals.leftPostType === 'plate' || vals.rightPostType === 'plate' || vals.topRailType === 'plate' || vals.botRailType === 'plate');
                 let preciseTopLen = vals.length;
-                if (isPlateFrame) preciseTopLen = vals.length - leftPostW - rightPostW;
-                if (cos > 0.001) preciseTopLen = preciseTopLen / cos;
+                if (cos > 0.001) preciseTopLen = vals.length / cos;
                 let preciseBotLen = vals.length;
-                if (isExtended || isPlateFrame) preciseBotLen = vals.length - leftPostW - rightPostW;
+                if (isExtended) preciseBotLen = vals.length - leftPostW - rightPostW;
                 if (cos > 0.001) preciseBotLen = preciseBotLen / cos;
                 let preciseMidLen = vals.length;
-                if (isExtended || isPlateFrame) preciseMidLen = vals.length - leftPostW - rightPostW;
+                if (isExtended) preciseMidLen = vals.length - leftPostW - rightPostW;
                 if (cos > 0.001) preciseMidLen = preciseMidLen / cos;
 
                 const runnerH = isGates ? vals.fenceHeight : vals.postHeight;
@@ -12675,114 +6024,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     const finalMidPostHeight = runnerH - botH;
                     bomItems.push({ mark: midPostMark, remark: "MID POST", desc: sizeName, qty: midPostCount, len: formatFraction(finalMidPostHeight) });
                 }
-                let picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? kickPlateH : botH + kickPlateH) : botH);
-                let picketTopY = vals.fenceHeight - topH;
-                if (!isGates) {
-                    picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - vals.midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
-                    picketTopY = vals.postHeight - topH;
-                }
-                const picketH = picketTopY - picketBottomY;
-
-                if (picketMark && vals.picketType !== 'none' && finalPicketsCount > 0) {
+                if (picketMark) {
                     const sizeName = vals.picketSize === 'CUSTOM' ? `HSS ${vals.picketW}x${vals.picketW}` : vals.picketSize;
+                    let picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? kickPlateH : botH);
+                    let picketTopY = vals.fenceHeight - topH;
+                    if (!isGates) {
+                        picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - vals.midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
+                        picketTopY = vals.postHeight - topH;
+                    }
+                    const picketH = picketTopY - picketBottomY;
                     bomItems.push({ mark: picketMark, remark: "PICKET", desc: sizeName, qty: finalPicketsCount, len: formatFraction(picketH) });
                 }
                 if (kpMark) {
                     const kpW = vals.length - leftPostW - rightPostW;
-                    bomItems.push({ mark: kpMark, remark: "KICK PLATE", desc: formatPlateDesc(vals.kickPlateSize, vals.kickPlateH || 12.0), qty: 1, len: formatFraction(kpW) });
+                    bomItems.push({ mark: kpMark, remark: "KICK PLATE", desc: vals.kickPlateSize || "PL11GA", qty: 1, len: formatFraction(kpW) });
                 }
                 if (bpMark) {
                     const totalPosts = 2 + midPostCount;
                     const bpW = vals.basePlateW || 6.0;
                     const bpL = vals.basePlateL || 6.0;
                     bomItems.push({ mark: bpMark, remark: "BASE PLATE", desc: `${bpW}x${bpL} Plate`, qty: totalPosts, len: `${bpW}x${bpL}x${vals.basePlateT || 0.5}"` });
-                }
-
-                // Wire Mesh / XF Frame & Panel
-                if (isGates && vals.meshType && vals.meshType !== 'none') {
-                    const meshFbSize = vals.meshFbSize || 'FB1x1/8';
-                    const meshSize = vals.meshSize || 'WWM2x2x0.135';
-                    
-                    const mOpeningW = vals.length - leftPostW - rightPostW;
-                    const mOpeningH = (vals.fenceHeight - topH) - picketBottomY;
-                    
-                    const fbMark = getMark(true);
-                    const meshPanelMark = getMark(true);
-                    
-                    // Horizontal FBs
-                    const fbW = 1.0;
-                    const fbT = 0.125;
-                    const fbWtH = fbW * fbT * mOpeningW * 0.2833;
-                    const fbWtV = fbW * fbT * mOpeningH * 0.2833;
-                    
-                    bomItems.push({
-                        mark: fbMark + "H",
-                        remark: "MESH FRAME FB",
-                        desc: meshFbSize,
-                        qty: 2,
-                        len: formatFraction(mOpeningW),
-                        weight: Math.round(fbWtH * 2 * 10) / 10,
-                        shape: 'FLAT_BAR',
-                        size: meshFbSize,
-                        len_dec: mOpeningW
-                    });
-                    
-                    // Vertical FBs
-                    bomItems.push({
-                        mark: fbMark + "V",
-                        remark: "MESH FRAME FB",
-                        desc: meshFbSize,
-                        qty: 2,
-                        len: formatFraction(mOpeningH),
-                        weight: Math.round(fbWtV * 2 * 10) / 10,
-                        shape: 'FLAT_BAR',
-                        size: meshFbSize,
-                        len_dec: mOpeningH
-                    });
-                    
-                    // Mesh Panel
-                    const areaSqFt = (mOpeningW * mOpeningH) / 144.0;
-                    const meshWtFactor = vals.meshType === 'mesh' ? 0.8 : 1.8;
-                    const panelWt = areaSqFt * meshWtFactor;
-                    
-                    const parsedMesh = parseMeshSpec(vals.meshType, meshSize, mOpeningH);
-                    bomItems.push({
-                        mark: meshPanelMark,
-                        remark: vals.meshType === 'mesh' ? "WWM WIRE MESH" : "EXPANDED METAL",
-                        desc: parsedMesh.bomDesc,
-                        qty: 1,
-                        len: formatFraction(mOpeningW),
-                        weight: Math.round(panelWt * 10) / 10,
-                        shape: vals.meshType === 'mesh' ? 'WWM' : 'XF',
-                        size: parsedMesh.dimensions,
-                        len_dec: mOpeningW
-                    });
-                }
-                
-                // Panic Bar Plate
-                if (isGates && vals.panicBarPlate === 'yes') {
-                    const pbpMark = getMark(true);
-                    const pbpW = vals.panicBarPlateW || 8.0;
-                    const pbpT = vals.panicBarPlateSize || 'PL3/16';
-                    const pbpLen = vals.length - leftPostW - rightPostW;
-                    const pbpDesc = formatPlateDesc(pbpT, pbpW);
-                    
-                    const plates = SHAPES_DB['plate'] || [];
-                    const selectedPlate = plates.find(p => p.id === pbpT) || { t: 0.1875 };
-                    const pbpThick = selectedPlate.t;
-                    const pbpWt = pbpLen * pbpW * pbpThick * 0.2833;
-                    
-                    bomItems.push({
-                        mark: pbpMark,
-                        remark: "PANIC BAR PLATE",
-                        desc: pbpDesc,
-                        qty: 1,
-                        len: formatFraction(pbpLen),
-                        weight: Math.round(pbpWt * 10) / 10,
-                        shape: 'PLATE',
-                        size: pbpDesc,
-                        len_dec: pbpLen
-                    });
                 }
             } else if (cat === 'fence') {
                 const postW = getPicketDimension(vals.postType, vals.postSize, vals.postW);
@@ -12851,59 +6112,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     bomItems.push({ mark: bpMark, remark: "BASE PLATE", desc: `${bpW}x${bpL} Plate`, qty: numPosts, len: `${bpW}x${bpL}x${vals.basePlateT || 0.5}"` });
                 }
             } else if (cat === 'plate') {
-                const shapes = SHAPES_DB['plate'] || [];
-                const selectedSizeId = document.getElementById('shape-size')?.value || 'PL1/2';
-                const selectedPlate = shapes.find(s => s.id === selectedSizeId) || { t: 0.5, name: '1/2" PL' };
-                const plateT = selectedPlate.t;
-                
-                let desc = "";
-                let lenVal = `PL ${plateT}"`;
-                
-                if (vals.fabMethod === 'custom') {
-                    let minX = 0, maxX = 0, minY = 0, maxY = 0;
-                    customPlatePoints.forEach(p => {
-                        if (p[0] < minX) minX = p[0];
-                        if (p[0] > maxX) maxX = p[0];
-                        if (p[1] < minY) minY = p[1];
-                        if (p[1] > maxY) maxY = p[1];
-                    });
-                    const bboxW = maxX - minX;
-                    const bboxH = maxY - minY;
-                    desc = `Custom Plate ${formatFraction(bboxW)} x ${formatFraction(bboxH)} x ${plateT}"`;
-                } else if (vals.fabMethod === 'bent') {
-                    const devLen = CadEngine.calculatePlateDevelopedLength(vals.leg1, vals.leg2, plateT, vals.insideRadius, vals.bendAngle);
-                    desc = `Bent Plate L1=${vals.leg1}" L2=${vals.leg2}" W=${vals.w}" x ${plateT}" BENT ${vals.bendAngle}° R=${vals.insideRadius}"`;
-                    lenVal = formatFraction(devLen);
-                } else {
-                    desc = `${vals.w}" x ${vals.h}" x ${plateT}" Plate`;
-                }
-                
+                const plateMark = mainMarkCode;
+                const desc = `${vals.w}" x ${vals.h}" x ${vals.basePlateT || 0.5}" Plate`;
                 bomItems.push({
-                    mark: mainMarkCode,
-                    remark: vals.fabMethod === 'bent' ? "BENT PLATE" : (vals.fabMethod === 'custom' ? "CUSTOM PLATE" : "PLATE"),
+                    mark: plateMark,
+                    remark: vals.fabMethod === 'bent' ? "BENT PLATE" : "PLATE",
                     desc: desc,
                     qty: 1,
-                    len: lenVal
+                    len: vals.fabMethod === 'bent' ? `${vals.leg1 + vals.leg2}"` : `${vals.w}"`
                 });
             }
         }
-
-        let consolidatedBomItems = consolidateBOMItems(bomItems);
         
-        if (consolidatedBomItems.length === 0) {
+        if (bomItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="padding: 10px; text-align: center; color: var(--text-dim);">No piece marks detected for current configuration</td></tr>`;
             return;
         }
 
-        consolidatedBomItems.filter(item => {
-            if (typeof item.qty === 'number') return item.qty > 0;
-            if (typeof item.qty === 'string') {
-                if (item.qty === 'AR') return true;
-                const parsed = parseInt(item.qty);
-                return !isNaN(parsed) && parsed > 0;
-            }
-            return true;
-        }).forEach(item => {
+        bomItems.forEach(item => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
             tr.innerHTML = `
@@ -12923,36 +6149,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const vals = {};
         
         dynamicInputs.querySelectorAll('input').forEach(inp => {
-            const id = inp.id.replace('inp-', '');
-            vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
+            vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
         });
         dynamicInputs.querySelectorAll('select').forEach(sel => {
             vals[sel.id.replace('inp-', '')] = sel.value;
         });
 
         // Helper to get true dimensions
-        const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-        const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+        const getProfileDimension = (type, size, customVal) => {
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.h || selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.d || 0;
+                if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
+
+        const getPicketDimension = (type, size, customVal) => {
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.bf || 0;
+                if (type === 'angles') return selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
 
         const isReady = CadEngine.isLibReady();
-        const scale = getSvgScale(svg);
-        const scaleFactor = scale / 25.4;
         let handles = [];
         
         if (cat === 'plate') {
-            if (vals.fabMethod !== 'custom') {
-                if (isReady) {
-                    const w = vals.w * scale, h = vals.h * scale, ox = (vals.w/2 - vals.holeOffsetX) * scale, oy = (vals.h/2 - vals.holeOffsetY) * scale;
-                    handles.push({ x: w/2, y: 0, name: 'plate-width', tooltip: 'Drag to adjust Width' });
-                    handles.push({ x: 0, y: h/2, name: 'plate-height', tooltip: 'Drag to adjust Height' });
-                    handles.push({ x: ox, y: oy, name: 'hole-offset', tooltip: 'Drag to adjust Hole Offsets' });
-                } else {
-                    const s = 10;
-                    const sw = vals.w * s, sh = vals.h * s, offX = vals.holeOffsetX * s, offY = vals.holeOffsetY * s;
-                    handles.push({ x: sw, y: sh/2, name: 'plate-width', tooltip: 'Drag to adjust Width' });
-                    handles.push({ x: sw/2, y: sh, name: 'plate-height', tooltip: 'Drag to adjust Height' });
-                    handles.push({ x: offX, y: offY, name: 'hole-offset', tooltip: 'Drag to adjust Hole Offsets' });
-                }
+            if (isReady) {
+                const w = vals.w * 25.4, h = vals.h * 25.4, ox = (vals.w/2 - vals.holeOffsetX) * 25.4, oy = (vals.h/2 - vals.holeOffsetY) * 25.4;
+                handles.push({ x: w/2, y: 0, name: 'plate-width', tooltip: 'Drag to adjust Width' });
+                handles.push({ x: 0, y: h/2, name: 'plate-height', tooltip: 'Drag to adjust Height' });
+                handles.push({ x: ox, y: oy, name: 'hole-offset', tooltip: 'Drag to adjust Hole Offsets' });
+            } else {
+                const s = 10;
+                const sw = vals.w * s, sh = vals.h * s, offX = vals.holeOffsetX * s, offY = vals.holeOffsetY * s;
+                handles.push({ x: sw, y: sh/2, name: 'plate-width', tooltip: 'Drag to adjust Width' });
+                handles.push({ x: sw/2, y: sh, name: 'plate-height', tooltip: 'Drag to adjust Height' });
+                handles.push({ x: offX, y: offY, name: 'hole-offset', tooltip: 'Drag to adjust Hole Offsets' });
             }
         } else if (cat === 'fence') {
             const topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
@@ -12967,18 +6213,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (isReady) {
                 for (let i = 1; i < numSpans; i++) {
-                    const px = i * actualPostSpacing * scale;
+                    const px = i * actualPostSpacing * 25.4;
                     const py = px * tan;
                     handles.push({
                         x: px,
-                        y: py + vals.fenceHeight * scale,
+                        y: py + vals.fenceHeight * 25.4,
                         name: `fence-post-spacing-${i}`,
                         tooltip: `Drag Post ${i} to adjust Post Spacing`
                     });
                 }
-                handles.push({ x: vals.picketSpacing * scale, y: vals.fenceHeight * scale - 4 * scale, name: 'fence-picket-spacing', tooltip: 'Drag to adjust Picket Spacing' });
-                handles.push({ x: 0, y: vals.fenceHeight * scale, name: 'fence-height', tooltip: 'Drag to adjust Height' });
-                handles.push({ x: vals.length / 2 * scale, y: (vals.length / 2 * scale) * tan, name: 'fence-slope', tooltip: 'Drag to adjust Bottom Slope' });
+                handles.push({ x: vals.picketSpacing * 25.4, y: vals.fenceHeight * 25.4 - 4 * 25.4, name: 'fence-picket-spacing', tooltip: 'Drag to adjust Picket Spacing' });
+                handles.push({ x: 0, y: vals.fenceHeight * 25.4, name: 'fence-height', tooltip: 'Drag to adjust Height' });
+                handles.push({ x: vals.length / 2 * 25.4, y: (vals.length / 2 * 25.4) * tan, name: 'fence-slope', tooltip: 'Drag to adjust Bottom Slope' });
             } else {
                 const s = 4;
                 const L = vals.length * s;
@@ -13026,19 +6272,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const centerDist = vals.length - leftPostW/2 - rightPostW/2;
                     const spanSpacing = centerDist / (midPostCount + 1);
                     for (let i = 1; i <= midPostCount; i++) {
-                        const px = (leftPostW/2 + i * spanSpacing) * scale;
+                        const px = (leftPostW/2 + i * spanSpacing) * 25.4;
                         const py = px * tan;
                         handles.push({
                             x: px,
-                            y: py + vals.fenceHeight * scale,
+                            y: py + vals.fenceHeight * 25.4,
                             name: `rails-midpost-${i}`,
                             tooltip: `Mid Post ${i} Position`
                         });
                     }
                 }
-                handles.push({ x: vals.picketSpacing * scale, y: vals.fenceHeight * scale - 4 * scale, name: 'fence-picket-spacing', tooltip: 'Drag to adjust Picket Spacing' });
-                handles.push({ x: 0, y: vals.fenceHeight * scale, name: 'fence-height', tooltip: 'Drag to adjust Height' });
-                handles.push({ x: vals.length / 2 * scale, y: (vals.length / 2 * scale) * tan, name: 'fence-slope', tooltip: 'Drag to adjust Bottom Slope' });
+                handles.push({ x: vals.picketSpacing * 25.4, y: vals.fenceHeight * 25.4 - 4 * 25.4, name: 'fence-picket-spacing', tooltip: 'Drag to adjust Picket Spacing' });
+                handles.push({ x: 0, y: vals.fenceHeight * 25.4, name: 'fence-height', tooltip: 'Drag to adjust Height' });
+                handles.push({ x: vals.length / 2 * 25.4, y: (vals.length / 2 * 25.4) * tan, name: 'fence-slope', tooltip: 'Drag to adjust Bottom Slope' });
             } else {
                 const s = 4;
                 const L = vals.length * s;
@@ -13074,8 +6320,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (cat === 'hss_rect') {
             if (isReady) {
-                handles.push({ x: vals.w/2 * scale, y: 0, name: 'hss-width', tooltip: 'Drag to adjust Width' });
-                handles.push({ x: 0, y: vals.h/2 * scale, name: 'hss-height', tooltip: 'Drag to adjust Height' });
+                handles.push({ x: vals.w/2 * 25.4, y: 0, name: 'hss-width', tooltip: 'Drag to adjust Width' });
+                handles.push({ x: 0, y: vals.h/2 * 25.4, name: 'hss-height', tooltip: 'Drag to adjust Height' });
             } else {
                 const s = 10;
                 handles.push({ x: vals.w * s, y: vals.h * s / 2, name: 'hss-width', tooltip: 'Drag to adjust Width' });
@@ -13083,7 +6329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (cat === 'hss_circ') {
             if (isReady) {
-                handles.push({ x: vals.d/2 * scale, y: 0, name: 'hss-circ-diameter', tooltip: 'Drag to adjust Diameter' });
+                handles.push({ x: vals.d/2 * 25.4, y: 0, name: 'hss-circ-diameter', tooltip: 'Drag to adjust Diameter' });
             } else {
                 const s = 10;
                 handles.push({ x: vals.d * s, y: vals.d * s / 2, name: 'hss-circ-diameter', tooltip: 'Drag to adjust Diameter' });
@@ -13093,19 +6339,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.setAttribute("class", "drag-handles-group");
         
-        const extents = getModelExtents();
-        
         handles.forEach(h => {
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", h.x);
+            circle.setAttribute("cy", h.y);
             if (isReady) {
-                const [cx_svg, cy_svg] = cadToSvg(h.x, h.y, scale, extents);
-                circle.setAttribute("cx", cx_svg);
-                circle.setAttribute("cy", cy_svg);
-                circle.setAttribute("r", 5 * scaleFactor);
-                circle.setAttribute("stroke-width", 1.5 * scaleFactor);
+                circle.setAttribute("r", Math.max(0.15, Math.min(vals.w || 5, vals.h || 5) * 0.04));
+                circle.setAttribute("stroke-width", 0.03);
             } else {
-                circle.setAttribute("cx", h.x);
-                circle.setAttribute("cy", h.y);
                 circle.setAttribute("r", 8);
                 circle.setAttribute("stroke-width", 2);
             }
@@ -13129,89 +6370,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeHandle = null;
     
     svgContainer.addEventListener('mousedown', (e) => {
-        const gripTarget = e.target.closest('.annot-grip-draggable');
-        if (gripTarget) {
-            const rawIdx = gripTarget.getAttribute('data-grip-dim-idx');
-            activeDraggedGripIdx = isNaN(rawIdx) ? rawIdx : parseInt(rawIdx);
-            activeDraggedGripName = gripTarget.getAttribute('data-grip-name');
-            dragStartMousePos = { x: e.clientX, y: e.clientY };
-            
-            // Set selectedAnnotId based on grip point selection
-            if (typeof activeDraggedGripIdx === 'string' && activeDraggedGripIdx.startsWith('leader-')) {
-                selectedAnnotId = activeDraggedGripIdx;
-            } else if (typeof activeDraggedGripIdx === 'string' && activeDraggedGripIdx.startsWith('dim-')) {
-                selectedAnnotId = activeDraggedGripIdx;
-            } else if (typeof activeDraggedGripIdx === 'number') {
-                selectedAnnotId = `custom-dim-${activeDraggedGripIdx}`;
-            }
-            updateAnnotToolbar();
-            if (currentMode === 'shapes') {
-                renderCurrentCAD();
-            } else if (currentMode === 'draft') {
-                renderDraftSpace();
-            }
-            
-            const svgElement = svgContainer.querySelector('svg');
-            if (svgElement) {
-                const pt = svgElement.createSVGPoint();
-                pt.x = e.clientX;
-                pt.y = e.clientY;
-                const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
-                const scale = getSvgScale(svgElement);
-                const extents = getModelExtents();
-                const [mouseCadX, mouseCadY] = svgToCad(svgPt.x, svgPt.y, scale, extents);
-                dragStartMouseCadPos = { x: mouseCadX, y: mouseCadY };
-                
-                if (activeDraggedGripName === 'leader-target') {
-                    const leaderId = activeDraggedGripIdx;
-                    if (!annotationOffsets[leaderId]) {
-                        annotationOffsets[leaderId] = { dx: 0, dy: 0, tdx: 0, tdy: 0 };
-                    }
-                    const off = annotationOffsets[leaderId];
-                    dragStartOffset = { tdx: off.tdx || 0, tdy: off.tdy || 0 };
-                }
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
-
         const dragTarget = e.target.closest('.annot-text-draggable');
         if (dragTarget) {
             activeDraggedAnnotId = dragTarget.getAttribute('data-annot-id');
             activeDraggedAnnotType = dragTarget.getAttribute('data-annot-type');
-            activeDraggedAnnotAxis = dragTarget.getAttribute('data-axis') || 'Y';
             dragStartMousePos = { x: e.clientX, y: e.clientY };
             
-            selectedAnnotId = activeDraggedAnnotId;
-            updateAnnotToolbar();
-            if (currentMode === 'shapes') {
-                renderCurrentCAD();
-            } else if (currentMode === 'draft') {
-                renderDraftSpace();
-            }
-            
             if (activeDraggedAnnotType === 'dimension') {
-                dragStartOffset = annotationOffsets[activeDraggedAnnotId] !== undefined ? annotationOffsets[activeDraggedAnnotId] : 0;
+                dragStartOffset = annotationOffsets[activeDraggedAnnotId] !== undefined ? annotationOffsets[activeDraggedAnnotId] : (35 / (CadEngine.isLibReady() ? 25.4 : 10));
             } else if (activeDraggedAnnotType === 'leader') {
                 const off = annotationOffsets[activeDraggedAnnotId];
-                if (off) {
-                    dragStartOffset = { dx: off.dx, dy: off.dy };
-                } else {
-                    const defaultLeaderOffsets = {
-                        "leader-top-rail": { dx: 0, dy: 12 / 25.4 },
-                        "leader-bot-rail": { dx: 0, dy: -12 / 25.4 },
-                        "leader-left-post": { dx: 0, dy: 10 / 25.4 },
-                        "leader-right-post": { dx: 0, dy: -12 / 25.4 },
-                        "leader-mid-post": { dx: 0, dy: 10 / 25.4 },
-                        "leader-mid-rail": { dx: 0, dy: -10 / 25.4 },
-                        "leader-pickets": { dx: 0, dy: 10 / 25.4 },
-                        "leader-kickplate": { dx: 0, dy: -10 / 25.4 },
-                        "leader-post": { dx: 0, dy: 10 / 25.4 }
-                    };
-                    const defOff = defaultLeaderOffsets[activeDraggedAnnotId] || { dx: 0, dy: 0 };
-                    dragStartOffset = { dx: defOff.dx, dy: defOff.dy };
-                }
+                dragStartOffset = off ? { dx: off.dx, dy: off.dy } : { dx: 0, dy: 0 };
             } else {
                 dragStartOffset = null;
             }
@@ -13219,19 +6388,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             e.stopPropagation();
             return;
-        }
-
-        // Deselect if clicking on empty space
-        if (!e.target.closest('.drag-handle') && !e.target.closest('.drag-handles-group')) {
-            if (selectedAnnotId !== null) {
-                selectedAnnotId = null;
-                updateAnnotToolbar();
-                if (currentMode === 'shapes') {
-                    renderCurrentCAD();
-                } else if (currentMode === 'draft') {
-                    renderDraftSpace();
-                }
-            }
         }
 
         const isMiddleButton = e.button === 1;
@@ -13273,7 +6429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         pt.y = e.clientY;
                         const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
                         
-                        const scale = getSvgScale(svgElement);
+                        const scale = CadEngine.isLibReady() ? 25.4 : 10;
                         dragStartMouseX = svgPt.x / scale;
                         dragStartMouseY = -svgPt.y / scale;
                         
@@ -13296,104 +6452,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     svgContainer.addEventListener('mousemove', (e) => {
-        if (activeDraggedGripIdx !== null) {
-            const svgElement = svgContainer.querySelector('svg');
-            if (svgElement) {
-                const pt = svgElement.createSVGPoint();
-                pt.x = e.clientX;
-                pt.y = e.clientY;
-                const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
-                const scale = getSvgScale(svgElement);
-                const extents = getModelExtents();
-                const [mouseCadX, mouseCadY] = svgToCad(svgPt.x, svgPt.y, scale, extents);
-                
-                if (cachedSnapPoints.length === 0 && currentModel) {
-                    cachedSnapPoints = getModelSnapPoints(currentModel);
-                }
-                
-                const svgRect = svgElement.getBoundingClientRect();
-                const viewBoxAttr = svgElement.getAttribute('viewBox');
-                const vb = viewBoxAttr ? viewBoxAttr.split(/[\s,]+/).map(Number) : [0,0,2000,1500];
-                const vbWidth = vb[2] || 2000;
-                const screenToSvgScale = svgRect.width > 0 ? (vbWidth / svgRect.width) : 1;
-                const threshold = 15 * screenToSvgScale;
-                
-                let closestSnap = null;
-                let minDist = threshold;
-                cachedSnapPoints.forEach(p => {
-                    const [sx, sy] = cadToSvg(p.x, p.y, scale, extents);
-                    const d = Math.hypot(sx - svgPt.x, sy - svgPt.y);
-                    if (d < minDist) {
-                        minDist = d;
-                        closestSnap = p;
-                    }
-                });
-                
-                const dim = customDimensionsList[activeDraggedGripIdx];
-                if (dim) {
-                    if (activeDraggedGripName === 'p1') {
-                        if (closestSnap) {
-                            dim.cx1 = closestSnap.x;
-                            dim.cy1 = closestSnap.y;
-                        } else {
-                            dim.cx1 = mouseCadX;
-                            dim.cy1 = mouseCadY;
-                        }
-                    } else if (activeDraggedGripName === 'p2') {
-                        if (closestSnap) {
-                            dim.cx2 = closestSnap.x;
-                            dim.cy2 = closestSnap.y;
-                        } else {
-                            dim.cx2 = mouseCadX;
-                            dim.cy2 = mouseCadY;
-                        }
-                    } else if (activeDraggedGripName === 'd1' || activeDraggedGripName === 'd2') {
-                        const dx = dim.cx2 - dim.cx1;
-                        const dy = dim.cy2 - dim.cy1;
-                        const len = Math.hypot(dx, dy);
-                        if (len > 0.001) {
-                            const nx = -dy / len;
-                            const ny = dx / len;
-                            const offset = (mouseCadX - dim.cx1) * nx + (mouseCadY - dim.cy1) * ny;
-                            dim.cdx1 = dim.cx1 + nx * offset;
-                            dim.cdy1 = dim.cy1 + ny * offset;
-                            dim.cdx2 = dim.cx2 + nx * offset;
-                            dim.cdy2 = dim.cy2 + ny * offset;
-                        } else {
-                            dim.cdx1 = mouseCadX;
-                            dim.cdy1 = mouseCadY;
-                            dim.cdx2 = mouseCadX;
-                            dim.cdy2 = mouseCadY;
-                        }
-                    }
-                } else if (activeDraggedGripName === 'leader-target') {
-                    const leaderId = activeDraggedGripIdx;
-                    if (!annotationOffsets[leaderId]) {
-                        annotationOffsets[leaderId] = { dx: 0, dy: 0, tdx: 0, tdy: 0 };
-                    }
-                    const targetX = closestSnap ? closestSnap.x : mouseCadX;
-                    const targetY = closestSnap ? closestSnap.y : mouseCadY;
-                    if (dragStartMouseCadPos) {
-                        const deltaX = targetX - dragStartMouseCadPos.x;
-                        const deltaY = targetY - dragStartMouseCadPos.y;
-                        annotationOffsets[leaderId].tdx = (dragStartOffset.tdx || 0) + deltaX;
-                        annotationOffsets[leaderId].tdy = (dragStartOffset.tdy || 0) + deltaY;
-                    }
-                }
-                
-                activeSnapPoint = closestSnap;
-                renderSnapIndicator(svgElement, activeSnapPoint, scale);
-                
-                if (currentMode === 'shapes') {
-                    renderCurrentCAD();
-                } else if (currentMode === 'draft') {
-                    renderDraftSpace();
-                }
-            }
-            e.preventDefault();
-            return;
-        }
-
         if (activeDraggedAnnotId) {
             const svgElement = svgContainer.querySelector('svg');
             if (svgElement) {
@@ -13407,15 +6465,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 pt2.y = e.clientY;
                 const cadPt2 = pt2.matrixTransform(svgElement.getScreenCTM().inverse());
                 
-                const scale = getSvgScale(svgElement);
+                const scale = CadEngine.isLibReady() ? 25.4 : 10;
                 const deltaX = (cadPt2.x - cadPt1.x) / scale;
                 const deltaY = -(cadPt2.y - cadPt1.y) / scale;
                 
                 if (activeDraggedAnnotType === 'dimension') {
-                    if (activeDraggedAnnotAxis === 'Y') {
-                        annotationOffsets[activeDraggedAnnotId] = dragStartOffset + deltaY;
-                    } else {
-                        annotationOffsets[activeDraggedAnnotId] = dragStartOffset + deltaX;
+                    if (activeDraggedAnnotId === 'dim-width') {
+                        annotationOffsets['dim-width'] = dragStartOffset - deltaY;
+                    } else if (activeDraggedAnnotId === 'dim-height') {
+                        annotationOffsets['dim-height'] = dragStartOffset - deltaX;
                     }
                 } else if (activeDraggedAnnotType === 'leader') {
                     annotationOffsets[activeDraggedAnnotId] = {
@@ -13465,12 +6523,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 pt.x = e.clientX;
                 pt.y = e.clientY;
                 const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
-                const scale = getSvgScale(svgElement);
-                const extents = getModelExtents();
-                const [mouseCadX, mouseCadY] = svgToCad(svgPt.x, svgPt.y, scale, extents);
+                const scale = CadEngine.isLibReady() ? 25.4 : 10;
+                const mouseCadX = svgPt.x / scale;
+                const mouseCadY = -svgPt.y / scale;
                 
                 if (cachedSnapPoints.length === 0 && currentModel) {
-                    cachedSnapPoints = getModelSnapPoints(currentModel);
+                    cachedSnapPoints = getModelSnapPoints(currentModel, scale);
                 }
                 
                 const svgRect = svgElement.getBoundingClientRect();
@@ -13484,7 +6542,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 let minDist = threshold;
                 
                 cachedSnapPoints.forEach(p => {
-                    const [sx, sy] = cadToSvg(p.x, p.y, scale, extents);
+                    const sx = p.x * scale;
+                    const sy = -p.y * scale;
                     const d = Math.hypot(sx - svgPt.x, sy - svgPt.y);
                     if (d < minDist) {
                         minDist = d;
@@ -13517,7 +6576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pt.y = e.clientY;
             const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
             
-            const scale = getSvgScale(svgElement);
+            const scale = CadEngine.isLibReady() ? 25.4 : 10;
             const currentMouseX = svgPt.x / scale;
             const currentMouseY = -svgPt.y / scale;
             
@@ -13556,22 +6615,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const isReady = CadEngine.isLibReady();
         const cat = shapeCategory.value;
-        const scale = getSvgScale(svgElement);
         
-        const vals = {};
-        dynamicInputs.querySelectorAll('input').forEach(inp => {
-            const id = inp.id.replace('inp-', '');
-            vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
-        });
-        dynamicInputs.querySelectorAll('select').forEach(sel => {
-            vals[sel.id.replace('inp-', '')] = sel.value;
-        });
-        
-        const extents = getModelExtents();
-        const [cadMouseX, cadMouseY] = svgToCad(svgPt.x, svgPt.y, scale, extents);
-        
-        let dx = isReady ? cadMouseX : svgPt.x / scale;
-        let dy = isReady ? cadMouseY : svgPt.y / scale;
+        let dx = svgPt.x;
+        let dy = svgPt.y;
+        if (isReady) {
+            dx = dx / 25.4;
+            dy = dy / 25.4;
+        }
         
         let changesMade = false;
         
@@ -13607,22 +6657,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     setVal('holeOffsetY', Math.max(0.5, svgPt.y / s));
                 }
             }
-        } else if (cat === 'fence' || cat === 'rails_gates') {
+        } else if (cat === 'fence') {
             const s = 4;
             const tan = Math.tan(parseFloat(document.getElementById('inp-slope').value || 0) * Math.PI / 180);
-            
-            const leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW || 1.5);
-            const rightPostW = getPicketDimension(vals.rightPostType, vals.rightPostSize, vals.rightPostW || 1.5);
-            const midPostCount = parseInt(vals.midPostCount) || 0;
             
             if (isReady) {
                 if (activeHandle.startsWith('fence-post-spacing-')) {
                     const postIndex = parseInt(activeHandle.replace('fence-post-spacing-', ''));
                     setVal('postSpacing', Math.max(12.0, dx / postIndex));
-                } else if (activeHandle.startsWith('rails-midpost-')) {
-                    const postIndex = parseInt(activeHandle.replace('rails-midpost-', ''));
-                    const spanSpacing = (dx - leftPostW/2) / postIndex;
-                    setVal('length', Math.max(12.0, leftPostW/2 + rightPostW/2 + (midPostCount + 1) * spanSpacing));
                 } else if (activeHandle === 'fence-picket-spacing') {
                     setVal('picketSpacing', Math.max(1.0, dx));
                 } else if (activeHandle === 'fence-height') {
@@ -13698,13 +6740,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     window.addEventListener('mouseup', () => {
-        activeDraggedGripIdx = null;
-        activeDraggedGripName = null;
-        activeDraggedAnnotId = null;
-        activeDraggedAnnotType = null;
-        dragStartMousePos = null;
-        dragStartMouseCadPos = null;
-        dragStartOffset = null;
+        if (activeDraggedAnnotId) {
+            activeDraggedAnnotId = null;
+            activeDraggedAnnotType = null;
+            dragStartMousePos = null;
+            dragStartOffset = null;
+        }
         if (isPanning) {
             isPanning = false;
             svgContainer.style.cursor = panModeActive ? 'grab' : '';
@@ -13778,11 +6819,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             const scale = CadEngine.isLibReady() ? 25.4 : 10;
-            const padding = 2.0 * scale; // 2 inches of padding on all sides
-            const svgMinX = minX * scale - padding;
-            const svgMinY = -maxY * scale - padding;
-            const svgW = (maxX - minX) * scale + 2 * padding;
-            const svgH = (maxY - minY) * scale + 2 * padding;
+            const svgMinX = minX * scale;
+            const svgMinY = -maxY * scale;
+            const svgW = (maxX - minX) * scale;
+            const svgH = (maxY - minY) * scale;
             
             const stableViewBox = `${svgMinX} ${svgMinY} ${svgW} ${svgH}`;
             
@@ -14215,9 +7255,9 @@ document.addEventListener('DOMContentLoaded', () => {
             pt.x = e.clientX;
             pt.y = e.clientY;
             const svgPt = pt.matrixTransform(svgElement.getScreenCTM().inverse());
-            const scale = getSvgScale(svgElement);
-            const extents = getModelExtents();
-            const [mouseCadX, mouseCadY] = svgToCad(svgPt.x, svgPt.y, scale, extents);
+            const scale = CadEngine.isLibReady() ? 25.4 : 10;
+            const mouseCadX = svgPt.x / scale;
+            const mouseCadY = -svgPt.y / scale;
 
             const clickPoint = activeSnapPoint ? { x: activeSnapPoint.x, y: activeSnapPoint.y } : { x: mouseCadX, y: mouseCadY };
             
@@ -14229,10 +7269,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.01) {
                     let cx_mid = 0, cy_mid = 0;
-                    const extents = getModelExtents();
-                    if (extents) {
-                        cx_mid = (extents.low[0] + extents.high[0]) / 2;
-                        cy_mid = (extents.low[1] + extents.high[1]) / 2;
+                    if (window.makerjs && currentModel) {
+                        const extents = makerjs.measure.modelExtents(currentModel);
+                        if (extents) {
+                            cx_mid = (extents.low[0] + extents.high[0]) / 2;
+                            cy_mid = (extents.low[1] + extents.high[1]) / 2;
+                        }
                     }
                     
                     const midX = (p1.x + p2.x) / 2;
@@ -14257,7 +7299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ny /= len;
                     }
                     
-                    const offsetInches = 35 / 25.4;
+                    const offsetInches = 35 / scale;
                     
                     const cdx1 = p1.x + nx * offsetInches;
                     const cdy1 = p1.y + ny * offsetInches;
@@ -14622,26 +7664,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function injectCADAnnotations(svg) {
-        return; // Disabled CAD annotations overlay in viewport preview per user request
         if (!currentModel) return;
         const cat = shapeCategory.value;
-        
-        const scale = getSvgScale(svg);
-        const scaleFactor = scale / 25.4;
-        let actualWidthInches = 0;
-        let actualHeightInches = 0;
-        let midPostCount = 0;
-        
-        let extents = null;
-        try {
-            extents = window.makerjs ? makerjs.measure.modelExtents(currentModel) : null;
-        } catch (e) {
-            console.error("Failed to measure model extents:", e);
-        }
-        if (extents) {
-            actualWidthInches = extents.high[0] - extents.low[0];
-            actualHeightInches = extents.high[1] - extents.low[1];
-        }
+        const scale = CadEngine.isLibReady() ? 25.4 : 10;
         
         let gAnnots = svg.querySelector('.cad-annotations-overlay');
         if (!gAnnots) {
@@ -14650,46 +7675,6 @@ document.addEventListener('DOMContentLoaded', () => {
             svg.appendChild(gAnnots);
         } else {
             gAnnots.innerHTML = "";
-        }
-        // Store placed label bounding boxes for collision avoidance
-        const placedLabels = [];
-        const placedViewportLeaders = [];
-
-        // Helper: compute approximate bounding box for a text label
-        function computeLabelBBox(x, y, text, fontSize, isVertical = false) {
-          const approxWidth = text.length * fontSize * 0.6;
-          const approxHeight = fontSize * 1.2;
-          if (isVertical) {
-            return {
-              xMin: x - approxHeight / 2,
-              xMax: x + approxHeight / 2,
-              yMin: y - approxWidth / 2,
-              yMax: y + approxWidth / 2
-            };
-          }
-          return {
-            xMin: x - approxWidth / 2,
-            xMax: x + approxWidth / 2,
-            yMin: y - approxHeight / 2,
-            yMax: y + approxHeight / 2
-          };
-        }
-
-        // Helper: check if a bbox collides with any existing placed label
-        function checkCollision(bbox) {
-          for (const pl of placedLabels) {
-            const ob = pl.bbox;
-            if (bbox.xMin < ob.xMax && bbox.xMax > ob.xMin &&
-                bbox.yMin < ob.yMax && bbox.yMax > ob.yMin) {
-              return true;
-            }
-          }
-          return false;
-        }
-
-        // Helper: add a placed label record
-        function registerLabel(id, bbox) {
-          placedLabels.push({ id, bbox });
         }
         
         // Define arrowheads markers in defs if not present
@@ -14776,17 +7761,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Get exact model extents
         let cadMinX, cadMaxX, cadMinY, cadMaxY;
+        let actualWidthInches = 0, actualHeightInches = 0;
         
-        if (extents) {
-            cadMinX = extents.low[0] * scale;
-            cadMaxX = extents.high[0] * scale;
-            cadMinY = extents.low[1] * scale;
-            cadMaxY = extents.high[1] * scale;
+        if (window.makerjs) {
+            const extents = makerjs.measure.modelExtents(currentModel);
+            if (extents) {
+                cadMinX = extents.low[0] * scale;
+                cadMaxX = extents.high[0] * scale;
+                cadMinY = extents.low[1] * scale;
+                cadMaxY = extents.high[1] * scale;
+                actualWidthInches = extents.high[0] - extents.low[0];
+                actualHeightInches = extents.high[1] - extents.low[1];
+            }
         }
         
         if (cadMinX === undefined || isNaN(actualWidthInches) || actualWidthInches <= 0) {
             return;
         }
+
+        const formatFraction = (val) => {
+            if (typeof val !== 'number' || isNaN(val)) return '0"';
+            const totalSixteenths = Math.round(val * 16);
+            const totalInches = Math.floor(totalSixteenths / 16);
+            const sixteenths = totalSixteenths % 16;
+            const feet = Math.floor(totalInches / 12);
+            const inches = totalInches % 12;
+            
+            let fractionStr = '';
+            if (sixteenths > 0) {
+                let num = sixteenths, den = 16;
+                while (num % 2 === 0) { num /= 2; den /= 2; }
+                fractionStr = ` ${num}/${den}`;
+            }
+            
+            if (feet > 0) {
+                return `${feet}'-${inches}${fractionStr}"`;
+            } else {
+                if (totalInches === 0 && sixteenths > 0) {
+                    return `${fractionStr.trim()}"`;
+                }
+                return `${inches}${fractionStr}"`;
+            }
+        };
 
         // Helper to draw lines
         const drawLine = (x1, y1, x2, y2, stroke = "#ffaa00", width = "1.5", mStart = "", mEnd = "") => {
@@ -14796,7 +7812,7 @@ document.addEventListener('DOMContentLoaded', () => {
             line.setAttribute("x2", x2);
             line.setAttribute("y2", y2);
             line.setAttribute("stroke", stroke);
-            line.setAttribute("stroke-width", parseFloat(width) * scaleFactor);
+            line.setAttribute("stroke-width", width);
             if (mStart) line.setAttribute("marker-start", `url(#${mStart})`);
             if (mEnd) line.setAttribute("marker-end", `url(#${mEnd})`);
             gAnnots.appendChild(line);
@@ -14804,14 +7820,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Helper to draw text
-        const drawText = (val, x, y, anchor = "middle", rotation = 0, rx = 0, ry = 0, color = "#ffffff", fontSize = (customDimFontSize * scaleFactor)) => {
+        const drawText = (val, x, y, anchor = "middle", rotation = 0, rx = 0, ry = 0) => {
             const text = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "text");
             text.setAttribute("x", x);
             text.setAttribute("y", y);
-            text.setAttribute("fill", color);
+            text.setAttribute("fill", "#ffffff");
             text.setAttribute("font-family", "'JetBrains Mono', monospace, sans-serif");
-            text.setAttribute("font-size", fontSize + "px");
-            text.setAttribute("font-weight", "normal");
+            text.setAttribute("font-size", customDimFontSize + "px");
+            text.setAttribute("font-weight", "bold");
             text.setAttribute("text-anchor", anchor);
             if (rotation) {
                 text.setAttribute("transform", `rotate(${rotation}, ${rx}, ${ry})`);
@@ -14821,215 +7837,48 @@ document.addEventListener('DOMContentLoaded', () => {
             return text;
         };
 
-        const defaultLeaderOffsets = {
-            "leader-top-rail": { dx: 0, dy: 12 / 25.4 },
-            "leader-bot-rail": { dx: 0, dy: -12 / 25.4 },
-            "leader-left-post": { dx: 0, dy: 10 / 25.4 },
-            "leader-right-post": { dx: 0, dy: -12 / 25.4 },
-            "leader-mid-post": { dx: 0, dy: 10 / 25.4 },
-            "leader-mid-rail": { dx: 0, dy: -10 / 25.4 },
-            "leader-pickets": { dx: 0, dy: 10 / 25.4 },
-            "leader-kickplate": { dx: 0, dy: -10 / 25.4 },
-            "leader-post": { dx: 0, dy: 10 / 25.4 }
-        };
+        // 1. Horizontal Dimension
+        const widthOffset = annotationOffsets["dim-width"] !== undefined ? annotationOffsets["dim-width"] : (35 / scale);
+        const hY = -cadMaxY - (widthOffset * scale);
+        // Extension lines
+        drawLine(cadMinX, -cadMaxY, cadMinX, hY - 5, "#ffaa00", "0.5");
+        drawLine(cadMaxX, -cadMaxY, cadMaxX, hY - 5, "#ffaa00", "0.5");
+        // Dimension line
+        drawLine(cadMinX, hY, cadMaxX, hY, "#ffaa00", "1.2", "annot-arrow-start", "annot-arrow-end");
+        // Text
+        const wText = drawText(formatFraction(actualWidthInches), (cadMinX + cadMaxX)/2, hY - 6);
+        wText.setAttribute("class", "annot-text-draggable");
+        wText.setAttribute("style", "cursor: move; pointer-events: auto;");
+        wText.setAttribute("data-annot-id", "dim-width");
+        wText.setAttribute("data-annot-type", "dimension");
 
-        const drawViewportDimension = (cx1, cy1, cx2, cy2, offsetMm, text, textSide, dimId) => {
-            return; // Disabled viewport dimensioning per user request
-            if (dimId && hiddenAnnotations.has(dimId)) return;
-            
-            let finalOffsetInches = offsetMm / 25.4;
-            let axis = "Y";
-            
-            if (Math.abs(cy1 - cy2) < 0.01) {
-                axis = "Y";
-                if (dimId && annotationOffsets[dimId] !== undefined) {
-                    finalOffsetInches += annotationOffsets[dimId];
-                } else if (annotationOffsets["dim-width"] !== undefined) {
-                    // Fallback to legacy global offset
-                    if (offsetMm < 0) {
-                        const deltaY = annotationOffsets["dim-width"];
-                        finalOffsetInches += deltaY;
-                    }
-                }
-            } else if (Math.abs(cx1 - cx2) < 0.01) {
-                axis = "X";
-                if (dimId && annotationOffsets[dimId] !== undefined) {
-                    finalOffsetInches += annotationOffsets[dimId];
-                } else if (annotationOffsets["dim-height"] !== undefined) {
-                    // Fallback to legacy global offset
-                    const deltaX = annotationOffsets["dim-height"];
-                    finalOffsetInches += deltaX;
-                }
-            }
+        // 2. Vertical Dimension
+        const heightOffset = annotationOffsets["dim-height"] !== undefined ? annotationOffsets["dim-height"] : (35 / scale);
+        const vX = cadMinX - (heightOffset * scale);
+        // Extension lines
+        drawLine(cadMinX, -cadMinY, vX - 5, -cadMinY, "#ffaa00", "0.5");
+        drawLine(cadMinX, -cadMaxY, vX - 5, -cadMaxY, "#ffaa00", "0.5");
+        // Dimension line
+        drawLine(vX, -cadMinY, vX, -cadMaxY, "#ffaa00", "1.2", "annot-arrow-start", "annot-arrow-end");
+        // Text
+        const hText = drawText(formatFraction(actualHeightInches), vX - 6, (-cadMinY - cadMaxY)/2, "middle", -90, vX - 6, (-cadMinY - cadMaxY)/2);
+        hText.setAttribute("class", "annot-text-draggable");
+        hText.setAttribute("style", "cursor: move; pointer-events: auto;");
+        hText.setAttribute("data-annot-id", "dim-height");
+        hText.setAttribute("data-annot-type", "dimension");
 
-            const slopeRad = (vals.slope || 0) * Math.PI / 180;
-            let rx1 = cx1;
-            let ry1 = cy1;
-            let rx2 = cx2;
-            let ry2 = cy2;
-            if (cat === 'fence') {
-                ry1 = cy1 + cx1 * Math.tan(slopeRad);
-                ry2 = cy2 + cx2 * Math.tan(slopeRad);
-            } else {
-                const cosS = Math.cos(slopeRad);
-                const sinS = Math.sin(slopeRad);
-                rx1 = cx1 * cosS - cy1 * sinS;
-                ry1 = cx1 * sinS + cy1 * cosS;
-                rx2 = cx2 * cosS - cy2 * sinS;
-                ry2 = cx2 * sinS + cy2 * cosS;
-            }
-
-            const p1 = cadToSvg(rx1, ry1, scale, extents);
-            const p2 = cadToSvg(rx2, ry2, scale, extents);
-            
-            const dx_dist = p2[0] - p1[0];
-            const dy_dist = p2[1] - p1[1];
-            const len = Math.sqrt(dx_dist*dx_dist + dy_dist*dy_dist);
-            if (len < 0.001) return;
-            
-            const px = -dy_dist / len;
-            const py = dx_dist / len;
-            
-            const offsetSvg = finalOffsetInches * scale;
-            const d1 = [p1[0] + px * offsetSvg, p1[1] + py * offsetSvg];
-            const d2 = [p2[0] + px * offsetSvg, p2[1] + py * offsetSvg];
-            
-            // Look up specific properties
-            const spec = (dimId && annotationProperties[dimId]) || {};
-            const activeTextGap = spec.textGap !== undefined ? spec.textGap : customDimTextGap;
-            const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : customDimFontSize;
-            const activeText = spec.text !== undefined && spec.text !== null ? spec.text : text;
-            
-            const isSelected = selectedAnnotId === dimId;
-            const dimColor = isSelected ? "#ff00ff" : "#ffaa00";
-            const textColor = isSelected ? "#ff00ff" : "#ffffff";
-            
-            // Draw extension lines
-            const extAngle = Math.atan2(d1[1] - p1[1], d1[0] - p1[0]);
-            const extLength = Math.sqrt((d1[0]-p1[0])**2 + (d1[1]-p1[1])**2);
-            const extX1 = p1[0] + (extLength + 5 * scaleFactor) * Math.cos(extAngle);
-            const extY1 = p1[1] + (extLength + 5 * scaleFactor) * Math.sin(extAngle);
-            const extX2 = p2[0] + (extLength + 5 * scaleFactor) * Math.cos(extAngle);
-            const extY2 = p2[1] + (extLength + 5 * scaleFactor) * Math.sin(extAngle);
-            
-            drawLine(p1[0], p1[1], extX1, extY1, dimColor, "0.5");
-            drawLine(p2[0], p2[1], extX2, extY2, dimColor, "0.5");
-            
-            // Draw dimension line
-            drawLine(d1[0], d1[1], d2[0], d2[1], dimColor, "1.2", "annot-arrow-start", "annot-arrow-end");
-            
-            // Text positioning
-            const midX = (d1[0] + d2[0]) / 2;
-            const midY = (d1[1] + d2[1]) / 2;
-            
-            let sideMult = Math.sign(finalOffsetInches);
-            if (textSide === "left" || textSide === "opposite") {
-                sideMult = -sideMult;
-            }
-            const textShiftSvg = activeTextGap * sideMult * scaleFactor;
-            let textAnchor = "middle";
-            let tx = midX + px * textShiftSvg;
-            let staggerY = 0;
-            if (dimId === "dim-vert-mid-rail") {
-                staggerY = -15; // Shift upwards by 15px
-            } else if (dimId === "dim-vert-fence-height") {
-                staggerY = 15; // Shift downwards by 15px
-            }
-            let ty = midY + py * textShiftSvg + staggerY;
-            
-            const isVertical = Math.abs(px) > 0.5;
-            if (isVertical) {
-                const isRightSide = finalOffsetInches >= 0;
-                if (isRightSide) {
-                    tx = midX + 14 * scaleFactor; // Shift right to clear characters (approx 3.6mm)
-                } else {
-                    tx = midX - 6 * scaleFactor;  // Shift left (approx 1.5mm)
-                }
-                ty = midY;
-                textAnchor = "middle";
-            }
-            
-            // Collision avoidance for dimension label
-            let labelBBox = computeLabelBBox(tx, ty, activeText, activeFontSize * scaleFactor, isVertical);
-            if (checkCollision(labelBBox) && dimId !== "dim-vert-ground") {
-                // Simple offset strategy: try shifting in X direction
-                const offset = 8 * scaleFactor;
-                if (tx > midX) {
-                    tx += offset;
-                } else {
-                    tx -= offset;
-                }
-                // Recompute bbox after shift
-                labelBBox = computeLabelBBox(tx, ty, activeText, activeFontSize * scaleFactor, isVertical);
-            }
-            registerLabel(dimId, labelBBox);
-            
-            const arrowAngle = Math.atan2(d2[1] - d1[1], d2[0] - d1[0]);
-            let textAngle = arrowAngle * 180 / Math.PI;
-            if (textAngle > 90) textAngle -= 180;
-            if (textAngle < -90) textAngle += 180;
-
-            const lenMm = len / scaleFactor;
-            const paperDx = Math.abs(p2[0] - p1[0]) / scaleFactor;
-            if (lenMm < 10.0 && paperDx < 0.1 && dimId !== 'dim-vert-ground' && dimId !== 'dim-vert-mid-gap') {
-                textAngle = 0; // horizontal text
-                const dir = Math.sign(finalOffsetInches) || 1;
-                let L = 6.0;
-                let textStart = 1.2;
-                
-                if (dimId === 'dim-vert-ground') {
-                    L = 12.0;
-                    textStart = 6.8;
-                }
-                
-                tx = midX + textStart * dir * scaleFactor;
-                ty = midY - 1.5 * scaleFactor;
-                textAnchor = (dir > 0) ? "start" : "end";
-                
-                // Draw horizontal leader line
-                const leadLine = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-                leadLine.setAttribute("x1", midX);
-                leadLine.setAttribute("y1", midY);
-                leadLine.setAttribute("x2", midX + L * dir * scaleFactor);
-                leadLine.setAttribute("y2", midY);
-                leadLine.setAttribute("stroke", dimColor);
-                leadLine.setAttribute("stroke-width", 0.8 * scaleFactor);
-                gAnnots.appendChild(leadLine);
-            }
-            const textNode = drawText(activeText, tx, ty, textAnchor, textAngle, tx, ty, textColor, activeFontSize * scaleFactor);
-            if (dimId) {
-                textNode.setAttribute("class", "annot-text-draggable");
-                textNode.setAttribute("style", "cursor: move; pointer-events: auto;");
-                textNode.setAttribute("data-annot-id", dimId);
-                textNode.setAttribute("data-annot-type", "dimension");
-                textNode.setAttribute("data-axis", axis);
-            }
-        };
-
+        // 3. Piece/Main Mark Callout Leaders (Only for rails_gates and fence)
         const vals = {};
         dynamicInputs.querySelectorAll('input').forEach(inp => {
-            const id = inp.id.replace('inp-', '');
-            vals[id] = (inp.type === 'text') ? inp.value : (parseFloat(inp.value) || 0);
+            vals[inp.id.replace('inp-', '')] = parseFloat(inp.value) || 0;
         });
         dynamicInputs.querySelectorAll('select').forEach(sel => {
             vals[sel.id.replace('inp-', '')] = sel.value;
         });
 
-        const panelType = balconyWizardState.activePanelType || 'main';
-        const customSpacings = [];
-        const tempMidPostsVal = vals.midPosts || 'default';
-        const tempMidPostCount = parseInt(vals.midPostCount) || 0;
-        if (tempMidPostsVal === 'custom') {
-            for (let i = 1; i <= tempMidPostCount; i++) {
-                const spKey = `midPostSpacing-${i}`;
-                customSpacings.push(vals[spKey] !== undefined ? vals[spKey] : 48);
-            }
-        }
-
         const drawingNo = document.getElementById('exp-drawingNo')?.value || 'D-101';
         const cleanDrawingNo = drawingNo.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        const activeDwgNo = (cat === 'rail_catalog') ? getActiveBalconyDwgAndMark().drawingNo : cleanDrawingNo;
-        const mainMarkCode = (cat === 'rail_catalog') ? getActiveBalconyDwgAndMark().mainMark : (cleanDrawingNo + 'M1');
+        const mainMarkCode = cleanDrawingNo + 'M1';
         
         let charCode = 97; // 'a'
         let mainMarkAssigned = false;
@@ -15039,27 +7888,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainMarkAssigned = true;
                 return mainMarkCode;
             }
-            const m = String.fromCharCode(charCode) + activeDwgNo;
+            const m = String.fromCharCode(charCode) + cleanDrawingNo;
             charCode++;
             return m;
         };
 
-        const getProfileDimension = (type, size, customVal) => window.getProfileDimension(type, size, customVal);
-        const getPicketDimension = (type, size, customVal) => window.getPicketDimension(type, size, customVal);
+        const getProfileDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.h || selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.d || 0;
+                if (type === 'angles') return selected.leg2 || selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
+
+        const getPicketDimension = (type, size, customVal) => {
+            if (type === 'none' || size === 'NONE') return 0;
+            if (size === 'CUSTOM') return customVal;
+            const shapes = SHAPES_DB[type] || [];
+            const selected = shapes.find(s => s.id === size);
+            if (selected) {
+                if (type === 'hss_rect') return selected.w || 0;
+                if (type === 'hss_circ') return selected.d || 0;
+                if (type === 'w_beam') return selected.bf || 0;
+                if (type === 'angles') return selected.leg1 || 0;
+                if (type === 'plate') return selected.t || 0;
+            }
+            return customVal;
+        };
 
         const drawViewportLeader = (tcx, tcy, side, markText, leaderId) => {
-            return; // Disabled viewport labeling/annotations per user request
             if (!markText) return;
-            if (leaderId && hiddenAnnotations.has(leaderId)) return;
             
             let dx = 0, dy = 0;
-            const defOff = defaultLeaderOffsets[leaderId] || { dx: 0, dy: 0 };
             if (leaderId && annotationOffsets[leaderId]) {
                 dx = annotationOffsets[leaderId].dx;
                 dy = annotationOffsets[leaderId].dy;
-            } else {
-                dx = defOff.dx;
-                dy = defOff.dy;
             }
             
             let descLabel = "";
@@ -15073,28 +7943,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 descLabel = isGates ? "TOP RUNNER" : "TOP RAIL";
                 lengthVal = vals.length;
                 if (cos > 0.001) lengthVal = vals.length / cos;
-            } else if (leaderId === "leader-bot-rail" || leaderId === "leader-mid-rail") {
-                descLabel = leaderId === "leader-bot-rail" 
-                    ? (isGates ? "BOTTOM RUNNER" : "BOTTOM RAIL")
-                    : (isGates ? "MID RUNNER" : "MID RAIL");
-                
-                if (shapeCategory.value === 'rail_catalog') {
-                    const style = vals.railStyle || 'classical';
-                    let postW = 1.5;
-                    if (style !== 'classical' && style !== 'executive') {
-                        postW = getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
-                    }
-                    const startXBound = (vals.leftPost === 'yes') ? postW : 0;
-                    const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                    const midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-                    const clearWidth = endXBound - startXBound - midPostCount * postW;
-                    const spanW = clearWidth / (midPostCount + 1);
-                    lengthVal = spanW;
-                } else {
-                    lengthVal = vals.length;
-                    if (isExtended) lengthVal = vals.length - (vals.leftPostW || vals.postW || 1.5) - (vals.rightPostW || vals.postW || 1.5);
-                    if (cos > 0.001) lengthVal = lengthVal / cos;
-                }
+            } else if (leaderId === "leader-bot-rail") {
+                descLabel = isGates ? "BOTTOM RUNNER" : "BOTTOM RAIL";
+                lengthVal = vals.length;
+                if (isExtended) lengthVal = vals.length - (vals.leftPostW || vals.postW || 1.5) - (vals.rightPostW || vals.postW || 1.5);
+                if (cos > 0.001) lengthVal = lengthVal / cos;
+            } else if (leaderId === "leader-mid-rail") {
+                descLabel = isGates ? "MID RUNNER" : "MID RAIL";
+                lengthVal = vals.length;
+                if (isExtended) lengthVal = vals.length - (vals.leftPostW || vals.postW || 1.5) - (vals.rightPostW || vals.postW || 1.5);
+                if (cos > 0.001) lengthVal = lengthVal / cos;
             } else if (leaderId === "leader-left-post") {
                 descLabel = isGates ? "LEFT RUNNER" : "LEFT POST";
                 lengthVal = isGates ? vals.fenceHeight : vals.postHeight;
@@ -15108,19 +7966,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 descLabel = "MID POST";
                 const isExecutiveStyle = ((vals.railStyle || 'classical') === 'executive' || (vals.railStyle || 'classical') === 'executive_custom');
                 const runnerH = isGates ? vals.fenceHeight : vals.postHeight;
-                lengthVal = (vals.railStyle === 'executive') ? 44.25 : (isExecutiveStyle ? runnerH : (runnerH - (vals.topRailH || 1.5)));
+                lengthVal = isExecutiveStyle ? runnerH : (runnerH - (vals.topRailH || 1.5));
             } else if (leaderId === "leader-pickets") {
                 descLabel = "PICKET";
                 let topH = (cat === 'rail_catalog') ? ((vals.railStyle === 'classical' || vals.railStyle === 'executive') ? 1.5 : (vals.topRailH || 1.5)) : (vals.topRailH || 1.5);
                 let botH = (cat === 'rail_catalog') ? ((vals.railStyle === 'classical' || vals.railStyle === 'executive') ? 1.5 : (vals.botRailH || 1.5)) : (vals.botRailH || 1.5);
-                let midH = (cat === 'rail_catalog') ? (vals.railStyle === 'classical' ? 0 : (vals.railStyle === 'executive' ? 1.5 : (vals.midRailH || 1.5))) : (vals.midH || 1.5);
+                let midH = (cat === 'rail_catalog') ? ((vals.railStyle === 'classical') ? 0 : (vals.railStyle === 'executive' ? 1.5 : (vals.midRailH || 1.5))) : (vals.midH || 1.5);
                 let midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
                 let kickPlateH = vals.kickPlateH || 12.0;
                 
                 let picketBottomY, picketTopY;
                 if (cat === 'rail_catalog') {
                     const style = vals.railStyle || 'classical';
-                    let pHeight = (style === 'classical' || style === 'executive') ? 45.75 : (vals.postHeight || 36);
+                    let pHeight = (style === 'classical') ? 45.75 : (style === 'executive' ? 45.75 : (vals.postHeight || 36));
                     let fHeight = (style === 'classical') ? 41.0 : (style === 'executive' ? 41.0 : (vals.fenceHeight || 36));
                     let botY = pHeight - fHeight;
                     let midMarkActive = style !== 'classical' && vals.midRailType !== 'none';
@@ -15129,10 +7987,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     picketTopY = (midMarkActive) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
                 } else if (cat === 'rails_gates') {
                     if (isGates) {
-                        picketBottomY = (vals.midRailType !== 'none') ? midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'inner' ? botH + kickPlateH : kickPlateH) : botH);
+                        picketBottomY = (vals.midRailType !== 'none') ? midRailGap : ((vals.kickPlate !== 'none') ? kickPlateH : botH);
                         picketTopY = vals.fenceHeight - topH;
                     } else {
-                        picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - vals.midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
+                        picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
                         picketTopY = vals.postHeight - topH;
                     }
                 } else { 
@@ -15145,103 +8003,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 lengthVal = picketTopY - picketBottomY;
             } else if (leaderId === "leader-kickplate") {
                 descLabel = "KICK PLATE";
-                const isOuter = (vals.kickPlateWeld === 'outer');
-                lengthVal = isOuter ? vals.length : (vals.length - (vals.leftPostW || vals.postW || 1.5) - (vals.rightPostW || vals.postW || 1.5));
+                lengthVal = vals.length - (vals.leftPostW || vals.postW || 1.5) - (vals.rightPostW || vals.postW || 1.5);
             }
-
-            let fullLabelText = "";
-            if (leaderId === "leader-mesh-fb") {
-                descLabel = "MESH FRAME FB";
-                const sizeStr = vals.meshFbSize || "FB1x1/8";
-                fullLabelText = `${markText}H/${markText}V (${descLabel} - ${sizeStr})`;
-            } else if (leaderId === "leader-mesh-panel") {
-                descLabel = vals.meshType === 'mesh' ? "WWM WIRE MESH" : "EXPANDED METAL";
-                const sizeStr = vals.meshSize || "WWM2x2x0.135";
-                
-                const lPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
-                const rPostW = getPicketDimension(vals.rightPostType, vals.rightPostSize, vals.rightPostW);
-                const tH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
-                const bH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH);
-                const kpH = vals.kickPlateH || 12.0;
-                
-                const picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'inner' ? bH + kpH : kpH) : bH);
-                const mOpeningH = (vals.fenceHeight - tH) - picketBottomY;
-                const mOpeningW = vals.length - lPostW - rPostW;
-                fullLabelText = `${markText} (${descLabel} - ${sizeStr} - ${formatFraction(mOpeningW)}x${formatFraction(mOpeningH)})`;
-            } else if (leaderId === "leader-panicbar") {
-                descLabel = "PANIC BAR PLATE";
-                const pbpW = vals.panicBarPlateW || 8.0;
-                const pbpT = vals.panicBarPlateSize || 'PL3/16';
-                const pbpDesc = formatPlateDesc(pbpT, pbpW);
-                const lPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
-                const rPostW = getPicketDimension(vals.rightPostType, vals.rightPostSize, vals.rightPostW);
-                const pbpLen = vals.length - lPostW - rPostW;
-                fullLabelText = `${markText} (${descLabel} - ${pbpDesc} - ${formatFraction(pbpLen)})`;
-            } else {
-                fullLabelText = lengthVal > 0 
-                    ? `${markText} (${descLabel} - ${formatFraction(lengthVal)})`
-                    : `${markText} (${descLabel})`;
-            }
-
-            let tcx_offset = tcx;
-            let tcy_offset = tcy;
-            if (leaderId && annotationOffsets[leaderId]) {
-                tcx_offset += annotationOffsets[leaderId].tdx || 0;
-                tcy_offset += annotationOffsets[leaderId].tdy || 0;
-            }
-            const slopeRad = (vals.slope || 0) * Math.PI / 180;
-            const cosS = Math.cos(slopeRad);
-            const sinS = Math.sin(slopeRad);
-            const rx = tcx_offset * cosS - tcy_offset * sinS;
-            const ry = tcx_offset * sinS + tcy_offset * cosS;
-            const [svgCx, svgCy] = cadToSvg(rx, ry, scale, extents);
             
-            const defaultLabelX = (side === "left") ? (0 - 55 * scaleFactor) : (actualWidthInches * scale + 55 * scaleFactor);
-            const defaultLabelY = svgCy - 12 * scaleFactor;
+            const fullLabelText = lengthVal > 0 
+                ? `${markText} (${descLabel} - ${formatFraction(lengthVal)})`
+                : `${markText} (${descLabel})`;
+
+            const svgCx = tcx * scale;
+            const svgCy = -tcy * scale;
+            
+            const defaultLabelX = (side === "left") ? (cadMinX - 55) : (cadMaxX + 55);
+            const defaultLabelY = svgCy - 12;
             
             const labelX = defaultLabelX + (dx * scale);
             const labelY = defaultLabelY - (dy * scale);
             
-            let finalLabelX = labelX;
-            let finalLabelY = labelY;
-            
-            // Prevent vertical overlap on the same side margin (left or right)
-            let attempts = 0;
-            while (attempts < 20) {
-                let collision = false;
-                for (const lead of placedViewportLeaders) {
-                    if (Math.abs(lead.x - finalLabelX) < 10 * scaleFactor && Math.abs(lead.y - finalLabelY) < 4.5 * scaleFactor) {
-                        collision = true;
-                        break;
-                    }
-                }
-                if (!collision) break;
-                finalLabelY += 5.5 * scaleFactor; // shift down
-                attempts++;
-            }
-            placedViewportLeaders.push({ x: finalLabelX, y: finalLabelY });
-            
-            const isSelected = selectedAnnotId === leaderId;
-            const leaderColor = isSelected ? "#ff00ff" : "#ffaa00";
-            const textColor = isSelected ? "#ff00ff" : "#ffffff";
-            
-            // Get leader overrides
-            const spec = (leaderId && annotationProperties[leaderId]) || {};
-            const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : 11;
-            const activeText = spec.text !== undefined && spec.text !== null ? spec.text : fullLabelText;
-            let cleanedText = activeText || "";
-            if (cleanedText) {
-                cleanedText = cleanedText.split(/[\s(]/)[0];
-            }
-
-            let leader;
-            leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-            leader.setAttribute("x1", finalLabelX);
-            leader.setAttribute("y1", finalLabelY);
+            const leader = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
+            leader.setAttribute("x1", labelX);
+            leader.setAttribute("y1", labelY);
             leader.setAttribute("x2", svgCx);
             leader.setAttribute("y2", svgCy);
-            leader.setAttribute("stroke", leaderColor);
-            leader.setAttribute("stroke-width", 1.2 * scaleFactor);
+            leader.setAttribute("stroke", "#ffaa00");
+            leader.setAttribute("stroke-width", "1.2");
             leader.setAttribute("fill", "none");
             leader.setAttribute("marker-end", "url(#leader-arrow)");
             gAnnots.appendChild(leader);
@@ -15249,317 +8033,84 @@ document.addEventListener('DOMContentLoaded', () => {
             const dot = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "circle");
             dot.setAttribute("cx", svgCx);
             dot.setAttribute("cy", svgCy);
-            dot.setAttribute("r", 4.5 * scaleFactor);
-            dot.setAttribute("fill", leaderColor);
-            dot.setAttribute("stroke", "#ffffff");
-            dot.setAttribute("stroke-width", 1.2 * scaleFactor);
-            dot.setAttribute("class", "annot-grip-draggable");
-            dot.setAttribute("data-grip-dim-idx", leaderId);
-            dot.setAttribute("data-grip-name", "leader-target");
-            dot.setAttribute("style", "cursor: pointer; pointer-events: auto;");
+            dot.setAttribute("r", "2.5");
+            dot.setAttribute("fill", "#ffaa00");
             gAnnots.appendChild(dot);
             
-            const textLenEstimate = cleanedText.length * (activeFontSize * 0.59) * scaleFactor;
+            const textLenEstimate = fullLabelText.length * 6.5;
             const shelf = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
             if (side === "left") {
-                shelf.setAttribute("x1", finalLabelX);
-                shelf.setAttribute("y1", finalLabelY);
-                shelf.setAttribute("x2", finalLabelX - textLenEstimate - 6 * scaleFactor);
-                shelf.setAttribute("y2", finalLabelY);
+                shelf.setAttribute("x1", labelX);
+                shelf.setAttribute("y1", labelY);
+                shelf.setAttribute("x2", labelX - textLenEstimate - 6);
+                shelf.setAttribute("y2", labelY);
             } else {
-                shelf.setAttribute("x1", finalLabelX);
-                shelf.setAttribute("y1", finalLabelY);
-                shelf.setAttribute("x2", finalLabelX + textLenEstimate + 6 * scaleFactor);
-                shelf.setAttribute("y2", finalLabelY);
+                shelf.setAttribute("x1", labelX);
+                shelf.setAttribute("y1", labelY);
+                shelf.setAttribute("x2", labelX + textLenEstimate + 6);
+                shelf.setAttribute("y2", labelY);
             }
-            shelf.setAttribute("stroke", leaderColor);
-            shelf.setAttribute("stroke-width", 1.2 * scaleFactor);
+            shelf.setAttribute("stroke", "#ffaa00");
+            shelf.setAttribute("stroke-width", "1.2");
             gAnnots.appendChild(shelf);
 
-            // Collision avoidance for leader label (X-shifting only if needed)
-            let leaderLabelX = side === "left" ? (finalLabelX - 3 * scaleFactor) : (finalLabelX + 3 * scaleFactor);
-            let leaderLabelY = finalLabelY - 3 * scaleFactor;
-            let leaderBBox = computeLabelBBox(leaderLabelX, leaderLabelY, cleanedText, activeFontSize * scaleFactor);
-            if (checkCollision(leaderBBox)) {
-                const offset = 8 * scaleFactor;
-                if (side === "left") {
-                    leaderLabelX -= offset;
-                } else {
-                    leaderLabelX += offset;
-                }
-                leaderBBox = computeLabelBBox(leaderLabelX, leaderLabelY, cleanedText, activeFontSize * scaleFactor);
-            }
-            registerLabel(leaderId, leaderBBox);
-
-            const textNode = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "text");
-            textNode.setAttribute("x", leaderLabelX);
-            textNode.setAttribute("y", leaderLabelY);
-            textNode.setAttribute("fill", textColor);
-            textNode.setAttribute("font-family", "'JetBrains Mono', monospace, sans-serif");
-            textNode.setAttribute("font-size", (activeFontSize * scaleFactor) + "px");
-            textNode.setAttribute("font-weight", "normal");
-            textNode.setAttribute("text-anchor", side === "left" ? "end" : "start");
-            textNode.textContent = cleanedText;
+            const text = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", side === "left" ? (labelX - 3) : (labelX + 3));
+            text.setAttribute("y", labelY - 3);
+            text.setAttribute("fill", "#ffffff");
+            text.setAttribute("font-family", "'JetBrains Mono', monospace, sans-serif");
+            text.setAttribute("font-size", "11px");
+            text.setAttribute("font-weight", "bold");
+            text.setAttribute("text-anchor", side === "left" ? "end" : "start");
+            text.textContent = fullLabelText;
             
-            textNode.setAttribute("class", "annot-text-draggable");
-            textNode.setAttribute("style", "cursor: move; pointer-events: auto;");
-            textNode.setAttribute("data-annot-id", leaderId);
-            textNode.setAttribute("data-annot-type", "leader");
+            text.setAttribute("class", "annot-text-draggable");
+            text.setAttribute("style", "cursor: move; pointer-events: auto;");
+            text.setAttribute("data-annot-id", leaderId);
+            text.setAttribute("data-annot-type", "leader");
             
-            gAnnots.appendChild(textNode);
+            gAnnots.appendChild(text);
         };
 
-        if (cat === 'rail_catalog') {
-            const style = vals.railStyle || 'classical';
-            const props = getResolvedPanelProperties(vals, style);
-            let picketType = props ? props.picketType : 'hss_rect';
-            let pHeight = props ? props.pHeight : 45.75;
-            let fHeight = props ? props.fHeight : 41.0;
-            let topH = props ? props.topRailH : 1.5;
-            let botH = props ? props.botRailH : 1.5;
-            let midRailType = props ? props.midRailType : 'none';
-            let midH = props ? props.midRailH : 1.5;
-            let postW = props ? props.postW : 1.5;
-            let picketW = props ? props.picketW : 0.5;
-            let picketSpacing = props ? props.picketSpacing : 4.0;
-            midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil((vals.originalLength || vals.length) / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
-            let botY = pHeight - fHeight;
-            let midRailGap = props ? props.midRailGap : 12.0;
-            const noPosts = (vals.leftPost !== 'yes') && (vals.rightPost !== 'yes') && (vals.midPosts === 'none' || midPostCount <= 0);
+        if (cat === 'rails_gates') {
+            const isGates = vals.railsGatesType === 'gates';
+            const leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
+            const rightPostW = getPicketDimension(vals.rightPostType, vals.rightPostSize, vals.rightPostW);
+            const midPostW = getPicketDimension(vals.midPostType, vals.midPostSize, vals.midPostW);
+            const topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
+            const midH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midH);
+            const botH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH);
+            const pickW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW);
+            const midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
+            const kickPlateH = vals.kickPlateH || 12.0;
+            const midPostCount = parseInt(vals.midPostCount) || 0;
 
-            // --- HORIZONTAL DIMENSIONS (TOP) ---
-            // Tier 1 (Overall Length)
-            drawViewportDimension(0, pHeight, vals.length, pHeight, -28, formatFraction(vals.length), "middle", "dim-width");
-
-            // Post Centers List
-            const postCenters = [];
-            postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-            if (vals.midPosts !== 'none' && midPostCount > 0) {
-                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, panelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                resolvedCenters.forEach(midCx => {
-                    postCenters.push(midCx);
-                });
-            }
-            postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
-
-            // Tier 2 (Spans)
-            for (let i = 0; i < postCenters.length - 1; i++) {
-                const c1 = postCenters[i];
-                const c2 = postCenters[i+1];
-                drawViewportDimension(c1, pHeight, c2, pHeight, -20, formatFraction(c2 - c1), "middle", `dim-span-${i}`);
-            }
-
-            // Tier 3 (Picket Patterns)
-            if (picketType !== 'none') {
-                const leftPostW = (vals.leftPost === 'yes') ? postW : 0;
-                const rightPostW = (vals.rightPost === 'yes') ? postW : 0;
-                const pPositions = getPicketPositions(
-                    style,
-                    vals.length,
-                    leftPostW,
-                    rightPostW,
-                    pickW,
-                    vals.picketSpacing,
-                    midPostCount,
-                    postW,
-                    vals.midPosts,
-                    customSpacings,
-                    vals.extra6,
-                    panelType,
-                    vals.deltaLeft || 0,
-                    vals.deltaRight || 0
-                );
-
-                for (let i = 0; i < postCenters.length - 1; i++) {
-                    const c1 = postCenters[i];
-                    const c2 = postCenters[i+1];
-                    const bayPickets = pPositions.filter(px => px + pickW/2 > c1 + 0.01 && px + pickW/2 < c2 - 0.01);
-                    
-                    if (bayPickets.length >= 1) {
-                        const p1 = bayPickets[0] + pickW / 2;
-                        const p2 = bayPickets[bayPickets.length - 1] + pickW / 2;
-                        const startGap = p1 - c1;
-                        const endGap = c2 - p2;
-
-                        const mergeStart = false;
-                        const mergeEnd = false;
-
-                        const dimStart = mergeStart ? c1 : p1;
-                        const dimEnd = mergeEnd ? c2 : p2;
-
-                        if (dimEnd > dimStart + 0.01) {
-                            const baseSpaces = bayPickets.length - 1;
-                            const totalSpaces = baseSpaces + (mergeStart ? 1 : 0) + (mergeEnd ? 1 : 0);
-                            const labelText = `${totalSpaces} EQ SPA @ ${formatFraction(picketSpacing)}`;
-
-                            drawViewportDimension(dimStart, pHeight, dimEnd, pHeight, -12, formatFraction(dimEnd - dimStart), "middle", `dim-picket-center-${i}`);
-
-                            // Text Label
-                            const slopeRad = (vals.slope || 0) * Math.PI / 180;
-                            const cosS = Math.cos(slopeRad);
-                            const sinS = Math.sin(slopeRad);
-                            const cx = (dimStart + dimEnd) / 2;
-                            const cy = pHeight - 12 - 4;
-                            
-                            let textX = cx;
-                            let textY = cy;
-                            if (slopeRad > 0.001) {
-                                textX = cx * cosS - cy * sinS;
-                                textY = cx * sinS + cy * cosS;
-                            }
-                            
-                            const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                            textNode.setAttribute("x", textX);
-                            textNode.setAttribute("y", textY);
-                            textNode.setAttribute("text-anchor", "middle");
-                            textNode.setAttribute("font-size", "7");
-                            textNode.setAttribute("fill", "var(--text-dim)");
-                            textNode.setAttribute("id", `lbl-picket-pattern-${i}`);
-                            textNode.textContent = labelText;
-                            gAnnots.appendChild(textNode);
-                        }
-
-                        if (!mergeStart && startGap > 0.05) {
-                            drawViewportDimension(c1, pHeight, p1, pHeight, -12, formatFraction(startGap), "middle", `dim-picket-start-${i}`);
-                        }
-                        if (!mergeEnd && endGap > 0.05) {
-                            drawViewportDimension(p2, pHeight, c2, pHeight, -12, formatFraction(endGap), "middle", `dim-picket-end-${i}`);
+            const clearWidth = vals.length - leftPostW - rightPostW;
+            const numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
+            let finalPicketsCount = numPickets;
+            if (midPostCount > 0 && !isGates && vals.postHeight > vals.fenceHeight) {
+                const centerDist = vals.length - leftPostW/2 - rightPostW/2;
+                const spanSpacing = centerDist / (midPostCount + 1);
+                for (let i = 0; i < numPickets; i++) {
+                    const px = leftPostW + (clearWidth - ((numPickets - 1) * vals.picketSpacing + pickW)) / 2 + i * vals.picketSpacing;
+                    for (let j = 1; j <= midPostCount; j++) {
+                        const midCx = leftPostW/2 + j * spanSpacing;
+                        if (Math.abs(px + pickW/2 - midCx) < (midPostW/2 + pickW/2 + 0.1)) {
+                            finalPicketsCount--;
+                            break;
                         }
                     }
                 }
             }
 
-            // --- HORIZONTAL DIMENSIONS (BOTTOM - CLEAR OPENINGS) ---
-            const clearSpans = [];
-            let lastX = 0;
-            
-            const allPosts = [];
-            if (vals.leftPost === 'yes') {
-                allPosts.push({ startX: 0, endX: postW });
-            }
-            if (vals.midPosts !== 'none' && midPostCount > 0) {
-                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, panelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                resolvedCenters.forEach(midCx => {
-                    allPosts.push({ startX: midCx - postW/2, endX: midCx + postW/2 });
-                });
-            }
-            if (vals.rightPost === 'yes') {
-                allPosts.push({ startX: vals.length - postW, endX: vals.length });
-            }
-
-            for (let i = 0; i < allPosts.length; i++) {
-                const p = allPosts[i];
-                if (p.startX > lastX + 0.01) {
-                    clearSpans.push({ start: lastX, end: p.startX });
-                }
-                lastX = p.endX;
-            }
-            if (vals.length > lastX + 0.01) {
-                clearSpans.push({ start: lastX, end: vals.length });
-            }
-
-            clearSpans.forEach((span, idx) => {
-                drawViewportDimension(span.start, 0, span.end, 0, 12, formatFraction(span.end - span.start), "middle", `dim-clear-${idx}`);
-            });
-
-            // --- VERTICAL DIMENSIONS (LEFT for Left Return, RIGHT for Main/Right Return) ---
-            // Vertical dimension for the top gap on the right side
-            const hasMid = (style === 'executive' || style === 'villa_balcony' || style === 'villa_custom' || style === 'executive_custom' || (style.includes('custom') && midRailType !== 'none'));
-            const isMesh = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-            if (hasMid) {
-                const yStart = pHeight - topH - midRailGap;
-                const yEnd = pHeight - topH;
-                drawViewportDimension(vals.length, yStart, vals.length, yEnd, 8, formatFraction(midRailGap), "middle", "dim-vert-right-top-gap");
-
-                // Picket Height
-                const yStart_picket = botY + botH;
-                const yEnd_picket = pHeight - topH - midRailGap - midH;
-                const picketH = yEnd_picket - yStart_picket;
-                const dimId = isMesh ? "dim-vert-right-mesh-height" : "dim-vert-right-picket-height";
-                drawViewportDimension(vals.length, yStart_picket, vals.length, yEnd_picket, 8, formatFraction(picketH), "middle", dimId);
-
-                // Fence Height (Column 2)
-                drawViewportDimension(vals.length, botY, vals.length, pHeight, 16, formatFraction(fHeight), "middle", "dim-vert-right-fence-height");
-            } else {
-                // Picket/Mesh Height (Column 1 when no mid rail)
-                const yStart_picket = botY + botH;
-                const yEnd_picket = pHeight - topH;
-                const picketH = yEnd_picket - yStart_picket;
-                const dimId = isMesh ? "dim-vert-right-mesh-height" : "dim-vert-right-picket-height";
-                drawViewportDimension(vals.length, yStart_picket, vals.length, yEnd_picket, 8, formatFraction(picketH), "middle", dimId);
-
-                // Fence Height (Column 2)
-                drawViewportDimension(vals.length, botY, vals.length, pHeight, 16, formatFraction(fHeight), "middle", "dim-vert-right-fence-height");
-            }
-
-            // Column 2: Bottom Gap (bottom of runner to bottom of post) in all styles
-            if (botY > 0.01) {
-                drawViewportDimension(vals.length, 0, vals.length, botY, 16, formatFraction(botY), "middle", "dim-vert-right-bot-gap");
-            }
-
-            // Column 3: Overall Post Height (bottom of post to top of top runner) in all styles
-            drawViewportDimension(vals.length, 0, vals.length, pHeight, 24, formatFraction(pHeight), "middle", "dim-vert-right-overall-height");
-
-            // --- VERTICAL DIMENSIONS (LEFT) ---
-            if (midPostCount > 0) {
-                const firstMidPostCx = postCenters[1];
-                const mpH_dim = (style === 'executive') ? 44.25 : (pHeight - topH);
-                // 3'-8 1/4" dimension removed per user request
-                // drawViewportDimension(firstMidPostCx, 0, firstMidPostCx, mpH_dim, -8, formatFraction(mpH_dim), "middle", "dim-vert-left-midpost");
-            }
-        } else {
-            // Standard width and height dimensions
-            drawViewportDimension(cadMinX / scale, cadMaxY / scale, cadMaxX / scale, cadMaxY / scale, -35, formatFraction(actualWidthInches), "middle", "dim-width");
-            drawViewportDimension(cadMinX / scale, cadMinY / scale, cadMinX / scale, cadMaxY / scale, -35, formatFraction(actualHeightInches), "middle", "dim-height");
-        }
-
-        const topMark = getMark(vals.topRailType !== 'none');
-        const botMark = getMark(vals.botRailType !== 'none');
-        const hasLeft = (vals.leftPost === 'yes');
-        const hasRight = (vals.rightPost === 'yes');
-
-        let countLeftPost = 0;
-        let countRightPost = 0;
-
-        countLeftPost = hasLeft ? 1 : 0;
-        countRightPost = hasRight ? 1 : 0;
-
-        const midMark = getMark(cat === 'rail_catalog' ? (vals.railStyle === 'executive' || vals.railStyle === 'villa_balcony' || vals.railStyle === 'villa_custom' || vals.railStyle === 'executive_custom' || (vals.railStyle.includes('custom') && vals.midRailType !== 'none')) : (vals.midRailType !== 'none'));
-        const leftMark = getMark(cat === 'rail_catalog' ? (countLeftPost > 0 && vals.postType !== 'none') : (vals.leftPostType !== 'none'));
-        const rightMark = cat === 'rail_catalog' ? (((countRightPost > 0 && vals.postType !== 'none') ? (leftMark ? leftMark : getMark(true)) : null)) : getMark(vals.rightPostType !== 'none');
-        const midPostMark = getMark(cat === 'rail_catalog' ? (vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none') : (vals.railsGatesType !== 'gates' && midPostCount > 0 && vals.midPostType !== 'none'));
-        
-        let picketMark, kpMark, numPickets, leftPostW, rightPostW, midPostW, clearWidth, postW, pickW, effectivePostW;
-        if (cat === 'rails_gates') {
-            const isGates = vals.railsGatesType === 'gates';
-            leftPostW = getPicketDimension(vals.leftPostType, vals.leftPostSize, vals.leftPostW);
-            rightPostW = getPicketDimension(vals.rightPostType, vals.rightPostSize, vals.rightPostW);
-            midPostW = getPicketDimension(vals.midPostType, vals.midPostSize, vals.midPostW);
-            const topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
-            const botH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH);
-            pickW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW);
-            const kickPlateH = vals.kickPlateH || 12.0;
-            midPostCount = parseInt(vals.midPostCount) || 0;
-
-            const picketPositions = getPicketPositions(
-                vals.railStyle || 'classical',
-                vals.length,
-                leftPostW,
-                rightPostW,
-                pickW,
-                vals.picketSpacing,
-                midPostCount,
-                midPostW,
-                vals.midPosts,
-                customSpacings
-            );
-            numPickets = picketPositions.length;
-            let finalPicketsCount = numPickets;
-            picketMark = getMark(vals.picketType !== 'none' && finalPicketsCount > 0);
-            kpMark = getMark(isGates && vals.kickPlate && vals.kickPlate !== 'none');
-            const meshFbMark = getMark(isGates && vals.meshType && vals.meshType !== 'none');
-            const meshPanelMark = getMark(isGates && vals.meshType && vals.meshType !== 'none');
-            const pbpMark = getMark(isGates && vals.panicBarPlate === 'yes');
+            const topMark = getMark(vals.topRailType !== 'none');
+            const botMark = getMark(vals.botRailType !== 'none');
+            const midMark = getMark(vals.midRailType !== 'none');
+            const leftMark = getMark(vals.leftPostType !== 'none');
+            const rightMark = getMark(vals.rightPostType !== 'none');
+            const midPostMark = getMark(!isGates && midPostCount > 0 && vals.midPostType !== 'none');
+            const picketMark = getMark(vals.picketType !== 'none' && finalPicketsCount > 0);
+            const kpMark = getMark(isGates && vals.kickPlate && vals.kickPlate !== 'none');
 
             // 1. Top Rail
             if (topMark) {
@@ -15583,12 +8134,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // 5. Mid Rail
             if (midMark) {
-                const my = isGates ? (vals.midRailGap - 1.5/2) : (vals.postHeight - vals.midRailGap - 1.5/2);
+                const my = isGates ? (midRailGap - midH/2) : (vals.postHeight - midRailGap - midH/2);
                 drawViewportLeader(vals.length * 0.75, my, "right", midMark, "leader-mid-rail");
             }
             // 6. Pickets
             if (picketMark && numPickets > 0) {
-                const clearWidth = vals.length - leftPostW - rightPostW;
                 const usedWidth = (numPickets - 1) * vals.picketSpacing + pickW;
                 const startX = leftPostW + (clearWidth - usedWidth) / 2;
                 const midIdx = Math.floor(numPickets / 2);
@@ -15596,10 +8146,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 let picketBottomY, picketTopY;
                 if (isGates) {
-                    picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? kickPlateH : botH + kickPlateH) : botH);
+                    picketBottomY = (vals.midRailType !== 'none') ? midRailGap : ((vals.kickPlate !== 'none') ? kickPlateH : botH);
                     picketTopY = vals.fenceHeight - topH;
                 } else {
-                    picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - vals.midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
+                    picketBottomY = (vals.midRailType !== 'none') ? (vals.postHeight - midRailGap) : ((vals.postHeight > vals.fenceHeight) ? (vals.postHeight - vals.fenceHeight + botH) : botH);
                     picketTopY = vals.postHeight - topH;
                 }
                 const pickCy = (picketBottomY + picketTopY) / 2;
@@ -15607,44 +8157,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // 7. Kick Plate
             if (kpMark) {
-                const kpCenterY = (vals.kickPlateWeld === 'outer' ? 0 : botH) + kickPlateH / 2;
-                drawViewportLeader(vals.length * 0.75, kpCenterY, "right", kpMark, "leader-kickplate");
-            }
-            // 8. Wire Mesh / Expanded Metal Frame FB and Panel
-            if (isGates && vals.meshType && vals.meshType !== 'none') {
-                const picketBottomY = (vals.midRailType !== 'none') ? vals.midRailGap : ((vals.kickPlate !== 'none') ? (vals.kickPlateWeld === 'outer' ? kickPlateH : botH + kickPlateH) : botH);
-                const mOpeningH = (vals.fenceHeight - topH) - picketBottomY;
-                const meshCenterY = picketBottomY + mOpeningH / 2;
-                
-                if (meshFbMark) {
-                    drawViewportLeader(leftPostW + 4.0, meshCenterY + 4.0, "left", meshFbMark, "leader-mesh-fb");
-                }
-                if (meshPanelMark) {
-                    drawViewportLeader(vals.length * 0.55, meshCenterY, "right", meshPanelMark, "leader-mesh-panel");
-                }
-            }
-            // 9. Panic Bar Plate
-            if (isGates && vals.panicBarPlate === 'yes' && pbpMark) {
-                const pbpCenterGap = vals.panicBarPlateGap !== undefined ? vals.panicBarPlateGap : 36.0;
-                drawViewportLeader(vals.length * 0.5, pbpCenterGap, "right", pbpMark, "leader-panicbar");
+                drawViewportLeader(vals.length * 0.75, kickPlateH / 2, "right", kpMark, "leader-kickplate");
             }
         } else if (cat === 'fence') {
-            postW = getPicketDimension(vals.postType, vals.postSize, vals.postW);
+            const postW = getPicketDimension(vals.postType, vals.postSize, vals.postW);
             const topH = getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH);
+            const midH = getProfileDimension(vals.midRailType, vals.midRailSize, vals.midH);
             const botH = getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH);
-            pickW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW);
+            const pickW = getPicketDimension(vals.picketType, vals.picketSize, vals.picketW);
             const midRailGap = vals.midRailGap !== undefined ? vals.midRailGap : 12.0;
 
             const noPosts = (vals.postType === 'none' || vals.postHeight === 0 || vals.postSpacing === 0);
             const numSpans = noPosts ? 1 : Math.max(1, Math.round(vals.length / (vals.postSpacing || 1)));
             const actualPostSpacing = noPosts ? vals.length : (vals.length / numSpans);
-            effectivePostW = noPosts ? 0 : postW;
-            clearWidth = actualPostSpacing - effectivePostW;
-            numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
+            const effectivePostW = noPosts ? 0 : postW;
+            const clearWidth = actualPostSpacing - effectivePostW;
+            const numPickets = vals.picketSpacing > 0 ? Math.floor((clearWidth - pickW) / vals.picketSpacing) : 0;
             const totalPickets = numPickets * numSpans;
 
+            const topMark = getMark(vals.topRailType !== 'none');
             const postMark = getMark(!noPosts && vals.postType !== 'none');
-            picketMark = getMark(vals.picketType !== 'none' && totalPickets > 0);
+            const botMark = getMark(vals.botRailType !== 'none');
+            const midMark = getMark(vals.midRailType !== 'none');
+            const picketMark = getMark(vals.picketType !== 'none' && totalPickets > 0);
 
             // 1. Top Rail
             if (topMark) {
@@ -15682,277 +8217,94 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else if (cat === 'rail_catalog') {
             const style = vals.railStyle || 'classical';
-            const isHardcodedStyle = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony');
-            let pHeight = isHardcodedStyle ? 45.75 : (vals.postHeight || 36);
-            let fHeight = isHardcodedStyle ? 41.0 : (vals.fenceHeight || 36);
-            let topH = isHardcodedStyle ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
-            let botH = isHardcodedStyle ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
-            let midH = (style === 'classical') ? 0 : (isHardcodedStyle ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
-            postW = isHardcodedStyle ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
+            let pHeight = (style === 'classical') ? 45.75 : (style === 'executive' ? 45.75 : (vals.postHeight || 36));
+            let fHeight = (style === 'classical') ? 41.0 : (style === 'executive' ? 41.0 : (vals.fenceHeight || 36));
+            let topH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.topRailType, vals.topRailSize, vals.topRailH || 1.5);
+            let botH = (style === 'classical' || style === 'executive') ? 1.5 : getProfileDimension(vals.botRailType, vals.botRailSize, vals.botRailH || 1.5);
+            let midH = (style === 'classical') ? 0 : (style === 'executive' ? 1.5 : getProfileDimension(vals.midRailType, vals.midRailSize, vals.midRailH || 1.5));
+            let postW = (style === 'classical' || style === 'executive') ? 1.5 : getPicketDimension(vals.postType, vals.postSize, vals.postW || 1.5);
             let picketW = (style === 'classical' || style === 'executive') ? 0.5 : getPicketDimension(vals.picketType, vals.picketSize, vals.picketW || 0.5);
-            let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.0 : (vals.picketSpacing || 4.0));
-            midPostCount = (vals.midPosts === 'default' || vals.midPosts === 'yes') ? Math.max(0, Math.ceil(vals.length / 48) - 1) : ((vals.midPosts === 'custom' || vals.midPosts === 'custom_standard') ? (parseInt(vals.midPostCount) || 0) : 0);
+            let picketSpacing = (style === 'classical') ? 4.0 : (style === 'executive' ? 4.5 : (vals.picketSpacing || 4.0));
+            let midPostCount = (vals.midPosts === 'yes') ? (parseInt(vals.midPostCount) || 0) : 0;
             let botY = pHeight - fHeight;
-            let midRailGap = (style === 'classical') ? 0 : (isHardcodedStyle ? 3.0 : (vals.midRailGap || 12.0));
-            let picketType = (style === 'classical' || style === 'executive') ? 'hss_rect' : ((style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom') ? 'none' : (vals.picketType || 'hss_rect'));
+            let midRailGap = (style === 'classical') ? 0 : (style === 'executive' ? 12.0 : (vals.midRailGap || 12.0));
 
-            picketMark = getMark(picketType !== 'none');
-            const meshFbMark = getMark(style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-            const meshPanelMark = getMark(style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-
-            const railSpans = resolveRailMarksAndSpans(vals, activeDwgNo, cat, style, postW);
-
-            const isLeftReturn = (panelType === 'leftReturn');
-            const leaderSide = isLeftReturn ? "right" : "left";
+            const topMark = getMark(vals.topRailType !== 'none');
+            const botMark = getMark(vals.botRailType !== 'none');
+            const midMark = getMark(style !== 'classical' && vals.midRailType !== 'none');
+            const leftMark = getMark(vals.leftPost === 'yes' && vals.postType !== 'none');
+            const rightMark = getMark(vals.rightPost === 'yes' && vals.postType !== 'none');
+            const midPostMark = getMark(vals.midPosts === 'yes' && midPostCount > 0 && vals.postType !== 'none');
+            const picketMark = getMark(vals.picketType !== 'none');
 
             // 1. Top Rail
             if (topMark) {
                 const cyTop = pHeight - topH / 2;
-                drawViewportLeader(vals.length * 0.25, cyTop, leaderSide, topMark, "leader-top-rail");
+                drawViewportLeader(vals.length * 0.25, cyTop, "left", topMark, "leader-top-rail");
             }
             // 2. Bottom Rail
-            if (botMark && railSpans.bottomSegments.length > 0) {
-                const uniqueMarksSeen = new Set();
-                railSpans.bottomSegments.forEach(seg => {
-                    if (!uniqueMarksSeen.has(seg.mark)) {
-                        uniqueMarksSeen.add(seg.mark);
-                        const segCenter = (seg.start + seg.end) / 2;
-                        const [rx_svg, ry_svg] = cadToSvg(segCenter, botY, scale, extents); // Bottom of bottom rail
-                        
-                        // Bottom dimension line is at ground_svg_y + 12 * scaleFactor
-                        // Draw line from ry_svg + 6 * scaleFactor to ry_svg
-                        const ground_svg_y = ry_svg + (botY * scale);
-                        const line = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-                        line.setAttribute("x1", rx_svg);
-                        line.setAttribute("y1", ry_svg + 6.0 * scaleFactor);
-                        line.setAttribute("x2", rx_svg);
-                        line.setAttribute("y2", ry_svg);
-                        line.setAttribute("stroke", "#ffaa00");
-                        line.setAttribute("stroke-width", 1.2 * scaleFactor);
-                        line.setAttribute("marker-end", "url(#leader-arrow)");
-                        gAnnots.appendChild(line);
-                        
-                        // Text at ry_svg + 8.5 * scaleFactor
-                        const textNode = drawText(seg.mark, rx_svg, ry_svg + 8.5 * scaleFactor);
-                        textNode.setAttribute("class", "annot-text-draggable");
-                        textNode.setAttribute("style", "cursor: move; pointer-events: auto;");
-                        textNode.setAttribute("data-annot-id", "leader-bot-rail-" + seg.mark);
-                        textNode.setAttribute("data-annot-type", "dimension");
-                    }
-                });
+            if (botMark) {
+                const cyBot = botY + botH / 2;
+                drawViewportLeader(vals.length * 0.25, cyBot, "left", botMark, "leader-bot-rail");
             }
             // 3. Left Post
             if (leftMark) {
-                const cyLeft = pHeight * 0.85; // Raised to clear left vertical dimensions
-                drawViewportLeader(postW / 2, cyLeft, leaderSide, leftMark, "leader-left-post");
+                const cyLeft = pHeight * 0.5;
+                drawViewportLeader(postW / 2, cyLeft, "left", leftMark, "leader-left-post");
             }
             // 4. Right Post
             if (rightMark) {
-                const cyRight = pHeight * 0.85; // Raised to match left
-                drawViewportLeader(vals.length - postW / 2, cyRight, leaderSide, rightMark, "leader-right-post");
+                const cyRight = pHeight * 0.5;
+                drawViewportLeader(vals.length - postW / 2, cyRight, "right", rightMark, "leader-right-post");
             }
             // 5. Mid Runner
-            if (midMark && railSpans.midSegments.length > 0) {
+            if (midMark) {
                 const cyMid = pHeight - topH - midRailGap - midH / 2;
-                const uniqueMarksSeen = new Set();
-                railSpans.midSegments.forEach(seg => {
-                    if (!uniqueMarksSeen.has(seg.mark)) {
-                        uniqueMarksSeen.add(seg.mark);
-                        const segCenter = (seg.start + seg.end) / 2;
-                        drawViewportLeader(segCenter, cyMid, leaderSide, seg.mark, "leader-mid-rail");
-                    }
-                });
+                drawViewportLeader(vals.length * 0.75, cyMid, "right", midMark, "leader-mid-rail");
             }
             // 6. Mid Post
             if (midPostMark) {
-                const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, panelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                if (resolvedCenters.length > 0) {
-                    const midCx = resolvedCenters[0];
-                    const cyMidPost = pHeight * 0.85; // Raised from 0.5 to 0.85 to clear left vertical dimensions
-                    const targetX = (leaderSide === "left") ? (midCx - postW / 2) : (midCx + postW / 2);
-                    drawViewportLeader(targetX, cyMidPost, leaderSide, midPostMark, "leader-mid-post");
-                }
+                const startXBound = (vals.leftPost === 'yes') ? postW : 0;
+                const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
+                const centerDist = endXBound - startXBound;
+                const spanSpacing = centerDist / (midPostCount + 1);
+                const midCx = startXBound + 1 * spanSpacing;
+                const cyMidPost = pHeight * 0.5;
+                drawViewportLeader(midCx, cyMidPost, "right", midPostMark, "leader-mid-post");
             }
             // 7. Pickets
             if (picketMark) {
-                const leftPostW = (vals.leftPost === 'yes') ? postW : 0;
-                const rightPostW = (vals.rightPost === 'yes') ? postW : 0;
-                const pPositions = getPicketPositions(
-                    style,
-                    vals.length,
-                    leftPostW,
-                    rightPostW,
-                    pickW,
-                    vals.picketSpacing,
-                    midPostCount,
-                    postW,
-                    vals.midPosts,
-                    customSpacings,
-                    vals.extra6,
-                    panelType,
-                    vals.deltaLeft || 0,
-                    vals.deltaRight || 0
-                );
-                if (pPositions && pPositions.length > 0) {
-                    const idx = (leaderSide === "left") ? Math.min(2, pPositions.length - 1) : Math.max(0, pPositions.length - 3);
-                    const rawPickX = pPositions[idx];
-                    const pickCx = rawPickX + pickW / 2;
-                    const picketBottomY = botY + botH;
-                    const cyPick = picketBottomY + 6.0;
-                    drawViewportLeader(pickCx, cyPick, leaderSide, picketMark, "leader-pickets");
-                }
-            }
-            // 8. Mesh Frame & Panel leaders
-            const isMeshStyle = (style === 'urban_balcony' || style === 'villa_balcony' || style === 'urban_custom' || style === 'villa_custom');
-            if (isMeshStyle) {
                 const startXBound = (vals.leftPost === 'yes') ? postW : 0;
                 const endXBound = (vals.rightPost === 'yes') ? (vals.length - postW) : vals.length;
-                const spanW = endXBound - startXBound;
-                
-                const picketBottomY = botY + botH;
-                const picketTopY = (midMark) ? (pHeight - topH - midRailGap - midH) : (pHeight - topH);
-                const mHeight = picketTopY - picketBottomY;
-                
-                const fbY = picketBottomY + 0.5;
-                const fbX = (leaderSide === "left") ? (startXBound + spanW * 0.3) : (endXBound - spanW * 0.3);
-                drawViewportLeader(fbX, fbY, leaderSide, meshFbMark, "leader-mesh-fb");
-                
-                const mY = picketBottomY + mHeight * 0.5;
-                const mX = (leaderSide === "left") ? (startXBound + spanW * 0.4) : (endXBound - spanW * 0.4);
-                drawViewportLeader(mX, mY, leaderSide, meshPanelMark, "leader-mesh-panel");
-            }
-
-            // Draw Section A cut line on viewport screen
-            if (isMeshStyle) {
-                const postCenters = [];
-                postCenters.push((vals.leftPost === 'yes') ? (postW / 2) : 0);
-                if (vals.midPosts !== 'none' && midPostCount > 0) {
-                    const resolvedCenters = resolveMidPostCenters(vals.length, vals.leftPost, vals.rightPost, vals.midPosts, midPostCount, postW, customSpacings, style, vals.extra6, panelType, vals.deltaLeft || 0, vals.deltaRight || 0);
-                    resolvedCenters.forEach(midCx => {
-                        postCenters.push(midCx);
-                    });
-                }
-                postCenters.push((vals.rightPost === 'yes') ? (vals.length - postW / 2) : vals.length);
-
-                // Find the first bay index that has a post on its left
-                let targetBayIndex = 0;
-                for (let i = 0; i < postCenters.length - 1; i++) {
-                    let hasPostAtLeft = false;
-                    if (i === 0) {
-                        hasPostAtLeft = (vals.leftPost === 'yes' && vals.postType !== 'none');
-                    } else {
-                        hasPostAtLeft = (vals.midPosts !== 'none' && midPostCount > 0 && vals.postType !== 'none');
-                    }
-                    if (hasPostAtLeft) {
-                        targetBayIndex = i;
-                        break;
-                    }
-                }
-
-                if (postCenters.length >= 2) {
-                    const cutX = (postCenters[targetBayIndex] + postCenters[targetBayIndex + 1]) / 2;
-                    const hasMid = (style === 'villa_balcony' || (style === 'villa_custom' && vals.midRailType !== 'none'));
-                    
-                    const topGap = (style === 'classical' || style === 'executive' || style === 'urban_balcony' || style === 'villa_balcony') ? (pHeight - fHeight) : (vals.topGap !== undefined ? vals.topGap : 2.0);
-                    const midRailTop = pHeight - topH - midRailGap;
-                    const midRailBottom = midRailTop - midH;
-                    
-                    const cutYTop = hasMid ? (midRailTop + 1.5) : (pHeight + 4);
-                    const cutYBot = hasMid ? (midRailBottom - 12) : (pHeight - 12);
-                    
-                    // Translate CAD to SVG coordinates
-                    const [pTopX, pTopY] = cadToSvg(cutX, cutYTop, scale, extents);
-                    const [pBotX, pBotY] = cadToSvg(cutX, cutYBot, scale, extents);
-                    
-                    // Draw vertical line
-                    const cutLine = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-                    cutLine.setAttribute("x1", pTopX);
-                    cutLine.setAttribute("y1", pTopY);
-                    cutLine.setAttribute("x2", pBotX);
-                    cutLine.setAttribute("y2", pBotY);
-                    cutLine.setAttribute("stroke", "#ffaa00"); // matches other annot colors on screen
-                    cutLine.setAttribute("stroke-width", 2.0 * scaleFactor);
-                    gAnnots.appendChild(cutLine);
-                    
-                    // Draw horizontal hook pointing left/right
-                    const activePanelType = balconyWizardState.activePanelType || 'main';
-                    const isLeft = (activePanelType === 'leftReturn');
-                    const hookLength = 15 * scaleFactor;
-                    const hookEndX = isLeft ? (pTopX - hookLength) : (pTopX + hookLength);
-                    
-                    const hookLine = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
-                    hookLine.setAttribute("x1", pTopX);
-                    hookLine.setAttribute("y1", pTopY);
-                    hookLine.setAttribute("x2", hookEndX);
-                    hookLine.setAttribute("y2", pTopY);
-                    hookLine.setAttribute("stroke", "#ffaa00");
-                    hookLine.setAttribute("stroke-width", 2.0 * scaleFactor);
-                    gAnnots.appendChild(hookLine);
-                    
-                    // Draw arrowhead pointing left/right at the end of the hook
-                    const arrow = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "polygon");
-                    const arrowSize = 6 * scaleFactor;
-                    const pt1 = `${hookEndX},${pTopY}`;
-                    const pt2 = isLeft ? `${hookEndX + arrowSize},${pTopY - arrowSize * 0.4}` : `${hookEndX - arrowSize},${pTopY - arrowSize * 0.4}`;
-                    const pt3 = isLeft ? `${hookEndX + arrowSize},${pTopY + arrowSize * 0.4}` : `${hookEndX - arrowSize},${pTopY + arrowSize * 0.4}`;
-                    arrow.setAttribute("points", `${pt1} ${pt2} ${pt3}`);
-                    arrow.setAttribute("fill", "#ffaa00");
-                    gAnnots.appendChild(arrow);
-                    
-                    // Draw text label "A" next to the arrowhead
-                    const textNode = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "text");
-                    textNode.setAttribute("x", isLeft ? (hookEndX - 15 * scaleFactor) : (hookEndX + 6 * scaleFactor));
-                    textNode.setAttribute("y", pTopY + 4 * scaleFactor);
-                    textNode.setAttribute("fill", "#ffffff");
-                    textNode.setAttribute("font-family", "'JetBrains Mono', monospace, sans-serif");
-                    textNode.setAttribute("font-size", (14 * scaleFactor) + "px");
-                    textNode.setAttribute("font-weight", "normal");
-                    textNode.setAttribute("text-anchor", isLeft ? "end" : "start");
-                    textNode.textContent = "A";
-                    gAnnots.appendChild(textNode);
-                }
+                const centerDist = endXBound - startXBound;
+                const spanSpacing = centerDist / (midPostCount + 1);
+                const pickCx = startXBound + picketSpacing;
+                const cyPick = pHeight - topH - 5;
+                drawViewportLeader(pickCx, cyPick, "right", picketMark, "leader-pickets");
             }
         }
 
         // 4. Render placed custom dimensions
-        customDimensionsList.forEach((dim, idx) => {
-            const customDimId = `custom-dim-${idx}`;
-            if (hiddenAnnotations.has(customDimId)) return;
-
-            const isSelected = selectedAnnotId === customDimId;
-            const dimColor = isSelected ? "#ff00ff" : "#00d4ff";
-
-            const [x1, y1] = cadToSvg(dim.cx1, dim.cy1, scale, extents);
-            const [x2, y2] = cadToSvg(dim.cx2, dim.cy2, scale, extents);
-            const [dx1, dy1] = cadToSvg(dim.cdx1, dim.cdy1, scale, extents);
-            const [dx2, dy2] = cadToSvg(dim.cdx2, dim.cdy2, scale, extents);
+        customDimensionsList.forEach(dim => {
+            const x1 = dim.cx1 * scale;
+            const y1 = -dim.cy1 * scale;
+            const x2 = dim.cx2 * scale;
+            const y2 = -dim.cy2 * scale;
+            const dx1 = dim.cdx1 * scale;
+            const dy1 = -dim.cdy1 * scale;
+            const dx2 = dim.cdx2 * scale;
+            const dy2 = -dim.cdy2 * scale;
             
-            // Extension lines (thin cyan) with a clean 4px gap from snap points
-            const len1 = Math.hypot(dx1 - x1, dy1 - y1);
-            let ex1 = x1, ey1 = y1;
-            if (len1 > 0.001) {
-                ex1 = x1 + (dx1 - x1) / len1 * 4 * scaleFactor;
-                ey1 = y1 + (dy1 - y1) / len1 * 4 * scaleFactor;
-            }
-            const len2 = Math.hypot(dx2 - x2, dy2 - y2);
-            let ex2 = x2, ey2 = y2;
-            if (len2 > 0.001) {
-                ex2 = x2 + (dx2 - x2) / len2 * 4 * scaleFactor;
-                ey2 = y2 + (dy2 - y2) / len2 * 4 * scaleFactor;
-            }
-            drawLine(ex1, ey1, dx1, dy1, dimColor, "0.5");
-            drawLine(ex2, ey2, dx2, dy2, dimColor, "0.5");
+            // Extension lines (thin cyan)
+            drawLine(x1, y1, dx1, dy1, "#00d4ff", "0.5");
+            drawLine(x2, y2, dx2, dy2, "#00d4ff", "0.5");
             
             // Dimension line with custom arrowheads
-            drawLine(dx1, dy1, dx2, dy2, dimColor, "1.2", "custom-arrow-start", "custom-arrow-end");
+            drawLine(dx1, dy1, dx2, dy2, "#00d4ff", "1.2", "custom-arrow-start", "custom-arrow-end");
             
             // Aligned Text Label
             const midX = (dx1 + dx2) / 2;
             const midY = (dy1 + dy2) / 2;
-            
-            const spec = annotationProperties[customDimId] || {};
-            const activeFontSize = spec.fontSize !== undefined ? spec.fontSize : customDimFontSize;
-            const activeTextGap = spec.textGap !== undefined ? spec.textGap : customDimTextGap;
             
             const len = Math.hypot(dx2 - dx1, dy2 - dy1);
             let tx = midX;
@@ -15960,15 +8312,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (len > 0.001) {
                 const nx = -(dy2 - dy1) / len;
                 const ny = (dx2 - dx1) / len;
-                // Offset text by activeTextGap SVG pixels along the normal
-                tx += nx * activeTextGap * scaleFactor;
-                ty += ny * activeTextGap * scaleFactor;
+                // Offset text by 8 SVG pixels along the normal
+                tx += nx * 8;
+                ty += ny * 8;
             }
             
             const dx_cad = dim.cx2 - dim.cx1;
             const dy_cad = dim.cy2 - dim.cy1;
             const distInches = Math.hypot(dx_cad, dy_cad);
-            const labelText = spec.text !== undefined && spec.text !== null ? spec.text : (dim.text || formatFraction(distInches));
+            const labelText = dim.text || formatFraction(distInches);
             
             // Rotate parallel to dimension line
             const angleRad = Math.atan2(dy2 - dy1, dx2 - dx1);
@@ -15979,46 +8331,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "text");
             text.setAttribute("x", tx);
             text.setAttribute("y", ty);
-            text.setAttribute("fill", dimColor);
+            text.setAttribute("fill", "#00d4ff");
             text.setAttribute("font-family", "'JetBrains Mono', monospace, sans-serif");
-            text.setAttribute("font-size", (activeFontSize * scaleFactor) + "px");
-            text.setAttribute("font-weight", "normal");
+            text.setAttribute("font-size", customDimFontSize + "px");
+            text.setAttribute("font-weight", "bold");
             text.setAttribute("text-anchor", "middle");
             if (textAngle) {
                 text.setAttribute("transform", `rotate(${textAngle}, ${tx}, ${ty})`);
             }
             text.textContent = labelText;
-            
-            text.setAttribute("class", "annot-text-draggable");
-            text.setAttribute("style", "cursor: move; pointer-events: auto;");
-            text.setAttribute("data-annot-id", customDimId);
-            text.setAttribute("data-annot-type", "custom");
             gAnnots.appendChild(text);
-            
-            // Render blue grips if AutoCAD interactive dimension mode is active
-            if (autocadDimModeActive) {
-                const gripSize = 6 * scaleFactor;
-                const drawGrip = (gx, gy, gripName) => {
-                    const rect = svg.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "rect");
-                    rect.setAttribute("x", gx - gripSize/2);
-                    rect.setAttribute("y", gy - gripSize/2);
-                    rect.setAttribute("width", gripSize);
-                    rect.setAttribute("height", gripSize);
-                    rect.setAttribute("fill", "#0088ff");
-                    rect.setAttribute("stroke", "#ffffff");
-                    rect.setAttribute("stroke-width", 1 * scaleFactor);
-                    rect.setAttribute("class", "annot-grip-draggable");
-                    rect.setAttribute("style", "cursor: pointer; pointer-events: auto;");
-                    rect.setAttribute("data-grip-dim-idx", idx);
-                    rect.setAttribute("data-grip-name", gripName);
-                    gAnnots.appendChild(rect);
-                };
-                
-                drawGrip(x1, y1, "p1");
-                drawGrip(x2, y2, "p2");
-                drawGrip(dx1, dy1, "d1");
-                drawGrip(dx2, dy2, "d2");
-            }
         });
     }
 
@@ -16045,6 +8367,4 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("DXF export failed: " + e.message);
         }
     });
-
-
 });
